@@ -1,0 +1,123 @@
+/* Import Google Fonts - Koulen and Montserrat */
+@import url('https://fonts.googleapis.com/css2?family=Koulen&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    font-family: 'Montserrat', sans-serif;
+  }
+
+  body {
+    background-color: #1E1E1E;
+    color: white;
+  }
+}
+
+@layer components {
+  /* Hover scale effects */
+  .hover-scale-sm {
+    transition: transform 0.2s ease-in-out;
+  }
+  .hover-scale-sm:hover {
+    transform: scale(1.02);
+  }
+
+  .hover-scale-md {
+    transition: all 0.3s ease-in-out;
+  }
+  .hover-scale-md:hover {
+    transform: scale(1.05);
+  }
+
+  /* Card styles */
+  .card {
+    border-radius: 20px;
+    box-shadow: 10px 7px 4px rgba(0, 0, 0, 0.107);
+    background-color: #0F0F0F;
+  }
+
+  /* Vertical text utility */
+  .vertical-text {
+    font-family: "Koulen", "Montserrat", sans-serif;
+    width: fit-content;
+    writing-mode: vertical-lr;
+    text-orientation: upright;
+    letter-spacing: -40px;
+    font-weight: 500;
+    font-size: 90px;
+    text-align: center;
+  }
+
+  /* Status badges */
+  .badge-subscribed {
+    background-color: rgb(38, 100, 49);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  .badge-full {
+    background-color: #5D5757;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  .badge-available {
+    background-color: #c3161675;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  /* Event status classes */
+  .event-subscribed {
+    background-color: rgb(38, 100, 49);
+  }
+
+  .event-not-subscribed {
+    background-color: #c3161675;
+  }
+
+  .event-full {
+    background-color: #5D5757;
+  }
+
+  /* Timeline marker colors */
+  .timeline-marker.passed {
+    background-color: rgb(155, 140, 140);
+  }
+
+  .timeline-marker.today {
+    background-color: rgb(64, 180, 141);
+  }
+
+  .timeline-marker.upcoming {
+    background-color: rgb(38, 100, 49);
+  }
+
+  /* Header links */
+  .header-link {
+    font-family: 'Montserrat', serif;
+    font-weight: bold;
+    font-size: 1.2em;
+    border-radius: 10px;
+    transition-duration: 0.2s;
+    padding: 10px;
+    text-align: center;
+  }
+
+  .header-link:hover {
+    color: rgb(23, 23, 23);
+    background-color: rgb(119, 241, 190);
+  }
+}

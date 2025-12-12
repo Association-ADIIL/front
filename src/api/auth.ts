@@ -1,0 +1,46 @@
+import { fetchJson } from './client';
+
+export interface User {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  type: 'STUDENT' | 'PROFESSOR' | 'EXTERNAL' | 'ADMIN_BDE' | 'ADMIN_PROF';
+  studentGroup?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AuthResponse {
+  message: string;
+  token: string;
+  user: User;
+}
+
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+export interface RegisterData {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  type: string;
+  studentGroup?: string;
+}
+
+export const login = async (credentials: LoginCredentials): Promise<AuthResponse> => {
+  return fetchJson('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(credentials),
+  });
+};
+
+export const register = async (data: RegisterData): Promise<{ message: string; user: User }> => {
+  return fetchJson('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
