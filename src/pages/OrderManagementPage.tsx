@@ -1,12 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { getAllOrders, updateOrderStatus, updatePaymentStatus, type Order } from '../api/orders';
-import { getAllInscriptions, updateInscriptionPaymentStatus, type Inscription } from '../api/inscriptions';
+import { getAllInscriptions, updateInscriptionPaymentStatus, refundInscription, type Inscription } from '../api/inscriptions';
+import { getAllEvents, type Event } from '../api/events';
 import { Eye, Edit2, ShoppingBag, Calendar } from 'lucide-react';
 import Modal from '../components/Modal';
+import ConfirmDialog from '../components/ConfirmDialog';
+import { useNotification } from '../context/NotificationContext';
 
 type ViewMode = 'orders' | 'inscriptions';
 
 const OrderManagementPage: React.FC = () => {
+  const { addNotification } = useNotification();
   const [viewMode, setViewMode] = useState<ViewMode>('orders');
   const [orders, setOrders] = useState<Order[]>([]);
   const [inscriptions, setInscriptions] = useState<Inscription[]>([]);
@@ -17,6 +21,22 @@ const OrderManagementPage: React.FC = () => {
 
   // Filters
   const [paymentFilter, setPaymentFilter] = useState<string>('all');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('all');
+  const [eventFilter, setEventFilter] = useState<string>('all');
+  const [events, setEvents] = useState<Event[]>([]);
+
+  // Confirm dialog
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   const fetchOrders = async () => {
     try {
@@ -29,7 +49,12 @@ const OrderManagementPage: React.FC = () => {
 
   const fetchInscriptions = async () => {
     try {
-      const data = await getAllInscriptions();
+      const filters: any = {};
+      if (paymentFilter !== 'all') filters.paymentStatus = paymentFilter;
+      if (paymentMethodFilter !== 'all') filters.paymentMethod = paymentMethodFilter;
+      if (eventFilter !== 'all') filters.eventId = parseInt(eventFilter);
+
+      const data = await getAllInscriptions(filters);
       setInscriptions(data);
     } catch (error) {
       console.error("Failed to fetch inscriptions:", error);
@@ -50,6 +75,24 @@ const OrderManagementPage: React.FC = () => {
     fetchData();
   }, [viewMode]);
 
+  useEffect(() => {
+    const loadEvents = async () => {
+      try {
+        const eventsData = await getAllEvents();
+        setEvents(eventsData);
+      } catch (error) {
+        console.error("Failed to fetch events:", error);
+      }
+    };
+    loadEvents();
+  }, []);
+
+  useEffect(() => {
+    if (viewMode === 'inscriptions') {
+      fetchInscriptions();
+    }
+  }, [paymentFilter, paymentMethodFilter, eventFilter]);
+
   const handleOpenEditOrder = (order: Order) => {
     setCurrentOrder(order);
     setCurrentInscription(null);
@@ -68,9 +111,10 @@ const OrderManagementPage: React.FC = () => {
       await updateOrderStatus(currentOrder.id, newStatus);
       setIsModalOpen(false);
       fetchOrders();
+      addNotification('success', 'Statut mis à jour avec succès');
     } catch (error) {
       console.error("Failed to update order status:", error);
-      alert("Erreur lors de la mise à jour du statut.");
+      addNotification('error', 'Erreur lors de la mise à jour du statut');
     }
   };
 
@@ -80,9 +124,10 @@ const OrderManagementPage: React.FC = () => {
       await updatePaymentStatus(currentOrder.id, newStatus);
       setIsModalOpen(false);
       fetchOrders();
+      addNotification('success', 'Statut de paiement mis à jour');
     } catch (error) {
       console.error("Failed to update payment status:", error);
-      alert("Erreur lors de la mise à jour du statut de paiement.");
+      addNotification('error', 'Erreur lors de la mise à jour du statut de paiement');
     }
   };
 
@@ -92,10 +137,34 @@ const OrderManagementPage: React.FC = () => {
       await updateInscriptionPaymentStatus(currentInscription.id, newStatus);
       setIsModalOpen(false);
       fetchInscriptions();
+      addNotification('success', 'Statut de paiement mis à jour');
     } catch (error) {
       console.error("Failed to update inscription payment status:", error);
-      alert("Erreur lors de la mise à jour du statut de paiement.");
+      addNotification('error', 'Erreur lors de la mise à jour du statut de paiement');
     }
+  };
+
+  const handleRefundInscription = () => {
+    if (!currentInscription) return;
+
+    const confirmMessage = `Êtes-vous sûr de vouloir rembourser cette inscription ?\n\nParticipant : ${currentInscription.user?.firstName} ${currentInscription.user?.lastName}\nMontant : ${currentInscription.totalPrice} €\nMéthode : ${currentInscription.paymentMethod}\n\nCette action va :\n- Rembourser le paiement via ${currentInscription.paymentMethod === 'PAYPAL' ? 'PayPal' : 'HelloAsso'}\n- Marquer l'inscription comme REMBOURSÉE\n- Libérer la place pour cet événement`;
+
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Confirmer le remboursement',
+      message: confirmMessage,
+      onConfirm: async () => {
+        try {
+          await refundInscription(currentInscription.id);
+          addNotification('success', 'Inscription remboursée avec succès. La place a été libérée.');
+          setIsModalOpen(false);
+          fetchInscriptions();
+        } catch (error: any) {
+          console.error("Failed to refund inscription:", error);
+          addNotification('error', `Erreur lors du remboursement: ${error.message || 'Une erreur est survenue'}`);
+        }
+      },
+    });
   };
 
   // Filter inscriptions
@@ -141,18 +210,52 @@ const OrderManagementPage: React.FC = () => {
       {/* Filters for inscriptions */}
       {viewMode === 'inscriptions' && (
         <div className="bg-darker-bg border border-gray-700 rounded-lg p-4 mb-4">
-          <div className="flex gap-4 items-center">
-            <label className="text-gray-400 font-bold">Statut de paiement:</label>
-            <select
-              value={paymentFilter}
-              onChange={(e) => setPaymentFilter(e.target.value)}
-              className="bg-dark-bg border border-gray-600 rounded px-4 py-2 text-white focus:border-accent-mint outline-none"
-            >
-              <option value="all">Tous</option>
-              <option value="PENDING">En attente</option>
-              <option value="PAID">Payé</option>
-              <option value="REFUNDED">Remboursé</option>
-            </select>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Payment Status Filter */}
+            <div>
+              <label className="text-gray-400 font-bold block mb-2">Statut de paiement:</label>
+              <select
+                value={paymentFilter}
+                onChange={(e) => setPaymentFilter(e.target.value)}
+                className="w-full bg-dark-bg border border-gray-600 rounded px-4 py-2 text-white focus:border-accent-mint outline-none"
+              >
+                <option value="all">Tous</option>
+                <option value="PENDING">En attente</option>
+                <option value="PAID">Payé</option>
+                <option value="REFUNDED">Remboursé</option>
+              </select>
+            </div>
+
+            {/* Payment Method Filter */}
+            <div>
+              <label className="text-gray-400 font-bold block mb-2">Méthode de paiement:</label>
+              <select
+                value={paymentMethodFilter}
+                onChange={(e) => setPaymentMethodFilter(e.target.value)}
+                className="w-full bg-dark-bg border border-gray-600 rounded px-4 py-2 text-white focus:border-accent-mint outline-none"
+              >
+                <option value="all">Toutes</option>
+                <option value="HELLOASSO">HelloAsso</option>
+                <option value="PAYPAL">PayPal</option>
+                <option value="CASH_CB">Espèces/CB</option>
+                <option value="FREE">Gratuit</option>
+              </select>
+            </div>
+
+            {/* Event Filter */}
+            <div>
+              <label className="text-gray-400 font-bold block mb-2">Événement:</label>
+              <select
+                value={eventFilter}
+                onChange={(e) => setEventFilter(e.target.value)}
+                className="w-full bg-dark-bg border border-gray-600 rounded px-4 py-2 text-white focus:border-accent-mint outline-none"
+              >
+                <option value="all">Tous les événements</option>
+                {events.map(event => (
+                  <option key={event.id} value={event.id}>{event.title}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
       )}
@@ -364,6 +467,23 @@ const OrderManagementPage: React.FC = () => {
                 </div>
             </div>
 
+            {/* Refund Button - Only for PAID inscriptions with PAYPAL or HELLOASSO */}
+            {currentInscription.paymentStatus === 'PAID' &&
+             (currentInscription.paymentMethod === 'PAYPAL' || currentInscription.paymentMethod === 'HELLOASSO') && (
+              <div className="pt-4 border-t border-gray-700">
+                <h3 className="text-lg font-bold mb-3 text-gray-300">Remboursement</h3>
+                <button
+                  onClick={handleRefundInscription}
+                  className="w-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-colors"
+                >
+                  Rembourser via {currentInscription.paymentMethod === 'PAYPAL' ? 'PayPal' : 'HelloAsso'}
+                </button>
+                <p className="text-xs text-gray-500 mt-2">
+                  Le remboursement sera traité automatiquement et la place sera libérée.
+                </p>
+              </div>
+            )}
+
              <div className="flex justify-end pt-4 border-t border-gray-700">
                 <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-300 hover:text-white">Fermer</button>
             </div>
@@ -371,6 +491,18 @@ const OrderManagementPage: React.FC = () => {
           ) : null}
         </div>
       </Modal>
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmText="Rembourser"
+        cancelText="Annuler"
+        confirmClassName="bg-red-600 hover:bg-red-700"
+      />
     </div>
   );
 };

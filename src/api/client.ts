@@ -1,4 +1,4 @@
-export const API_BASE_URL = 'http://localhost:3000/api';
+export const API_BASE_URL = 'https://localhost:5173/api';
 
 type UnauthorizedCallback = () => void;
 type ErrorCallback = (status: number, message: string) => void;

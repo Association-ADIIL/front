@@ -160,17 +160,20 @@ const RegisterPage: React.FC = () => {
               </select>
             </div>
           )}
-          <div className="flex items-center justify-between mt-6">
+          <div className="flex flex-col gap-4 mt-6">
             <button
               type="submit"
               disabled={isLoading}
-              className={`bg-accent-mint text-darker-bg font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline hover-scale-sm transition-opacity ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`w-full bg-accent-mint text-darker-bg font-bold py-2.5 px-6 rounded focus:outline-none focus:shadow-outline hover-scale-sm transition-opacity ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {isLoading ? 'Inscription...' : 'S\'inscrire'}
             </button>
-            <Link to="/login" className="inline-block align-baseline font-bold text-sm text-accent-mint hover:text-white transition-colors">
-              Déjà un compte ? Se connecter
-            </Link>
+            <p className="text-center text-sm text-gray-400">
+              Déjà un compte ?{' '}
+              <Link to="/login" className="font-bold text-accent-mint hover:text-white transition-colors">
+                Se connecter
+              </Link>
+            </p>
           </div>
         </form>
       </div>

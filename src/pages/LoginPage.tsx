@@ -52,17 +52,20 @@ const LoginPage: React.FC = () => {
               required
             />
           </div>
-          <div className="flex items-center justify-between mt-6">
+          <div className="flex flex-col gap-4 mt-6">
             <button
               type="submit"
               disabled={isLoading}
-              className={`bg-accent-mint text-darker-bg font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline hover-scale-sm transition-opacity ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`w-full bg-accent-mint text-darker-bg font-bold py-2.5 px-6 rounded focus:outline-none focus:shadow-outline hover-scale-sm transition-opacity ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {isLoading ? 'Connexion...' : 'Se connecter'}
             </button>
-            <Link to="/register" className="inline-block align-baseline font-bold text-sm text-accent-mint hover:text-white transition-colors">
-              Pas encore de compte ? S'inscrire
-            </Link>
+            <p className="text-center text-sm text-gray-400">
+              Pas encore de compte ?{' '}
+              <Link to="/register" className="font-bold text-accent-mint hover:text-white transition-colors">
+                S'inscrire
+              </Link>
+            </p>
           </div>
         </form>
       </div>

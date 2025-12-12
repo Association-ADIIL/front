@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useNotification } from '../context/NotificationContext';
+import { confirmPayPalPayment, confirmHelloAssoPayment } from '../api/inscriptions';
 
 const PaymentCallbackPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -10,34 +11,95 @@ const PaymentCallbackPage: React.FC = () => {
 
   useEffect(() => {
     const processPayment = async () => {
+      // PayPal returns ?token=xxx (orderId) when payment is approved
+      const paypalToken = searchParams.get('token');
+
       // HelloAsso renvoie généralement des paramètres comme:
       // ?checkoutIntentId=xxx&code=succeeded
       const checkoutIntentId = searchParams.get('checkoutIntentId');
       const code = searchParams.get('code');
 
-      console.log('Payment callback params:', { checkoutIntentId, code });
+      console.log('Payment callback params:', { paypalToken, checkoutIntentId, code });
 
-      if (!checkoutIntentId) {
-        addNotification('error', 'Informations de paiement manquantes');
-        navigate('/my-account');
+      // Handle PayPal payment
+      if (paypalToken) {
+        try {
+          const inscriptionId = sessionStorage.getItem('paypal_inscription_id');
+          const orderId = sessionStorage.getItem('paypal_order_id');
+
+          if (!inscriptionId || !orderId) {
+            addNotification('error', 'Données de paiement manquantes');
+            navigate('/my-account');
+            return;
+          }
+
+          // Confirm PayPal payment with backend
+          await confirmPayPalPayment(parseInt(inscriptionId), orderId);
+
+          // Clear session storage
+          sessionStorage.removeItem('paypal_inscription_id');
+          sessionStorage.removeItem('paypal_order_id');
+
+          addNotification('success', 'Paiement PayPal effectué avec succès ! Votre inscription est confirmée.');
+
+          setTimeout(() => {
+            navigate('/my-account');
+          }, 2000);
+        } catch (error: any) {
+          console.error('PayPal payment confirmation error:', error);
+          addNotification('error', error.message || 'Erreur lors de la confirmation du paiement PayPal');
+          navigate('/my-account');
+        }
+        setProcessing(false);
         return;
       }
 
-      // Si le code indique un succès
-      if (code === 'succeeded') {
-        addNotification('success', 'Paiement effectué avec succès ! Votre inscription est confirmée.');
+      // Handle HelloAsso payment
+      if (checkoutIntentId) {
+        try {
+          const inscriptionId = sessionStorage.getItem('helloasso_inscription_id');
 
-        // TODO: Appeler le backend pour confirmer le paiement si nécessaire
-        // Mais HelloAsso envoie aussi un webhook, donc le backend peut déjà avoir confirmé
+          if (!inscriptionId) {
+            addNotification('error', 'Données de paiement manquantes');
+            navigate('/my-account');
+            return;
+          }
 
-        setTimeout(() => {
+          // Si le code indique un succès, confirmer le paiement avec le backend
+          if (code === 'succeeded') {
+            await confirmHelloAssoPayment(parseInt(inscriptionId), checkoutIntentId);
+
+            // Clear session storage
+            sessionStorage.removeItem('helloasso_inscription_id');
+
+            addNotification('success', 'Paiement HelloAsso effectué avec succès ! Votre inscription est confirmée.');
+
+            setTimeout(() => {
+              navigate('/my-account');
+            }, 2000);
+          } else {
+            addNotification('error', 'Le paiement a été annulé ou a échoué.');
+            navigate('/events');
+          }
+        } catch (error: any) {
+          console.error('HelloAsso payment confirmation error:', error);
+
+          // Check if it's a capacity exceeded error
+          if (error.message?.includes('capacity exceeded') || error.message?.includes('refunded')) {
+            addNotification('error', 'Plus de places disponibles. Votre paiement a été automatiquement remboursé.');
+          } else {
+            addNotification('error', error.message || 'Erreur lors de la confirmation du paiement HelloAsso');
+          }
+
           navigate('/my-account');
-        }, 2000);
-      } else {
-        addNotification('error', 'Le paiement a été annulé ou a échoué.');
-        navigate('/events');
+        }
+        setProcessing(false);
+        return;
       }
 
+      // No payment info found
+      addNotification('error', 'Informations de paiement manquantes');
+      navigate('/my-account');
       setProcessing(false);
     };
 

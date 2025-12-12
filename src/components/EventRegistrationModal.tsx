@@ -52,7 +52,7 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
         quantity: qty
       }));
 
-      const returnUrl = `${window.location.origin}/my-account`;
+      const returnUrl = `${window.location.origin}/payment/callback`;
       const cancelUrl = `${window.location.origin}/events/${event.id}`;
 
       const response = await createInscription({
@@ -65,23 +65,20 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
       });
 
       addNotification('success', response.message);
-      
+
+      // Handle payment redirect
       if (response.paymentUrl) {
+          // HelloAsso uses paymentUrl - store inscription ID and redirect
+          sessionStorage.setItem('helloasso_inscription_id', response.inscription.id.toString());
           window.location.href = response.paymentUrl;
-      } else if (response.returnUrl && totalPrice > 0 && paymentMethod !== 'CASH_CB') {
-          // If backend didn't give a direct paymentUrl but gave a returnUrl, it might expect us to construct it or it handled it.
-          // For HelloAsso/PayPal, usually the backend returns a redirect URL.
-          // Based on the controller, it returns `inscription` and `returnUrl` etc but maybe not the 3rd party URL directly unless it initiated it.
-          // Wait, the controller confirms payment, it doesn't seem to initiate the flow to return a URL to frontend?
-          // Let's re-read controller.
+      } else if (response.payment?.approvalUrl) {
+          // PayPal uses approvalUrl - store data and redirect
+          sessionStorage.setItem('paypal_inscription_id', response.inscription.id.toString());
+          sessionStorage.setItem('paypal_order_id', response.payment.orderId);
+          window.location.href = response.payment.approvalUrl;
       }
-      
+
       onClose();
-      // Optionally redirect to my-account or show success
-      if (paymentMethod === 'CASH_CB' || totalPrice === 0) {
-          // Stay or redirect to account
-          // window.location.href = '/my-account';
-      }
 
     } catch (error: any) {
       console.error("Registration failed:", error);
@@ -194,8 +191,8 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
           </div>
         )}
 
-        <button 
-            type="submit" 
+        <button
+            type="submit"
             disabled={loading}
             className="w-full bg-accent-mint text-darker-bg font-bold py-4 rounded hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-center"
         >
