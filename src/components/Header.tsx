@@ -1,9 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
+import { ShoppingCart } from 'lucide-react';
 
 const Header: React.FC = () => {
   const { user, isAdmin } = useAuth();
+  const { itemCount } = useCart();
 
   return (
     <header className="fixed top-0 left-0 right-0 z-header bg-darker-bg shadow-md">
@@ -17,6 +20,15 @@ const Header: React.FC = () => {
           {isAdmin && (
             <Link to="/admin" className="header-link text-red-400 hover:bg-red-900/20 hover:text-red-300">Admin</Link>
           )}
+
+          <Link to="/cart" className="relative header-link p-2">
+            <ShoppingCart size={24} />
+            {itemCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full text-xs w-5 h-5 flex items-center justify-center">
+                {itemCount}
+              </span>
+            )}
+          </Link>
 
           {user ? (
             <Link to="/my-account" className="header-link">Mon Compte</Link>

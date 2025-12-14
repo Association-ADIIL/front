@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { getAllEvents, deleteEvent, createEvent, updateEvent, type Event, type EventFormData } from '../api/events';
-import { Edit2, Trash2, Plus, Calendar, MapPin } from 'lucide-react';
+import { Edit2, Trash2, Plus, Calendar, MapPin, Download } from 'lucide-react';
 import Modal from '../components/Modal';
+import { exportEventInscriptionsCsv } from '../api/inscriptions';
+import ImageUpload from '../components/ImageUpload';
 
 const EventManagementPage: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
@@ -18,6 +20,7 @@ const EventManagementPage: React.FC = () => {
     location: '',
     price: 0,
     totalPlaces: 0,
+    maxPlacesPerPerson: 1,
     registrationDeadline: '',
     coverImage: '',
     status: 'OPEN',
@@ -48,6 +51,7 @@ const EventManagementPage: React.FC = () => {
       location: '',
       price: 0,
       totalPlaces: 0,
+      maxPlacesPerPerson: 1,
       registrationDeadline: '',
       coverImage: '',
       status: 'OPEN',
@@ -65,6 +69,7 @@ const EventManagementPage: React.FC = () => {
       location: event.location,
       price: event.price,
       totalPlaces: event.totalPlaces,
+      maxPlacesPerPerson: event.maxPlacesPerPerson,
       registrationDeadline: new Date(event.registrationDeadline).toISOString().slice(0, 16),
       coverImage: event.coverImage || '',
       status: event.status,
@@ -115,6 +120,23 @@ const EventManagementPage: React.FC = () => {
     }
   };
 
+  const handleExportCsv = async (eventId: number, eventTitle: string) => {
+    try {
+      const blob = await exportEventInscriptionsCsv(eventId);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const sanitizedTitle = eventTitle.replace(/[^a-z0-9]/gi, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+      const currentDate = new Date().toISOString().split('T')[0];
+      a.download = `participants-${sanitizedTitle}-${currentDate}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to export CSV:', error);
+      alert('Erreur lors de l\'export CSV');
+    }
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     setFormData(prev => ({
@@ -148,6 +170,13 @@ const EventManagementPage: React.FC = () => {
                      />
                  </div>
                  <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity bg-darker-bg p-1 rounded absolute top-4 right-4 shadow-lg">
+                    <button
+                      onClick={() => handleExportCsv(event.id, event.title)}
+                      className="p-2 text-accent-mint hover:bg-green-900/20 rounded"
+                      title="Exporter les participants (CSV)"
+                    >
+                      <Download size={18} />
+                    </button>
                     <button onClick={() => handleOpenEdit(event)} className="p-2 text-blue-400 hover:bg-blue-900/20 rounded"><Edit2 size={18} /></button>
                     <button onClick={() => handleOpenDelete(event)} className="p-2 text-red-400 hover:bg-red-900/20 rounded"><Trash2 size={18} /></button>
                  </div>
@@ -207,12 +236,12 @@ const EventManagementPage: React.FC = () => {
                 <input type="number" name="totalPlaces" value={formData.totalPlaces} onChange={handleChange} required className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
             </div>
             <div>
+                <label className="block text-gray-400 mb-1">Max places / pers</label>
+                <input type="number" name="maxPlacesPerPerson" value={formData.maxPlacesPerPerson} onChange={handleChange} required min="1" className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
+            </div>
+            <div>
                 <label className="block text-gray-400 mb-1">Date limite inscription</label>
                 <input type="datetime-local" name="registrationDeadline" value={formData.registrationDeadline} onChange={handleChange} required className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
-            </div>
-            <div className="md:col-span-2">
-                <label className="block text-gray-400 mb-1">URL Image (optionnel)</label>
-                <input type="text" name="coverImage" value={formData.coverImage} onChange={handleChange} className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" placeholder="https://..." />
             </div>
             <div>
               <label className="block text-gray-400 mb-1">Statut</label>
@@ -230,6 +259,15 @@ const EventManagementPage: React.FC = () => {
                 <option value="PRIVATE">Privé</option>
                 <option value="DRAFT">Brouillon</option>
               </select>
+            </div>
+            <div className="md:col-span-2">
+                <ImageUpload
+                  value={formData.coverImage}
+                  onChange={(url) => setFormData(prev => ({ ...prev, coverImage: url || '' }))}
+                  folder="events"
+                  label="Image de couverture"
+                  aspectRatio="16:9"
+                />
             </div>
           </div>
           <div className="flex justify-end pt-4">

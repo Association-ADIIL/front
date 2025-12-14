@@ -8,6 +8,7 @@ export interface Event {
   location: string;
   price: number;
   totalPlaces: number;
+  maxPlacesPerPerson: number;
   registeredPeople: number;
   registrationDeadline: string; // ISO string
   coverImage?: string;

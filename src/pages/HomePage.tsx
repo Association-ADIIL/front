@@ -33,7 +33,7 @@ const HomePage: React.FC = () => {
         try {
             const data = await getAllProducts();
             const availableProducts = data
-                .filter(p => p.isAvailable)
+                .filter(p => p.active)
                 .slice(0, 3); // Take first 3 available products
             setProducts(availableProducts);
         } catch (err) {

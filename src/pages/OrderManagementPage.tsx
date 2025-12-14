@@ -1,13 +1,34 @@
 import React, { useEffect, useState } from 'react';
-import { getAllOrders, updateOrderStatus, updatePaymentStatus, type Order } from '../api/orders';
+import { getAllOrders, updateOrderStatus, updatePaymentStatus, refundOrderItems, type Order } from '../api/orders';
 import { getAllInscriptions, updateInscriptionPaymentStatus, refundInscription, type Inscription } from '../api/inscriptions';
 import { getAllEvents, type Event } from '../api/events';
-import { Eye, Edit2, ShoppingBag, Calendar } from 'lucide-react';
+import { Edit2, ShoppingBag, Calendar, CheckSquare, Square } from 'lucide-react';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
+import MultiSelect from '../components/MultiSelect';
 import { useNotification } from '../context/NotificationContext';
 
 type ViewMode = 'orders' | 'inscriptions';
+
+const PAYMENT_STATUS_OPTIONS = [
+  { value: 'PENDING', label: 'En attente' },
+  { value: 'PAID', label: 'Payé' },
+  { value: 'REFUNDED', label: 'Remboursé' },
+];
+
+const ORDER_STATUS_OPTIONS = [
+  { value: 'PENDING', label: 'En attente' },
+  { value: 'PAID', label: 'Payée' },
+  { value: 'COLLECTED', label: 'Récupérée' },
+  { value: 'CANCELLED', label: 'Annulée' },
+];
+
+const PAYMENT_METHOD_OPTIONS = [
+  { value: 'HELLOASSO', label: 'HelloAsso' },
+  { value: 'PAYPAL', label: 'PayPal' },
+  { value: 'CASH_CB', label: 'Espèces/CB' },
+  { value: 'FREE', label: 'Gratuit' },
+];
 
 const OrderManagementPage: React.FC = () => {
   const { addNotification } = useNotification();
@@ -19,19 +40,21 @@ const OrderManagementPage: React.FC = () => {
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const [currentInscription, setCurrentInscription] = useState<Inscription | null>(null);
 
+  // Partial refund state
+  const [refundSelection, setRefundSelection] = useState<{ [key: number]: number }>({});
+
   // Filters
-  const [paymentFilter, setPaymentFilter] = useState<string>('all');
-  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('all');
-  const [eventFilter, setEventFilter] = useState<string>('all');
+  const [paymentFilter, setPaymentFilter] = useState<string[]>([]);
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string[]>([]);
+  const [inscriptionSearchQuery, setInscriptionSearchQuery] = useState('');
   const [events, setEvents] = useState<Event[]>([]);
+  
+  // Order specific filters
+  const [orderSearchQuery, setOrderSearchQuery] = useState('');
+  const [orderStatusFilter, setOrderStatusFilter] = useState<string[]>([]);
 
   // Confirm dialog
-  const [confirmDialog, setConfirmDialog] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    onConfirm: () => void;
-  }>({
+  const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     title: '',
     message: '',
@@ -50,10 +73,6 @@ const OrderManagementPage: React.FC = () => {
   const fetchInscriptions = async () => {
     try {
       const filters: any = {};
-      if (paymentFilter !== 'all') filters.paymentStatus = paymentFilter;
-      if (paymentMethodFilter !== 'all') filters.paymentMethod = paymentMethodFilter;
-      if (eventFilter !== 'all') filters.eventId = parseInt(eventFilter);
-
       const data = await getAllInscriptions(filters);
       setInscriptions(data);
     } catch (error) {
@@ -91,11 +110,49 @@ const OrderManagementPage: React.FC = () => {
     if (viewMode === 'inscriptions') {
       fetchInscriptions();
     }
-  }, [paymentFilter, paymentMethodFilter, eventFilter]);
+  }, []); // Removed deps
+
+  // Filtered Orders Logic
+  const filteredOrders = orders.filter(order => {
+      const matchesSearch = orderSearchQuery === '' || 
+          order.id.toString().includes(orderSearchQuery) ||
+          (order.user && (
+              order.user.firstName.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
+              order.user.lastName.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
+              order.user.email.toLowerCase().includes(orderSearchQuery.toLowerCase())
+          ));
+      
+      const matchesStatus = orderStatusFilter.length === 0 || orderStatusFilter.includes(order.orderStatus);
+      const matchesPayment = paymentFilter.length === 0 || paymentFilter.includes(order.paymentStatus);
+
+      return matchesSearch && matchesStatus && matchesPayment;
+  });
+
+  // Filter inscriptions logic
+  const filteredInscriptions = inscriptions.filter(inscription => {
+    if (paymentFilter.length > 0 && !paymentFilter.includes(inscription.paymentStatus)) return false;
+    if (paymentMethodFilter.length > 0 && !paymentMethodFilter.includes(inscription.paymentMethod)) return false;
+    
+    if (inscriptionSearchQuery !== '') {
+        const query = inscriptionSearchQuery.toLowerCase();
+        const matchesId = inscription.id.toString().includes(query);
+        const matchesUser = inscription.user && (
+            inscription.user.firstName.toLowerCase().includes(query) ||
+            inscription.user.lastName.toLowerCase().includes(query) ||
+            inscription.user.email.toLowerCase().includes(query)
+        );
+        const matchesEvent = inscription.event && inscription.event.title.toLowerCase().includes(query);
+        
+        if (!matchesId && !matchesUser && !matchesEvent) return false;
+    }
+    
+    return true;
+  });
 
   const handleOpenEditOrder = (order: Order) => {
     setCurrentOrder(order);
     setCurrentInscription(null);
+    setRefundSelection({});
     setIsModalOpen(true);
   };
 
@@ -167,11 +224,78 @@ const OrderManagementPage: React.FC = () => {
     });
   };
 
-  // Filter inscriptions
-  const filteredInscriptions = inscriptions.filter(inscription => {
-    if (paymentFilter !== 'all' && inscription.paymentStatus !== paymentFilter) return false;
-    return true;
-  });
+  // Partial Refund Logic
+  const toggleRefundItem = (itemId: number, maxQuantity: number) => {
+    setRefundSelection(prev => {
+      const current = prev[itemId] || 0;
+      if (current > 0) {
+        const { [itemId]: _, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [itemId]: maxQuantity }; // Default to max refund
+    });
+  };
+
+  const updateRefundQuantity = (itemId: number, quantity: number, maxQuantity: number) => {
+    if (quantity < 0) quantity = 0;
+    if (quantity > maxQuantity) quantity = maxQuantity;
+    
+    setRefundSelection(prev => {
+        if (quantity === 0) {
+            const { [itemId]: _, ...rest } = prev;
+            return rest;
+        }
+        return { ...prev, [itemId]: quantity };
+    });
+  };
+
+  const handleProcessPartialRefund = () => {
+      if (!currentOrder) return;
+
+      const itemsToRefund = Object.entries(refundSelection).map(([itemId, quantity]) => ({
+          orderItemId: parseInt(itemId),
+          quantity
+      }));
+
+      if (itemsToRefund.length === 0) {
+          addNotification('info', 'Aucun article sélectionné pour le remboursement');
+          return;
+      }
+      
+      const isHelloAsso = currentOrder.paymentMethod === 'HELLOASSO';
+      const isFullRefundAttempt = currentOrder.items.every(item => {
+          const totalRefundedForThisItem = (item.refundedQuantity || 0) + (refundSelection[item.id] || 0);
+          return totalRefundedForThisItem >= item.quantity;
+      });
+
+      if (isHelloAsso && !isFullRefundAttempt) {
+          addNotification('error', 'Pour les paiements HelloAsso, seul un remboursement complet est possible via l\'API.');
+          return;
+      }
+
+      setConfirmDialog({
+          isOpen: true,
+          title: 'Confirmer le remboursement', 
+          message: `Vous allez rembourser un montant total de ${(currentOrder.items.reduce((sum, item) => sum + (refundSelection[item.id] || 0) * item.price, 0)).toFixed(2)} €. Cette action est irréversible.`, 
+          onConfirm: async () => {
+              try {
+                  await refundOrderItems(currentOrder.id, itemsToRefund);
+                  addNotification('success', 'Remboursement effectué avec succès'); 
+                  setIsModalOpen(false);
+                  fetchOrders();
+              } catch (error: any) {
+                  console.error("Refund failed:", error);
+                  addNotification('error', error.message || 'Échec du remboursement');
+              }
+          }
+      });
+  };
+
+  // Determine if full refund attempt for button disable state
+  const isFullRefundAttemptForButton = currentOrder?.items.every(item => {
+      const availableRefund = item.quantity - (item.refundedQuantity || 0);
+      return (refundSelection[item.id] || 0) === availableRefund;
+  }) || false;
 
   if (loading) return <div className="text-center p-8">Chargement...</div>;
 
@@ -185,7 +309,7 @@ const OrderManagementPage: React.FC = () => {
       <div className="flex gap-2 mb-6">
         <button
           onClick={() => setViewMode('orders')}
-          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-bold transition-all ${
+          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-bold transition-all ${ 
             viewMode === 'orders'
               ? 'bg-accent-mint text-darker-bg'
               : 'bg-darker-bg text-gray-400 hover:bg-gray-800 border border-gray-700'
@@ -196,7 +320,7 @@ const OrderManagementPage: React.FC = () => {
         </button>
         <button
           onClick={() => setViewMode('inscriptions')}
-          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-bold transition-all ${
+          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-bold transition-all ${ 
             viewMode === 'inscriptions'
               ? 'bg-accent-mint text-darker-bg'
               : 'bg-darker-bg text-gray-400 hover:bg-gray-800 border border-gray-700'
@@ -207,54 +331,79 @@ const OrderManagementPage: React.FC = () => {
         </button>
       </div>
 
+      {/* Filters for orders */}
+      {viewMode === 'orders' && (
+        <div className="bg-darker-bg border border-gray-700 rounded-lg p-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Search */}
+            <div>
+              <label className="text-gray-400 font-bold block mb-2 text-sm">Rechercher (ID, Nom, Email):</label>
+              <input
+                type="text"
+                value={orderSearchQuery}
+                onChange={(e) => setOrderSearchQuery(e.target.value)}
+                placeholder="Rechercher..."
+                className="w-full bg-dark-bg border border-gray-600 rounded px-4 py-2 text-white focus:border-accent-mint outline-none min-h-[42px]"
+              />
+            </div>
+
+            {/* Payment Status Filter */}
+            <div>
+              <MultiSelect
+                label="Statut de paiement:"
+                options={PAYMENT_STATUS_OPTIONS}
+                selectedValues={paymentFilter}
+                onChange={setPaymentFilter}
+              />
+            </div>
+
+            {/* Order Status Filter */}
+            <div>
+              <MultiSelect
+                label="Statut de la commande:"
+                options={ORDER_STATUS_OPTIONS}
+                selectedValues={orderStatusFilter}
+                onChange={setOrderStatusFilter}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Filters for inscriptions */}
       {viewMode === 'inscriptions' && (
         <div className="bg-darker-bg border border-gray-700 rounded-lg p-4 mb-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Search Filter */}
+            <div>
+              <label className="text-gray-400 font-bold block mb-2 text-sm">Rechercher (ID, Nom, Email, Événement):</label>
+              <input
+                type="text"
+                value={inscriptionSearchQuery}
+                onChange={(e) => setInscriptionSearchQuery(e.target.value)}
+                placeholder="Rechercher..."
+                className="w-full bg-dark-bg border border-gray-600 rounded px-4 py-2 text-white focus:border-accent-mint outline-none min-h-[42px]"
+              />
+            </div>
+
             {/* Payment Status Filter */}
             <div>
-              <label className="text-gray-400 font-bold block mb-2">Statut de paiement:</label>
-              <select
-                value={paymentFilter}
-                onChange={(e) => setPaymentFilter(e.target.value)}
-                className="w-full bg-dark-bg border border-gray-600 rounded px-4 py-2 text-white focus:border-accent-mint outline-none"
-              >
-                <option value="all">Tous</option>
-                <option value="PENDING">En attente</option>
-                <option value="PAID">Payé</option>
-                <option value="REFUNDED">Remboursé</option>
-              </select>
+              <MultiSelect
+                label="Statut de paiement:"
+                options={PAYMENT_STATUS_OPTIONS}
+                selectedValues={paymentFilter}
+                onChange={setPaymentFilter}
+              />
             </div>
 
             {/* Payment Method Filter */}
             <div>
-              <label className="text-gray-400 font-bold block mb-2">Méthode de paiement:</label>
-              <select
-                value={paymentMethodFilter}
-                onChange={(e) => setPaymentMethodFilter(e.target.value)}
-                className="w-full bg-dark-bg border border-gray-600 rounded px-4 py-2 text-white focus:border-accent-mint outline-none"
-              >
-                <option value="all">Toutes</option>
-                <option value="HELLOASSO">HelloAsso</option>
-                <option value="PAYPAL">PayPal</option>
-                <option value="CASH_CB">Espèces/CB</option>
-                <option value="FREE">Gratuit</option>
-              </select>
-            </div>
-
-            {/* Event Filter */}
-            <div>
-              <label className="text-gray-400 font-bold block mb-2">Événement:</label>
-              <select
-                value={eventFilter}
-                onChange={(e) => setEventFilter(e.target.value)}
-                className="w-full bg-dark-bg border border-gray-600 rounded px-4 py-2 text-white focus:border-accent-mint outline-none"
-              >
-                <option value="all">Tous les événements</option>
-                {events.map(event => (
-                  <option key={event.id} value={event.id}>{event.title}</option>
-                ))}
-              </select>
+              <MultiSelect
+                label="Méthode de paiement:"
+                options={PAYMENT_METHOD_OPTIONS}
+                selectedValues={paymentMethodFilter}
+                onChange={setPaymentMethodFilter}
+              />
             </div>
           </div>
         </div>
@@ -269,17 +418,24 @@ const OrderManagementPage: React.FC = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Client</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Date</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Montant</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Statut</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Paiement</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Statut</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-700">
-            {orders.map((order) => (
-              <tr key={order.id} className="hover:bg-gray-800/50 transition-colors">
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                  #{order.id.slice(0, 8)}
+            {filteredOrders.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                  Aucune commande trouvée
                 </td>
+              </tr>
+            ) : (
+              filteredOrders.map((order) => (
+                <tr key={order.id} className="hover:bg-gray-800/50 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                    #{order.id.toString().padStart(6, '0')}
+                  </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                    <div className="text-sm font-medium text-white">
                        {order.user ? `${order.user.firstName} ${order.user.lastName}` : 'Utilisateur inconnu'}
@@ -290,21 +446,10 @@ const OrderManagementPage: React.FC = () => {
                   {new Date(order.createdAt).toLocaleDateString()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-white">
-                  {order.totalAmount} €
+                  {order.totalPrice.toFixed(2)} €
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                    order.status === 'DELIVERED' ? 'bg-green-900/50 text-green-200' : 
-                    order.status === 'CANCELLED' ? 'bg-red-900/50 text-red-200' : 
-                    'bg-yellow-900/50 text-yellow-200'
-                  }`}>
-                    {order.status === 'PENDING' ? 'En attente' :
-                     order.status === 'PAID' ? 'Payée' :
-                     order.status === 'DELIVERED' ? 'Livrée' : 'Annulée'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${ 
                         order.paymentStatus === 'PAID' ? 'bg-green-900/50 text-green-200' :
                         order.paymentStatus === 'REFUNDED' ? 'bg-purple-900/50 text-purple-200' :
                         'bg-red-900/50 text-red-200'
@@ -313,11 +458,22 @@ const OrderManagementPage: React.FC = () => {
                          order.paymentStatus === 'PAID' ? 'Payé' : 'Remboursé'}
                     </span>
                 </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${ 
+                    order.orderStatus === 'COLLECTED' ? 'bg-green-900/50 text-green-200' : 
+                    order.orderStatus === 'CANCELLED' ? 'bg-red-900/50 text-red-200' : 
+                    'bg-yellow-900/50 text-yellow-200'
+                  }`}>
+                    {order.orderStatus === 'PENDING' ? 'En attente' :
+                     order.orderStatus === 'PAID' ? 'Payée' :
+                     order.orderStatus === 'COLLECTED' ? 'Récupérée' : 'Annulée'}
+                  </span>
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <button onClick={() => handleOpenEditOrder(order)} className="text-accent-mint hover:text-white"><Edit2 size={18} /></button>
                 </td>
               </tr>
-            ))}
+            )))}
           </tbody>
         </table>
         </div>
@@ -374,7 +530,7 @@ const OrderManagementPage: React.FC = () => {
                     {inscription.totalPrice === 0 ? 'Gratuit' : `${inscription.totalPrice} €`}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${ 
                       inscription.paymentStatus === 'PAID' ? 'bg-green-900/50 text-green-200' :
                       inscription.paymentStatus === 'REFUNDED' ? 'bg-purple-900/50 text-purple-200' :
                       'bg-red-900/50 text-red-200'
@@ -405,7 +561,7 @@ const OrderManagementPage: React.FC = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={currentOrder ? `Modifier la commande #${currentOrder.id.slice(0, 8)}` : `Modifier l'inscription #${currentInscription?.id}`}
+        title={currentOrder ? `Modifier la commande #${currentOrder.id.toString()}` : `Modifier l\'inscription #${currentInscription?.id}`}
       >
         <div className="space-y-6">
           {currentOrder ? (
@@ -414,15 +570,15 @@ const OrderManagementPage: React.FC = () => {
             <div>
                 <h3 className="text-lg font-bold mb-2 text-gray-300">Statut de la commande</h3>
                 <div className="grid grid-cols-2 gap-2">
-                    {['PENDING', 'PAID', 'DELIVERED', 'CANCELLED'].map((status) => (
+                    {['PENDING', 'PAID', 'COLLECTED', 'CANCELLED'].map((status) => (
                         <button
                             key={status}
                             onClick={() => handleStatusChange(status)}
-                            className={`py-2 px-4 rounded border ${currentOrder?.status === status ? 'bg-accent-mint text-darker-bg border-accent-mint font-bold' : 'bg-dark-bg border-gray-600 text-gray-400 hover:bg-gray-700'}`}
+                            className={`py-2 px-4 rounded border ${currentOrder?.orderStatus === status ? 'bg-accent-mint text-darker-bg border-accent-mint font-bold' : 'bg-dark-bg border-gray-600 text-gray-400 hover:bg-gray-700'}`}
                         >
                             {status === 'PENDING' ? 'En attente' :
                              status === 'PAID' ? 'Payée' :
-                             status === 'DELIVERED' ? 'Livrée' : 'Annulée'}
+                             status === 'COLLECTED' ? 'Récupérée' : 'Annulée'}
                         </button>
                     ))}
                 </div>
@@ -443,6 +599,71 @@ const OrderManagementPage: React.FC = () => {
                     ))}
                 </div>
             </div>
+
+            {/* Partial Refund Section */}
+            {currentOrder.paymentStatus === 'PAID' && (
+                <div className="border-t border-gray-700 pt-4 mt-4">
+                    <h3 className="text-lg font-bold mb-2 text-gray-300">Remboursement</h3>
+                    {currentOrder.paymentMethod === 'HELLOASSO' && (
+                        <p className="text-yellow-400 text-sm mb-4">
+                            Note: Pour les paiements HelloAsso, seul un remboursement complet de la commande possible.
+                        </p>
+                    )}
+                    <div className="bg-darker-bg p-4 rounded border border-gray-700 max-h-60 overflow-y-auto">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="text-left text-gray-400 border-b border-gray-700">
+                                    <th className="pb-2">Article</th>
+                                    <th className="pb-2">Prix</th>
+                                    <th className="pb-2 text-center">Qté. Achetée</th>
+                                    <th className="pb-2 text-center">Déjà Remb.</th>
+                                    <th className="pb-2 text-right">Rembourser</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {currentOrder.items.map(item => {
+                                    const availableRefund = item.quantity - (item.refundedQuantity || 0);
+                                    if (availableRefund <= 0) return null;
+
+                                    return (
+                                        <tr key={item.id} className="border-b border-gray-700 last:border-0">
+                                            <td className="py-2">{item.product.name}</td>
+                                            <td className="py-2">{item.price} €</td>
+                                            <td className="py-2 text-center">{item.quantity}</td>
+                                            <td className="py-2 text-center">{item.refundedQuantity || 0}</td>
+                                            <td className="py-2 text-right flex items-center justify-end gap-2">
+                                                <input 
+                                                    type="number" 
+                                                    min="0" 
+                                                    max={availableRefund}
+                                                    value={refundSelection[item.id] || 0}
+                                                    onChange={(e) => updateRefundQuantity(item.id, parseInt(e.target.value) || 0, availableRefund)}
+                                                    className="w-16 bg-dark-bg border border-gray-600 rounded px-2 py-1 text-right text-white"
+                                                />
+                                                <button 
+                                                    onClick={() => toggleRefundItem(item.id, availableRefund)}
+                                                    className={`p-1 rounded ${refundSelection[item.id] > 0 ? 'text-accent-mint' : 'text-gray-500'}`}
+                                                >
+                                                    {refundSelection[item.id] > 0 ? <CheckSquare size={18} /> : <Square size={18} />}
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div className="mt-4 flex justify-end">
+                        <button 
+                            onClick={handleProcessPartialRefund}
+                            disabled={Object.keys(refundSelection).length === 0 || (currentOrder.paymentMethod === 'HELLOASSO' && !isFullRefundAttemptForButton)}
+                            className="bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded transition-colors"
+                        >
+                            Confirmer Remboursement
+                        </button>
+                    </div>
+                </div>
+            )}
 
              <div className="flex justify-end pt-4 border-t border-gray-700">
                 <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-300 hover:text-white">Fermer</button>

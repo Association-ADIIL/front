@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useNotification } from '../context/NotificationContext';
+import { useCart } from '../context/CartContext';
 import { confirmPayPalPayment, confirmHelloAssoPayment } from '../api/inscriptions';
+import { confirmPayPalOrderPayment, confirmHelloAssoOrderPayment } from '../api/orders';
 
 const PaymentCallbackPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { addNotification } = useNotification();
+  const { clearCart } = useCart();
   const [processing, setProcessing] = useState(true);
 
   useEffect(() => {
@@ -21,30 +24,36 @@ const PaymentCallbackPage: React.FC = () => {
 
       console.log('Payment callback params:', { paypalToken, checkoutIntentId, code });
 
+      // Determine if it's an order or an inscription
+      const isOrder = sessionStorage.getItem('paypal_order_id') || sessionStorage.getItem('helloasso_order_id');
+
       // Handle PayPal payment
       if (paypalToken) {
         try {
-          const inscriptionId = sessionStorage.getItem('paypal_inscription_id');
-          const orderId = sessionStorage.getItem('paypal_order_id');
-
-          if (!inscriptionId || !orderId) {
-            addNotification('error', 'Données de paiement manquantes');
+          if (isOrder) {
+            const orderId = sessionStorage.getItem('paypal_order_id');
+            if (!orderId) {
+              addNotification('error', 'Données de commande manquantes pour PayPal.');
+              navigate('/my-account');
+              return;
+            }
+            await confirmPayPalOrderPayment(parseInt(orderId), paypalToken);
+            sessionStorage.removeItem('paypal_order_id');
+            clearCart(); // Clear cart after successful order payment
+            addNotification('success', 'Paiement PayPal effectué avec succès ! Votre commande est confirmée.');
             navigate('/my-account');
-            return;
+          } else {
+            const inscriptionId = sessionStorage.getItem('paypal_inscription_id');
+            if (!inscriptionId) {
+              addNotification('error', 'Données d\'inscription manquantes pour PayPal.');
+              navigate('/my-account');
+              return;
+            }
+            await confirmPayPalPayment(parseInt(inscriptionId), paypalToken);
+            sessionStorage.removeItem('paypal_inscription_id');
+            addNotification('success', 'Paiement PayPal effectué avec succès ! Votre inscription est confirmée.');
+            navigate('/my-account');
           }
-
-          // Confirm PayPal payment with backend
-          await confirmPayPalPayment(parseInt(inscriptionId), orderId);
-
-          // Clear session storage
-          sessionStorage.removeItem('paypal_inscription_id');
-          sessionStorage.removeItem('paypal_order_id');
-
-          addNotification('success', 'Paiement PayPal effectué avec succès ! Votre inscription est confirmée.');
-
-          setTimeout(() => {
-            navigate('/my-account');
-          }, 2000);
         } catch (error: any) {
           console.error('PayPal payment confirmation error:', error);
           addNotification('error', error.message || 'Erreur lors de la confirmation du paiement PayPal');
@@ -57,40 +66,47 @@ const PaymentCallbackPage: React.FC = () => {
       // Handle HelloAsso payment
       if (checkoutIntentId) {
         try {
-          const inscriptionId = sessionStorage.getItem('helloasso_inscription_id');
-
-          if (!inscriptionId) {
-            addNotification('error', 'Données de paiement manquantes');
-            navigate('/my-account');
-            return;
-          }
-
-          // Si le code indique un succès, confirmer le paiement avec le backend
-          if (code === 'succeeded') {
-            await confirmHelloAssoPayment(parseInt(inscriptionId), checkoutIntentId);
-
-            // Clear session storage
-            sessionStorage.removeItem('helloasso_inscription_id');
-
-            addNotification('success', 'Paiement HelloAsso effectué avec succès ! Votre inscription est confirmée.');
-
-            setTimeout(() => {
+          if (isOrder) {
+            const orderId = sessionStorage.getItem('helloasso_order_id');
+            if (!orderId) {
+              addNotification('error', 'Données de commande manquantes pour HelloAsso.');
               navigate('/my-account');
-            }, 2000);
+              return;
+            }
+            if (code === 'succeeded') {
+              await confirmHelloAssoOrderPayment(parseInt(orderId), checkoutIntentId);
+              sessionStorage.removeItem('helloasso_order_id');
+              clearCart(); // Clear cart after successful order payment
+              addNotification('success', 'Paiement HelloAsso effectué avec succès ! Votre commande est confirmée.');
+              navigate('/my-account');
+            } else {
+              addNotification('error', 'Le paiement a été annulé ou a échoué.');
+              navigate('/my-account');
+            }
           } else {
-            addNotification('error', 'Le paiement a été annulé ou a échoué.');
-            navigate('/events');
+            const inscriptionId = sessionStorage.getItem('helloasso_inscription_id');
+            if (!inscriptionId) {
+              addNotification('error', 'Données d\'inscription manquantes pour HelloAsso.');
+              navigate('/my-account');
+              return;
+            }
+            if (code === 'succeeded') {
+              await confirmHelloAssoPayment(parseInt(inscriptionId), checkoutIntentId);
+              sessionStorage.removeItem('helloasso_inscription_id');
+              addNotification('success', 'Paiement HelloAsso effectué avec succès ! Votre inscription est confirmée.');
+              navigate('/my-account');
+            } else {
+              addNotification('error', 'Le paiement a été annulé ou a échoué.');
+              navigate('/events');
+            }
           }
         } catch (error: any) {
           console.error('HelloAsso payment confirmation error:', error);
-
-          // Check if it's a capacity exceeded error
           if (error.message?.includes('capacity exceeded') || error.message?.includes('refunded')) {
-            addNotification('error', 'Plus de places disponibles. Votre paiement a été automatiquement remboursé.');
+            addNotification('error', 'Problème de capacité ou remboursement automatique.'); // Generic for orders
           } else {
             addNotification('error', error.message || 'Erreur lors de la confirmation du paiement HelloAsso');
           }
-
           navigate('/my-account');
         }
         setProcessing(false);
@@ -104,7 +120,7 @@ const PaymentCallbackPage: React.FC = () => {
     };
 
     processPayment();
-  }, [searchParams, navigate, addNotification]);
+  }, [searchParams, navigate, addNotification, clearCart]);
 
   if (processing) {
     return (

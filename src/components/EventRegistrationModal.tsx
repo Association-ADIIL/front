@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 import { type Event } from '../api/events';
-import { createInscription, type PaymentMethod } from '../api/inscriptions';
+import { createInscription, type PaymentMethod, getMyInscriptions } from '../api/inscriptions';
 import { useNotification } from '../context/NotificationContext';
 import { CreditCard, Wallet, Banknote } from 'lucide-react';
 
@@ -16,6 +16,8 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
   const [selectedOptions, setSelectedOptions] = useState<Record<number, number>>({});
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('HELLOASSO');
   const [loading, setLoading] = useState(false);
+  const [remainingQuota, setRemainingQuota] = useState<number>(event.maxPlacesPerPerson);
+  const [checkingQuota, setCheckingQuota] = useState(false);
   const { addNotification } = useNotification();
 
   // Reset state when modal opens/closes
@@ -25,8 +27,34 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
       setSelectedOptions({});
       setPaymentMethod('HELLOASSO');
       setLoading(false);
+      fetchUserQuota();
     }
-  }, [isOpen]);
+  }, [isOpen, event.id]);
+
+  const fetchUserQuota = async () => {
+    setCheckingQuota(true);
+    try {
+      const myInscriptions = await getMyInscriptions();
+      const eventInscriptions = myInscriptions.filter(i => 
+        i.eventId === event.id && 
+        i.paymentStatus === 'PAID'
+      );
+      
+      const usedPlaces = eventInscriptions.reduce((sum, i) => sum + i.quantity, 0);
+      const remaining = Math.max(0, event.maxPlacesPerPerson - usedPlaces);
+      setRemainingQuota(remaining);
+      
+      if (remaining === 0) {
+        setQuantity(0);
+      } else if (quantity > remaining) {
+        setQuantity(1);
+      }
+    } catch (error) {
+      console.error("Failed to check quota:", error);
+    } finally {
+      setCheckingQuota(false);
+    }
+  };
 
   const handleOptionChange = (optionId: number, checked: boolean) => {
     setSelectedOptions(prev => {
@@ -44,6 +72,8 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (remainingQuota <= 0) return;
+    
     setLoading(true);
 
     try {
@@ -74,7 +104,9 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
       } else if (response.payment?.approvalUrl) {
           // PayPal uses approvalUrl - store data and redirect
           sessionStorage.setItem('paypal_inscription_id', response.inscription.id.toString());
-          sessionStorage.setItem('paypal_order_id', response.payment.orderId);
+          if (response.payment.orderId) {
+             sessionStorage.setItem('paypal_order_id', response.payment.orderId);
+          }
           window.location.href = response.payment.approvalUrl;
       }
 
@@ -90,17 +122,29 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`Inscription : ${event.title}`}>
+      {checkingQuota ? (
+          <div className="text-center py-8">Chargement de vos inscriptions...</div>
+      ) : remainingQuota <= 0 ? (
+          <div className="text-center py-8">
+              <p className="text-red-400 font-bold mb-2">Limite atteinte</p>
+              <p className="text-gray-400">Vous avez déjà réservé le nombre maximum de places ({event.maxPlacesPerPerson}) pour cet événement.</p>
+              <button onClick={onClose} className="mt-4 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500">Fermer</button>
+          </div>
+      ) : (
       <form onSubmit={handleSubmit} className="space-y-6">
         
         {/* Quantity */}
         <div>
-          <label className="block text-gray-400 mb-2">Nombre de places</label>
+          <label className="block text-gray-400 mb-2">Nombre de places <span className="text-xs text-gray-500">(Max: {remainingQuota})</span></label>
           <input 
             type="number" 
             min="1" 
-            max="5" 
+            max={remainingQuota} 
             value={quantity} 
-            onChange={(e) => setQuantity(parseInt(e.target.value) || 1)} 
+            onChange={(e) => {
+                const val = parseInt(e.target.value) || 1;
+                setQuantity(Math.min(val, remainingQuota));
+            }} 
             className="w-full bg-dark-bg border border-gray-600 rounded p-3 text-white focus:border-accent-mint outline-none"
           />
         </div>
@@ -199,6 +243,7 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
             {loading ? <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-darker-bg"></div> : 'Confirmer l\'inscription'}
         </button>
       </form>
+      )}
     </Modal>
   );
 };

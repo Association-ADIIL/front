@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { getAllProducts, deleteProduct, createProduct, updateProduct, type Product, type ProductFormData } from '../api/products';
 import { Edit2, Trash2, Plus } from 'lucide-react';
 import Modal from '../components/Modal';
+import ImageUpload from '../components/ImageUpload';
 
 const ProductManagementPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -41,7 +42,7 @@ const ProductManagementPage: React.FC = () => {
       description: '',
       price: 0,
       imageUrl: '',
-      enabled: true,
+      active: true,
     });
     setIsModalOpen(true);
   };
@@ -162,15 +163,20 @@ const ProductManagementPage: React.FC = () => {
                 <input type="number" step="0.01" name="price" value={formData.price} onChange={handleChange} required className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
             </div>
             <div>
-                <label className="block text-gray-400 mb-1">URL Image (optionnel)</label>
-                <input type="text" name="imageUrl" value={formData.imageUrl} onChange={handleChange} className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" placeholder="https://..." />
-            </div>
-            <div>
                 <label className="block text-gray-400 mb-1">Disponibilité</label>
                 <select name="active" value={String(formData.active)} onChange={handleChange} className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white">
                     <option value="true">Disponible</option>
                     <option value="false">Indisponible</option>
                 </select>
+            </div>
+            <div>
+                <ImageUpload
+                  value={formData.imageUrl}
+                  onChange={(url) => setFormData(prev => ({ ...prev, imageUrl: url || '' }))}
+                  folder="products"
+                  label="Image du produit"
+                  aspectRatio="16:9"
+                />
             </div>
           </div>
           <div className="flex justify-end pt-4">

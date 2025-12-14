@@ -40,7 +40,13 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               <Link to="/admin/orders" className="block text-lg hover:text-accent-mint transition-colors">Commandes</Link>
             </li>
             <li>
+              <Link to="/admin/statistics" className="block text-lg hover:text-accent-mint transition-colors">Statistiques</Link>
+            </li>
+            <li>
               <Link to="/admin/users" className="block text-lg hover:text-accent-mint transition-colors">Utilisateurs</Link>
+            </li>
+            <li>
+              <Link to="/admin/logs" className="block text-lg hover:text-accent-mint transition-colors">Logs d'Activité</Link>
             </li>
           </ul>
         </nav>

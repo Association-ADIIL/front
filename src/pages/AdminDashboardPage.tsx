@@ -1,37 +1,92 @@
 import React, { useEffect, useState } from 'react';
 import { getAllUsers } from '../api/users';
-import { getAllEvents } from '../api/events';
-import { getAllOrders } from '../api/orders';
-import { Users, Calendar, ShoppingBag, TrendingUp } from 'lucide-react';
+import { getAllEvents, type Event } from '../api/events';
+import { getAllOrders, type Order } from '../api/orders';
+import { getAllInscriptions, type Inscription } from '../api/inscriptions';
+import { useNavigate } from 'react-router-dom';
+import {
+  Users, Calendar, ShoppingBag, TrendingUp, Plus,
+  ArrowRight, Clock, CheckCircle, AlertCircle, CalendarCheck
+} from 'lucide-react';
 
 const AdminDashboardPage: React.FC = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
-    usersCount: 0,
-    eventsCount: 0,
-    ordersCount: 0,
+    totalUsers: 0,
+    newUsersThisMonth: 0,
+    totalEvents: 0,
+    upcomingEvents: 0,
+    totalOrders: 0,
+    pendingOrders: 0,
     totalRevenue: 0,
+    revenueThisMonth: 0,
+    totalInscriptions: 0,
   });
+  const [recentEvents, setRecentEvents] = useState<Event[]>([]);
+  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [recentInscriptions, setRecentInscriptions] = useState<Inscription[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [users, events, orders] = await Promise.all([
+        const [users, events, orders, inscriptions] = await Promise.all([
           getAllUsers(),
           getAllEvents(),
           getAllOrders(),
+          getAllInscriptions({}),
         ]);
 
-        const revenue = orders.reduce((sum, order) => {
-            return (order.status === 'PAID' || order.status === 'DELIVERED') ? sum + order.totalAmount : sum;
-        }, 0);
+        const now = new Date();
+        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+        // User stats
+        const newUsersThisMonth = users.filter(u => new Date(u.createdAt) >= firstDayOfMonth).length;
+
+        // Event stats
+        const upcoming = events
+          .filter(e => new Date(e.date) >= now)
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        // Order stats
+        const pendingOrders = orders.filter(o => o.paymentStatus === 'PENDING').length;
+        const totalRevenue = orders
+          .filter(o => o.paymentStatus === 'PAID')
+          .reduce((sum, o) => sum + o.totalPrice, 0);
+        const revenueThisMonth = orders
+          .filter(o => o.paymentStatus === 'PAID' && new Date(o.createdAt) >= firstDayOfMonth)
+          .reduce((sum, o) => sum + o.totalPrice, 0);
+
+        // Recent items
+        const recentEventsList = events
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .slice(0, 3);
+
+        const recentOrdersList = orders
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .slice(0, 5);
+
+        const recentInscriptionsList = inscriptions
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .slice(0, 5);
 
         setStats({
-          usersCount: users.length,
-          eventsCount: events.length,
-          ordersCount: orders.length,
-          totalRevenue: revenue,
+          totalUsers: users.length,
+          newUsersThisMonth,
+          totalEvents: events.length,
+          upcomingEvents: upcoming.length,
+          totalOrders: orders.length,
+          pendingOrders,
+          totalRevenue,
+          revenueThisMonth,
+          totalInscriptions: inscriptions.length,
         });
+
+        setRecentEvents(recentEventsList);
+        setRecentOrders(recentOrdersList);
+        setRecentInscriptions(recentInscriptionsList);
+        setUpcomingEvents(upcoming.slice(0, 4));
       } catch (error) {
         console.error("Failed to fetch admin stats:", error);
       } finally {
@@ -42,72 +97,250 @@ const AdminDashboardPage: React.FC = () => {
     fetchData();
   }, []);
 
-  if (loading) return <div className="p-8 text-center">Chargement du tableau de bord...</div>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-accent-mint"></div>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <h1 className="text-4xl font-bold text-accent-mint mb-2 font-koulen">Tableau de Bord</h1>
-      <p className="text-lg mb-8 text-gray-400">Vue d'ensemble de l'activité du BDE ADIIL.</p>
+    <div className="space-y-8">
+      {/* Header */}
+      <div>
+        <h1 className="text-4xl font-bold text-accent-mint mb-2 font-koulen">Tableau de Bord</h1>
+        <p className="text-gray-400">Vue d'ensemble de l'activité du BDE ADIIL</p>
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="card p-6 border border-gray-800 flex items-center justify-between">
-          <div>
-              <p className="text-gray-400 mb-1">Utilisateurs</p>
-              <h2 className="text-3xl font-bold">{stats.usersCount}</h2>
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <button
+          onClick={() => navigate('/admin/events')}
+          className="bg-gradient-to-br from-purple-600/20 to-purple-900/20 border border-purple-600/30 hover:border-purple-500 p-4 rounded-lg transition-all group"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <Calendar className="text-purple-400" size={24} />
+            <Plus className="text-purple-400 opacity-0 group-hover:opacity-100 transition-opacity" size={18} />
           </div>
-          <div className="p-3 bg-blue-900/20 rounded-full text-blue-400">
-              <Users size={32} />
+          <h3 className="text-base font-bold text-white mb-1">Nouvel Événement</h3>
+          <p className="text-xs text-gray-400">Créer un événement</p>
+        </button>
+
+        <button
+          onClick={() => navigate('/admin/products')}
+          className="bg-gradient-to-br from-orange-600/20 to-orange-900/20 border border-orange-600/30 hover:border-orange-500 p-4 rounded-lg transition-all group"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <ShoppingBag className="text-orange-400" size={24} />
+            <Plus className="text-orange-400 opacity-0 group-hover:opacity-100 transition-opacity" size={18} />
           </div>
-        </div>
-        
-        <div className="card p-6 border border-gray-800 flex items-center justify-between">
-          <div>
-              <p className="text-gray-400 mb-1">Événements</p>
-              <h2 className="text-3xl font-bold">{stats.eventsCount}</h2>
+          <h3 className="text-base font-bold text-white mb-1">Nouveau Produit</h3>
+          <p className="text-xs text-gray-400">Ajouter à la boutique</p>
+        </button>
+
+        <button
+          onClick={() => navigate('/admin/users')}
+          className="bg-gradient-to-br from-blue-600/20 to-blue-900/20 border border-blue-600/30 hover:border-blue-500 p-4 rounded-lg transition-all group"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <Users className="text-blue-400" size={24} />
+            <ArrowRight className="text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" size={18} />
           </div>
-          <div className="p-3 bg-purple-900/20 rounded-full text-purple-400">
-              <Calendar size={32} />
+          <h3 className="text-base font-bold text-white mb-1">Utilisateurs</h3>
+          <p className="text-xs text-gray-400">Gérer les comptes</p>
+        </button>
+
+        <button
+          onClick={() => navigate('/admin/orders')}
+          className="bg-gradient-to-br from-green-600/20 to-green-900/20 border border-green-600/30 hover:border-green-500 p-4 rounded-lg transition-all group"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <TrendingUp className="text-accent-mint" size={24} />
+            <ArrowRight className="text-accent-mint opacity-0 group-hover:opacity-100 transition-opacity" size={18} />
           </div>
+          <h3 className="text-base font-bold text-white mb-1">Commandes</h3>
+          <p className="text-xs text-gray-400">Voir toutes les ventes</p>
+        </button>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Users */}
+        <div className="card p-6 border border-gray-700">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-blue-900/20 rounded-lg">
+              <Users className="text-blue-400" size={24} />
+            </div>
+            <span className="text-xs text-green-400 font-bold">+{stats.newUsersThisMonth} ce mois</span>
+          </div>
+          <h3 className="text-2xl font-bold mb-1">{stats.totalUsers}</h3>
+          <p className="text-sm text-gray-400">Utilisateurs inscrits</p>
         </div>
 
-        <div className="card p-6 border border-gray-800 flex items-center justify-between">
-          <div>
-              <p className="text-gray-400 mb-1">Commandes</p>
-              <h2 className="text-3xl font-bold">{stats.ordersCount}</h2>
+        {/* Events */}
+        <div className="card p-6 border border-gray-700">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-purple-900/20 rounded-lg">
+              <Calendar className="text-purple-400" size={24} />
+            </div>
+            <span className="text-xs text-purple-400 font-bold">{stats.upcomingEvents} à venir</span>
           </div>
-          <div className="p-3 bg-orange-900/20 rounded-full text-orange-400">
-              <ShoppingBag size={32} />
-          </div>
+          <h3 className="text-2xl font-bold mb-1">{stats.totalEvents}</h3>
+          <p className="text-sm text-gray-400">Événements créés</p>
         </div>
 
-        <div className="card p-6 border border-gray-800 flex items-center justify-between">
-          <div>
-              <p className="text-gray-400 mb-1">Chiffre d'Affaires</p>
-              <h2 className="text-3xl font-bold text-accent-mint">{stats.totalRevenue} €</h2>
+        {/* Orders */}
+        <div className="card p-6 border border-gray-700">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-orange-900/20 rounded-lg">
+              <ShoppingBag className="text-orange-400" size={24} />
+            </div>
+            {stats.pendingOrders > 0 && (
+              <span className="text-xs text-yellow-400 font-bold flex items-center gap-1">
+                <Clock size={12} />
+                {stats.pendingOrders} en attente
+              </span>
+            )}
           </div>
-          <div className="p-3 bg-green-900/20 rounded-full text-accent-mint">
-              <TrendingUp size={32} />
+          <h3 className="text-2xl font-bold mb-1">{stats.totalOrders}</h3>
+          <p className="text-sm text-gray-400">Commandes totales</p>
+        </div>
+
+        {/* Revenue */}
+        <div className="card p-6 border border-gray-700">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-green-900/20 rounded-lg">
+              <TrendingUp className="text-accent-mint" size={24} />
+            </div>
+            <span className="text-xs text-accent-mint font-bold">{stats.revenueThisMonth.toFixed(2)}€ ce mois</span>
           </div>
+          <h3 className="text-2xl font-bold text-accent-mint mb-1">{stats.totalRevenue.toFixed(2)} €</h3>
+          <p className="text-sm text-gray-400">Chiffre d'affaires total</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="card p-6 border border-gray-800">
-          <h2 className="text-xl font-bold mb-4">Activité Récente</h2>
-          <p className="text-gray-500 italic">Historique d'activité à venir...</p>
-        </div>
-        <div className="card p-6 border border-gray-800">
-          <h2 className="text-xl font-bold mb-4">Actions Rapides</h2>
-          <div className="grid grid-cols-2 gap-4">
-              <button className="bg-dark-bg hover:bg-gray-800 border border-gray-700 p-4 rounded text-center transition-colors">
-                  Créer un événement
-              </button>
-              <button className="bg-dark-bg hover:bg-gray-800 border border-gray-700 p-4 rounded text-center transition-colors">
-                  Ajouter un produit
-              </button>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Upcoming Events */}
+        <div className="card p-6 border border-gray-700">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <CalendarCheck className="text-accent-mint" size={20} />
+              Événements à venir
+            </h2>
+            <button
+              onClick={() => navigate('/admin/events')}
+              className="text-sm text-accent-mint hover:underline"
+            >
+              Voir tout
+            </button>
           </div>
+          {upcomingEvents.length === 0 ? (
+            <p className="text-gray-500 italic py-4">Aucun événement à venir</p>
+          ) : (
+            <div className="space-y-3">
+              {upcomingEvents.map(event => (
+                <div
+                  key={event.id}
+                  className="flex items-start gap-3 p-3 bg-dark-bg rounded-lg hover:bg-gray-800 transition-colors cursor-pointer"
+                  onClick={() => navigate('/admin/events')}
+                >
+                  <div className="flex-shrink-0 w-12 h-12 bg-purple-900/30 rounded-lg flex flex-col items-center justify-center">
+                    <span className="text-xs text-purple-400 font-bold">
+                      {new Date(event.date).toLocaleDateString('fr-FR', { day: 'numeric' })}
+                    </span>
+                    <span className="text-xs text-purple-400">
+                      {new Date(event.date).toLocaleDateString('fr-FR', { month: 'short' })}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-bold text-sm truncate">{event.title}</h4>
+                    <p className="text-xs text-gray-400 truncate">{event.location}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        event.status === 'FULL' ? 'bg-red-900/30 text-red-400' :
+                        event.status === 'OPEN' ? 'bg-green-900/30 text-green-400' :
+                        'bg-gray-700 text-gray-400'
+                      }`}>
+                        {event.status === 'FULL' ? 'Complet' :
+                         event.status === 'OPEN' ? 'Ouvert' : 'Fermé'}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {event.registeredPeople || 0}/{event.totalPlaces} inscrits
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Recent Inscriptions */}
+        <div className="card p-6 border border-gray-700">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <CalendarCheck className="text-accent-mint" size={20} />
+              Dernières inscriptions
+            </h2>
+            <button
+              onClick={() => navigate('/admin/orders')}
+              className="text-sm text-accent-mint hover:underline"
+            >
+              Voir tout
+            </button>
+          </div>
+          {recentInscriptions.length === 0 ? (
+            <p className="text-gray-500 italic py-4">Aucune inscription</p>
+          ) : (
+            <div className="space-y-2">
+              {recentInscriptions.map(inscription => (
+                <div
+                  key={inscription.id}
+                  className="flex items-center justify-between p-3 bg-dark-bg rounded-lg hover:bg-gray-800 transition-colors cursor-pointer"
+                  onClick={() => navigate('/admin/orders')}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-2 h-2 rounded-full ${
+                      inscription.paymentStatus === 'PAID' ? 'bg-green-400' :
+                      inscription.paymentStatus === 'PENDING' ? 'bg-yellow-400' :
+                      inscription.paymentStatus === 'REFUNDED' ? 'bg-purple-400' :
+                      'bg-red-400'
+                    }`} />
+                    <div>
+                      <p className="text-sm font-bold">{inscription.event?.title || 'Événement'}</p>
+                      <p className="text-xs text-gray-400">
+                        {inscription.user?.firstName} {inscription.user?.lastName} - {inscription.quantity} place{inscription.quantity > 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-accent-mint">{inscription.totalPrice.toFixed(2)} €</p>
+                    <p className="text-xs text-gray-400">
+                      {new Date(inscription.createdAt).toLocaleDateString('fr-FR')}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Alerts Section */}
+      {stats.pendingOrders > 0 && (
+        <div className="card p-6 border border-yellow-600/30 bg-yellow-900/10">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="text-yellow-400 flex-shrink-0 mt-1" size={20} />
+            <div>
+              <h3 className="font-bold text-yellow-400 mb-2">Actions requises</h3>
+              <p className="text-sm text-gray-300">
+                {stats.pendingOrders} commande{stats.pendingOrders > 1 ? 's' : ''} en attente de paiement
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

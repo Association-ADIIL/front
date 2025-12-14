@@ -1,4 +1,4 @@
-import { fetchJson } from './client';
+import { fetchJson, API_BASE_URL } from './client';
 
 export type PaymentMethod = 'HELLOASSO' | 'PAYPAL' | 'CASH_CB' | 'FREE';
 
@@ -33,6 +33,10 @@ export interface InscriptionResponse {
   returnUrl?: string;
   cancelUrl?: string;
   paymentUrl?: string; // Some backends might return this directly
+  payment?: {
+    approvalUrl?: string;
+    orderId?: string;
+  };
 }
 
 export interface Inscription {
@@ -111,4 +115,21 @@ export const refundInscription = async (id: number): Promise<Inscription> => {
   return fetchJson(`/inscriptions/${id}/refund`, {
     method: 'POST',
   });
+};
+
+export const exportEventInscriptionsCsv = async (eventId: number): Promise<Blob> => {
+  const token = localStorage.getItem('token');
+
+  const response = await fetch(`${API_BASE_URL}/inscriptions/event/${eventId}/export/csv`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({ message: 'Failed to export inscriptions' }));
+    throw new Error(errorBody.message || 'Failed to export inscriptions');
+  }
+
+  return response.blob();
 };
