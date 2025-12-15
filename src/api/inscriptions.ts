@@ -1,6 +1,6 @@
 import { fetchJson, API_BASE_URL } from './client';
 
-export type PaymentMethod = 'HELLOASSO' | 'PAYPAL' | 'CASH_CB' | 'FREE';
+export type PaymentMethod = 'HELLOASSO' | 'PAYPAL' | 'CASH_CB' | 'FREE' | 'BALANCE';
 
 export interface InscriptionOption {
   eventOptionId: number;

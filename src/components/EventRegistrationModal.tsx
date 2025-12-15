@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import Modal from './Modal';
 import { type Event } from '../api/events';
 import { createInscription, type PaymentMethod, getMyInscriptions } from '../api/inscriptions';
+import { getMyBalance } from '../api/balance';
 import { useNotification } from '../context/NotificationContext';
-import { CreditCard, Wallet, Banknote } from 'lucide-react';
+import { X, CreditCard, Wallet, Banknote, Users, Minus, Plus, ChevronRight, AlertCircle, Check } from 'lucide-react';
 
 interface EventRegistrationModalProps {
   isOpen: boolean;
@@ -19,6 +19,7 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
   const [loading, setLoading] = useState(false);
   const [remainingQuota, setRemainingQuota] = useState<number>(event.maxPlacesPerPerson);
   const [checkingQuota, setCheckingQuota] = useState(false);
+  const [userBalance, setUserBalance] = useState<number>(0);
   const { addNotification } = useNotification();
 
   // Reset state when modal opens/closes
@@ -30,22 +31,41 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
       setPaymentMethod('HELLOASSO');
       setLoading(false);
       fetchUserQuota();
+      fetchUserBalance();
+      // Prevent body scroll
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
     }
+
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
   }, [isOpen, event.id]);
+
+  const fetchUserBalance = async () => {
+    try {
+      const data = await getMyBalance();
+      setUserBalance(data.balance);
+    } catch (error) {
+      console.error("Failed to fetch balance:", error);
+      setUserBalance(0);
+    }
+  };
 
   const fetchUserQuota = async () => {
     setCheckingQuota(true);
     try {
       const myInscriptions = await getMyInscriptions();
-      const eventInscriptions = myInscriptions.filter(i => 
-        i.eventId === event.id && 
+      const eventInscriptions = myInscriptions.filter(i =>
+        i.eventId === event.id &&
         i.paymentStatus === 'PAID'
       );
-      
+
       const usedPlaces = eventInscriptions.reduce((sum, i) => sum + i.quantity, 0);
       const remaining = Math.max(0, event.maxPlacesPerPerson - usedPlaces);
       setRemainingQuota(remaining);
-      
+
       if (remaining === 0) {
         setQuantity(0);
       } else if (quantity > remaining) {
@@ -70,14 +90,19 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
     });
   };
 
-  const totalPrice = (event.price * quantity); // Add option prices if they had prices, but currently EventOption just has name
+  const totalPrice = (event.price * quantity);
+  const hasEnoughBalance = userBalance >= totalPrice;
 
   // Auto-switch away from HelloAsso if total is below 0.50
   useEffect(() => {
     if (paymentMethod === 'HELLOASSO' && totalPrice > 0 && totalPrice < 0.50) {
       setPaymentMethod('PAYPAL');
     }
-  }, [totalPrice, paymentMethod]);
+    // Auto-switch away from BALANCE if not enough balance
+    if (paymentMethod === 'BALANCE' && !hasEnoughBalance) {
+      setPaymentMethod('HELLOASSO');
+    }
+  }, [totalPrice, paymentMethod, hasEnoughBalance]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,6 +117,12 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
         addNotification('error', `Veuillez remplir tous les champs requis`);
         return;
       }
+    }
+
+    // Check balance if paying with BALANCE
+    if (paymentMethod === 'BALANCE' && !hasEnoughBalance) {
+      addNotification('error', 'Solde insuffisant');
+      return;
     }
 
     setLoading(true);
@@ -122,21 +153,21 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
 
       addNotification('success', response.message);
 
-      // Handle payment redirect
+      // Handle payment redirect (only for external payment methods)
       if (response.paymentUrl) {
-          // HelloAsso uses paymentUrl - store inscription ID and redirect
-          sessionStorage.setItem('helloasso_inscription_id', response.inscription.id.toString());
-          window.location.href = response.paymentUrl;
+        sessionStorage.setItem('helloasso_inscription_id', response.inscription.id.toString());
+        window.location.href = response.paymentUrl;
       } else if (response.payment?.approvalUrl) {
-          // PayPal uses approvalUrl - store data and redirect
-          sessionStorage.setItem('paypal_inscription_id', response.inscription.id.toString());
-          if (response.payment.orderId) {
-             sessionStorage.setItem('paypal_order_id', response.payment.orderId);
-          }
-          window.location.href = response.payment.approvalUrl;
+        sessionStorage.setItem('paypal_inscription_id', response.inscription.id.toString());
+        if (response.payment.orderId) {
+          sessionStorage.setItem('paypal_order_id', response.payment.orderId);
+        }
+        window.location.href = response.payment.approvalUrl;
+      } else {
+        // For BALANCE and CASH_CB, just close the modal and refresh
+        onClose();
+        window.location.reload();
       }
-
-      onClose();
 
     } catch (error: any) {
       console.error("Registration failed:", error);
@@ -146,203 +177,346 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
     }
   };
 
+  if (!isOpen) return null;
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Inscription : ${event.title}`}>
-      {checkingQuota ? (
-          <div className="text-center py-8">Chargement de vos inscriptions...</div>
-      ) : remainingQuota <= 0 ? (
-          <div className="text-center py-8">
-              <p className="text-red-400 font-bold mb-2">Limite atteinte</p>
-              <p className="text-gray-400">Vous avez déjà réservé le nombre maximum de places ({event.maxPlacesPerPerson}) pour cet événement.</p>
-              <button onClick={onClose} className="mt-4 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500">Fermer</button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      {/* Modal */}
+      <div className="relative w-full max-w-lg mx-4 max-h-[80vh] mt-20 bg-darker-bg rounded-3xl border border-gray-800 shadow-2xl flex flex-col">
+        {/* Header */}
+        <div className="relative p-6 border-b border-gray-800 flex-shrink-0">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-full transition-colors"
+          >
+            <X size={20} />
+          </button>
+          <div className="pr-8">
+            <p className="text-accent-mint text-sm font-semibold mb-1">INSCRIPTION</p>
+            <h2 className="text-xl font-bold text-white line-clamp-2">{event.title}</h2>
           </div>
-      ) : (
-      <form onSubmit={handleSubmit} className="space-y-6">
-        
-        {/* Quantity */}
-        <div>
-          <label className="block text-gray-400 mb-2">Nombre de places <span className="text-xs text-gray-500">(Max: {remainingQuota})</span></label>
-          <input 
-            type="number" 
-            min="1" 
-            max={remainingQuota} 
-            value={quantity} 
-            onChange={(e) => {
-                const val = parseInt(e.target.value) || 1;
-                setQuantity(Math.min(val, remainingQuota));
-            }} 
-            className="w-full bg-dark-bg border border-gray-600 rounded p-3 text-white focus:border-accent-mint outline-none"
-          />
         </div>
 
-        {/* Options */}
-        {event.options && event.options.length > 0 && (
-          <div>
-            <label className="block text-gray-400 mb-2">Options</label>
-            <div className="space-y-2">
-              {event.options.map(option => (
-                <div key={option.id} className="flex items-center p-3 bg-dark-bg border border-gray-700 rounded hover:border-gray-500 cursor-pointer" onClick={() => handleOptionChange(option.id, !selectedOptions[option.id])}>
-                  <input
-                    type="checkbox"
-                    checked={!!selectedOptions[option.id]}
-                    onChange={(e) => handleOptionChange(option.id, e.target.checked)}
-                    className="mr-3 h-5 w-5 accent-accent-mint"
-                  />
-                  <span>{option.name}</span>
-                </div>
-              ))}
+        {/* Content */}
+        <div className="overflow-y-auto flex-1 p-6 custom-scrollbar">
+          {checkingQuota ? (
+            <div className="text-center py-12">
+              <div className="w-10 h-10 border-2 border-accent-mint border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-400">Verification de vos inscriptions...</p>
             </div>
-          </div>
-        )}
-
-        {/* Custom Form Fields */}
-        {event.formFields && event.formFields.length > 0 && (
-          <div>
-            <label className="block text-gray-400 mb-3">Informations complementaires</label>
-            <div className="space-y-4">
-              {event.formFields.map(field => (
-                <div key={field.id}>
-                  <label className="block text-sm text-gray-300 mb-2">
-                    {field.label}
-                    {field.required && <span className="text-red-400 ml-1">*</span>}
-                  </label>
-                  {field.type === 'TEXT' && (
-                    <input
-                      type="text"
-                      value={formResponses[field.id] || ''}
-                      onChange={(e) => setFormResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
-                      required={field.required}
-                      className="w-full bg-dark-bg border border-gray-600 rounded p-3 text-white focus:border-accent-mint outline-none"
-                      placeholder={`Entrez ${field.label.toLowerCase()}`}
-                    />
-                  )}
-                  {field.type === 'TEXTAREA' && (
-                    <textarea
-                      value={formResponses[field.id] || ''}
-                      onChange={(e) => setFormResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
-                      required={field.required}
-                      rows={4}
-                      className="w-full bg-dark-bg border border-gray-600 rounded p-3 text-white focus:border-accent-mint outline-none resize-none"
-                      placeholder={`Entrez ${field.label.toLowerCase()}`}
-                    />
-                  )}
-                  {field.type === 'SELECT' && field.options && (
-                    <select
-                      value={formResponses[field.id] || ''}
-                      onChange={(e) => setFormResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
-                      required={field.required}
-                      className="w-full bg-dark-bg border border-gray-600 rounded p-3 text-white focus:border-accent-mint outline-none"
-                    >
-                      <option value="">Choisir une option</option>
-                      {field.options.map((option, idx) => (
-                        <option key={idx} value={option}>{option}</option>
-                      ))}
-                    </select>
-                  )}
-                  {field.type === 'CHECKBOX' && (
-                    <label className="flex items-center p-3 bg-dark-bg border border-gray-700 rounded hover:border-gray-500 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formResponses[field.id] === 'true'}
-                        onChange={(e) => setFormResponses(prev => ({ ...prev, [field.id]: e.target.checked ? 'true' : 'false' }))}
-                        className="mr-3 h-5 w-5 accent-accent-mint"
-                      />
-                      <span>{field.label}</span>
-                    </label>
-                  )}
-                </div>
-              ))}
+          ) : remainingQuota <= 0 ? (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertCircle size={32} className="text-red-400" />
+              </div>
+              <p className="text-red-400 font-bold text-lg mb-2">Limite atteinte</p>
+              <p className="text-gray-400 text-sm mb-6">
+                Vous avez deja reserve le nombre maximum de places ({event.maxPlacesPerPerson}) pour cet evenement.
+              </p>
+              <button
+                onClick={onClose}
+                className="px-6 py-3 bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition-colors"
+              >
+                Fermer
+              </button>
             </div>
-          </div>
-        )}
-
-        {/* Price Summary */}
-        <div className="p-4 bg-dark-bg/50 rounded-lg border border-gray-700 flex justify-between items-center">
-            <span className="text-gray-300">Total à payer</span>
-            <span className="text-2xl font-bold text-accent-mint">{totalPrice.toFixed(2)} €</span>
-        </div>
-
-        {/* Payment Method */}
-        {totalPrice > 0 && (
-          <div>
-            <label className="block text-gray-400 mb-2">Moyen de paiement</label>
-            <div className="grid grid-cols-1 gap-3">
-              <label className={`flex items-center justify-between p-4 border rounded-lg transition-all ${
-                totalPrice < 0.50 ? 'opacity-50 cursor-not-allowed' :
-                paymentMethod === 'HELLOASSO' ? 'border-accent-mint bg-accent-mint/10 cursor-pointer' : 'border-gray-700 bg-dark-bg hover:border-gray-500 cursor-pointer'
-              }`}>
-                <div className="flex flex-col">
-                  <div className="flex items-center">
-                    <input
-                        type="radio"
-                        name="paymentMethod"
-                        value="HELLOASSO"
-                        checked={paymentMethod === 'HELLOASSO'}
-                        onChange={() => setPaymentMethod('HELLOASSO')}
-                        disabled={totalPrice < 0.50}
-                        className="mr-3"
-                    />
-                    <div className="flex items-center">
-                        <Wallet className="mr-2 text-blue-400" size={20} />
-                        <span className="font-bold">HelloAsso</span>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Quantity Selector */}
+              <div className="bg-dark-bg rounded-2xl p-5 border border-gray-800">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-accent-mint/10 rounded-xl flex items-center justify-center">
+                      <Users size={20} className="text-accent-mint" />
+                    </div>
+                    <div>
+                      <p className="text-white font-medium">Nombre de places</p>
+                      <p className="text-xs text-gray-500">Maximum {remainingQuota} place(s)</p>
                     </div>
                   </div>
-                  {totalPrice < 0.50 && (
-                    <span className="text-xs text-orange-400 ml-8 mt-1">Minimum 0.50€</span>
-                  )}
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                      disabled={quantity <= 1}
+                      className="w-10 h-10 rounded-xl bg-gray-800 text-white flex items-center justify-center hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <Minus size={18} />
+                    </button>
+                    <span className="text-2xl font-bold text-white w-8 text-center">{quantity}</span>
+                    <button
+                      type="button"
+                      onClick={() => setQuantity(Math.min(remainingQuota, quantity + 1))}
+                      disabled={quantity >= remainingQuota}
+                      className="w-10 h-10 rounded-xl bg-accent-mint text-darker-bg flex items-center justify-center hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <Plus size={18} />
+                    </button>
+                  </div>
                 </div>
-                {totalPrice >= 0.50 && (
-                  <span className="text-xs text-gray-400 bg-darker-bg px-2 py-1 rounded">Recommandé</span>
-                )}
-              </label>
+              </div>
 
-              <label className={`flex items-center p-4 border rounded-lg cursor-pointer transition-all ${paymentMethod === 'PAYPAL' ? 'border-accent-mint bg-accent-mint/10' : 'border-gray-700 bg-dark-bg hover:border-gray-500'}`}>
-                <div className="flex items-center">
-                    <input 
-                        type="radio" 
-                        name="paymentMethod" 
-                        value="PAYPAL" 
-                        checked={paymentMethod === 'PAYPAL'}
-                        onChange={() => setPaymentMethod('PAYPAL')}
-                        className="mr-3"
-                    />
-                     <div className="flex items-center">
-                        <CreditCard className="mr-2 text-indigo-400" size={20} />
-                        <span className="font-bold">PayPal</span>
-                    </div>
+              {/* Options */}
+              {event.options && event.options.length > 0 && (
+                <div>
+                  <p className="text-sm font-semibold text-gray-400 mb-3">OPTIONS</p>
+                  <div className="space-y-2">
+                    {event.options.map(option => (
+                      <label
+                        key={option.id}
+                        className={`flex items-center p-4 rounded-xl border cursor-pointer transition-all ${
+                          selectedOptions[option.id]
+                            ? 'bg-accent-mint/10 border-accent-mint'
+                            : 'bg-dark-bg border-gray-800 hover:border-gray-700'
+                        }`}
+                      >
+                        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center mr-4 transition-colors ${
+                          selectedOptions[option.id]
+                            ? 'bg-accent-mint border-accent-mint'
+                            : 'border-gray-600'
+                        }`}>
+                          {selectedOptions[option.id] && <Check size={14} className="text-darker-bg" />}
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={!!selectedOptions[option.id]}
+                          onChange={(e) => handleOptionChange(option.id, e.target.checked)}
+                          className="hidden"
+                        />
+                        <span className="text-white">{option.name}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
-              </label>
+              )}
 
-              <label className={`flex items-center p-4 border rounded-lg cursor-pointer transition-all ${paymentMethod === 'CASH_CB' ? 'border-accent-mint bg-accent-mint/10' : 'border-gray-700 bg-dark-bg hover:border-gray-500'}`}>
-                <div className="flex items-center">
-                    <input 
-                        type="radio" 
-                        name="paymentMethod" 
-                        value="CASH_CB" 
-                        checked={paymentMethod === 'CASH_CB'}
-                        onChange={() => setPaymentMethod('CASH_CB')}
-                        className="mr-3"
-                    />
-                     <div className="flex items-center">
-                        <Banknote className="mr-2 text-green-400" size={20} />
-                        <span className="font-bold">Espèces / CB (Sur place)</span>
-                    </div>
+              {/* Custom Form Fields */}
+              {event.formFields && event.formFields.length > 0 && (
+                <div>
+                  <p className="text-sm font-semibold text-gray-400 mb-3">INFORMATIONS COMPLEMENTAIRES</p>
+                  <div className="space-y-4">
+                    {event.formFields.map(field => (
+                      <div key={field.id}>
+                        <label className="block text-sm text-white mb-2">
+                          {field.label}
+                          {field.required && <span className="text-red-400 ml-1">*</span>}
+                        </label>
+                        {field.type === 'TEXT' && (
+                          <input
+                            type="text"
+                            value={formResponses[field.id] || ''}
+                            onChange={(e) => setFormResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
+                            required={field.required}
+                            className="w-full bg-dark-bg border border-gray-800 rounded-xl p-4 text-white focus:border-accent-mint focus:outline-none transition-colors"
+                            placeholder={`Entrez ${field.label.toLowerCase()}`}
+                          />
+                        )}
+                        {field.type === 'TEXTAREA' && (
+                          <textarea
+                            value={formResponses[field.id] || ''}
+                            onChange={(e) => setFormResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
+                            required={field.required}
+                            rows={3}
+                            className="w-full bg-dark-bg border border-gray-800 rounded-xl p-4 text-white focus:border-accent-mint focus:outline-none transition-colors resize-none"
+                            placeholder={`Entrez ${field.label.toLowerCase()}`}
+                          />
+                        )}
+                        {field.type === 'SELECT' && field.options && (
+                          <select
+                            value={formResponses[field.id] || ''}
+                            onChange={(e) => setFormResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
+                            required={field.required}
+                            className="w-full bg-dark-bg border border-gray-800 rounded-xl p-4 text-white focus:border-accent-mint focus:outline-none transition-colors"
+                          >
+                            <option value="">Choisir une option</option>
+                            {field.options.map((option, idx) => (
+                              <option key={idx} value={option}>{option}</option>
+                            ))}
+                          </select>
+                        )}
+                        {field.type === 'CHECKBOX' && (
+                          <label className={`flex items-center p-4 rounded-xl border cursor-pointer transition-all ${
+                            formResponses[field.id] === 'true'
+                              ? 'bg-accent-mint/10 border-accent-mint'
+                              : 'bg-dark-bg border-gray-800 hover:border-gray-700'
+                          }`}>
+                            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center mr-4 transition-colors ${
+                              formResponses[field.id] === 'true'
+                                ? 'bg-accent-mint border-accent-mint'
+                                : 'border-gray-600'
+                            }`}>
+                              {formResponses[field.id] === 'true' && <Check size={14} className="text-darker-bg" />}
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={formResponses[field.id] === 'true'}
+                              onChange={(e) => setFormResponses(prev => ({ ...prev, [field.id]: e.target.checked ? 'true' : 'false' }))}
+                              className="hidden"
+                            />
+                            <span className="text-white">{field.label}</span>
+                          </label>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </label>
+              )}
+
+              {/* Payment Method */}
+              {totalPrice > 0 && (
+                <div>
+                  <p className="text-sm font-semibold text-gray-400 mb-3">MODE DE PAIEMENT</p>
+                  <div className="space-y-2">
+                    {/* BALANCE - Carte ADIIL */}
+                    <label className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all ${
+                      !hasEnoughBalance ? 'opacity-50 cursor-not-allowed' :
+                      paymentMethod === 'BALANCE' ? 'bg-accent-mint/10 border-accent-mint' : 'bg-dark-bg border-gray-800 hover:border-gray-700'
+                    }`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                          paymentMethod === 'BALANCE' ? 'border-accent-mint' : 'border-gray-600'
+                        }`}>
+                          {paymentMethod === 'BALANCE' && <div className="w-2.5 h-2.5 rounded-full bg-accent-mint" />}
+                        </div>
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          value="BALANCE"
+                          checked={paymentMethod === 'BALANCE'}
+                          onChange={() => setPaymentMethod('BALANCE')}
+                          disabled={!hasEnoughBalance}
+                          className="hidden"
+                        />
+                        <CreditCard size={20} className="text-accent-mint" />
+                        <div>
+                          <span className="font-medium text-white">Carte ADIIL</span>
+                          <p className="text-xs text-gray-400">Solde: {userBalance.toFixed(2)}EUR</p>
+                          {!hasEnoughBalance && (
+                            <p className="text-xs text-red-400">Solde insuffisant</p>
+                          )}
+                        </div>
+                      </div>
+                    </label>
+
+                    {/* HelloAsso */}
+                    <label className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all ${
+                      totalPrice < 0.50 ? 'opacity-50 cursor-not-allowed' :
+                      paymentMethod === 'HELLOASSO' ? 'bg-blue-500/10 border-blue-500' : 'bg-dark-bg border-gray-800 hover:border-gray-700'
+                    }`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                          paymentMethod === 'HELLOASSO' ? 'border-blue-500' : 'border-gray-600'
+                        }`}>
+                          {paymentMethod === 'HELLOASSO' && <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />}
+                        </div>
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          value="HELLOASSO"
+                          checked={paymentMethod === 'HELLOASSO'}
+                          onChange={() => setPaymentMethod('HELLOASSO')}
+                          disabled={totalPrice < 0.50}
+                          className="hidden"
+                        />
+                        <Wallet size={20} className="text-blue-400" />
+                        <div>
+                          <span className="font-medium text-white">HelloAsso</span>
+                          {totalPrice < 0.50 && (
+                            <p className="text-xs text-orange-400">Minimum 0.50EUR</p>
+                          )}
+                        </div>
+                      </div>
+                      {totalPrice >= 0.50 && (
+                        <span className="text-xs text-blue-400 bg-blue-500/20 px-2 py-1 rounded-full">Recommandé</span>
+                      )}
+                    </label>
+
+                    {/* PayPal */}
+                    <label className={`flex items-center p-4 rounded-xl border cursor-pointer transition-all ${
+                      paymentMethod === 'PAYPAL' ? 'bg-indigo-500/10 border-indigo-500' : 'bg-dark-bg border-gray-800 hover:border-gray-700'
+                    }`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                          paymentMethod === 'PAYPAL' ? 'border-indigo-500' : 'border-gray-600'
+                        }`}>
+                          {paymentMethod === 'PAYPAL' && <div className="w-2.5 h-2.5 rounded-full bg-indigo-500" />}
+                        </div>
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          value="PAYPAL"
+                          checked={paymentMethod === 'PAYPAL'}
+                          onChange={() => setPaymentMethod('PAYPAL')}
+                          className="hidden"
+                        />
+                        <CreditCard size={20} className="text-indigo-400" />
+                        <span className="font-medium text-white">PayPal</span>
+                      </div>
+                    </label>
+
+                    {/* Cash/CB */}
+                    <label className={`flex items-center p-4 rounded-xl border cursor-pointer transition-all ${
+                      paymentMethod === 'CASH_CB' ? 'bg-green-500/10 border-green-500' : 'bg-dark-bg border-gray-800 hover:border-gray-700'
+                    }`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                          paymentMethod === 'CASH_CB' ? 'border-green-500' : 'border-gray-600'
+                        }`}>
+                          {paymentMethod === 'CASH_CB' && <div className="w-2.5 h-2.5 rounded-full bg-green-500" />}
+                        </div>
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          value="CASH_CB"
+                          checked={paymentMethod === 'CASH_CB'}
+                          onChange={() => setPaymentMethod('CASH_CB')}
+                          className="hidden"
+                        />
+                        <Banknote size={20} className="text-green-400" />
+                        <span className="font-medium text-white">Especes / CB sur place</span>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              )}
+            </form>
+          )}
+        </div>
+
+        {/* Footer */}
+        {!checkingQuota && remainingQuota > 0 && (
+          <div className="p-6 border-t border-gray-800 bg-dark-bg/50 flex-shrink-0">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-gray-400">Total a payer</span>
+              <span className="text-3xl font-bold text-accent-mint">
+                {totalPrice === 0 ? 'Gratuit' : `${totalPrice.toFixed(2)}EUR`}
+              </span>
             </div>
+            <button
+              type="submit"
+              onClick={handleSubmit}
+              disabled={loading}
+              className="w-full py-4 bg-accent-mint text-darker-bg font-bold rounded-xl hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group"
+            >
+              {loading ? (
+                <div className="w-6 h-6 border-2 border-darker-bg border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>
+                  Confirmer l'inscription
+                  <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                </>
+              )}
+            </button>
           </div>
         )}
-
-        <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-accent-mint text-darker-bg font-bold py-4 rounded hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-center"
-        >
-            {loading ? <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-darker-bg"></div> : 'Confirmer l\'inscription'}
-        </button>
-      </form>
-      )}
-    </Modal>
+      </div>
+    </div>
   );
 };
 

@@ -185,7 +185,7 @@ const ProductManagementPage: React.FC = () => {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-4xl font-bold text-accent-mint font-koulen">Gestion des Produits</h1>
+        <h1 className="text-4xl font-bold text-accent-mint font-koulen">GESTION DES PRODUITS</h1>
         <button onClick={handleOpenCreate} className="bg-accent-mint text-darker-bg font-bold py-2 px-4 rounded hover:bg-white transition-colors flex items-center">
           <Plus size={20} className="mr-2" /> Ajouter un produit
         </button>
@@ -193,7 +193,7 @@ const ProductManagementPage: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {products.map((product) => (
-          <div key={product.id} className={`bg-darker-bg border border-gray-700 rounded-lg p-6 flex flex-col relative group ${!product.active ? 'opacity-60' : ''}`}>
+          <div key={product.id} className={`bg-darker-bg border border-gray-800 rounded-2xl p-6 flex flex-col relative group hover:border-gray-700 transition-colors ${!product.active ? 'opacity-60' : ''}`}>
             <div className="flex items-start justify-between mb-4">
                  <div className="w-16 h-16 rounded bg-dark-bg flex items-center justify-center overflow-hidden">
                      <img 
@@ -212,7 +212,7 @@ const ProductManagementPage: React.FC = () => {
             <p className="text-sm text-gray-400 mb-3 line-clamp-2">{product.description}</p>
             <p className="text-lg font-bold text-accent-mint mb-2">{product.price} €</p>
 
-            <div className="mt-auto pt-4 border-t border-gray-700 space-y-2">
+            <div className="mt-auto pt-4 border-t border-gray-800 space-y-2">
                 <div>
                   <span className={`text-xs font-bold px-2 py-1 rounded ${product.active ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
                       {product.active ? 'Disponible' : 'Indisponible'}

@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
-import { Upload, File, Trash2, Copy, Check, Folder, FolderPlus, Home, ChevronRight, Move, Edit } from 'lucide-react';
-import { uploadImage, deleteImage } from '../api/upload';
+import React, { useState, useRef, useEffect } from 'react';
+import { Upload, File, Trash2, Copy, Check, Folder, FolderPlus, Home, ChevronRight, Move, Edit, Download } from 'lucide-react';
+import { uploadImage, deleteImage, getFiles } from '../api/upload';
 import { useNotification } from '../context/NotificationContext';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -10,6 +10,8 @@ interface UploadedFile {
   name: string;
   uploadedAt: Date;
   folder: string; // folder path like "documents/images" or "documents"
+  size?: number; // File size in bytes
+  uploaderName?: string; // Name of user who uploaded the file
 }
 
 interface FolderItem {
@@ -30,6 +32,7 @@ const FileManagementPage: React.FC = () => {
   });
   const [currentFolder, setCurrentFolder] = useState<string>('documents');
   const [isUploading, setIsUploading] = useState(false);
+  const [isLoadingFiles, setIsLoadingFiles] = useState(true);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
   const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
@@ -46,6 +49,44 @@ const FileManagementPage: React.FC = () => {
     message: '',
     onConfirm: () => {},
   });
+
+  // Load files from API on mount
+  useEffect(() => {
+    const loadFiles = async () => {
+      try {
+        setIsLoadingFiles(true);
+        const fetchedFiles = await getFiles();
+
+        // Convert API response to UploadedFile format
+        const convertedFiles: UploadedFile[] = fetchedFiles.map(file => ({
+          url: file.url,
+          name: file.fileName,
+          uploadedAt: new Date(file.createdAt),
+          folder: file.folder,
+          size: file.size || undefined,
+          uploaderName: file.uploader
+            ? `${file.uploader.firstName} ${file.uploader.lastName}`
+            : undefined,
+        }));
+
+        setFiles(convertedFiles);
+
+        // Extract unique folders from files and merge with existing folders
+        const fileFolders = [...new Set(fetchedFiles.map(f => f.folder))];
+        setFolders(prev => {
+          const merged = [...new Set([...prev, ...fileFolders])];
+          return merged.sort();
+        });
+      } catch (error: any) {
+        console.error('Failed to load files:', error);
+        addNotification('error', 'Erreur lors du chargement des fichiers');
+      } finally {
+        setIsLoadingFiles(false);
+      }
+    };
+
+    loadFiles();
+  }, [addNotification]);
 
   // Save folders to localStorage whenever they change
   React.useEffect(() => {
@@ -88,6 +129,15 @@ const FileManagementPage: React.FC = () => {
     return breadcrumbs;
   };
 
+  // Format file size in human-readable format
+  const formatFileSize = (bytes?: number): string => {
+    if (!bytes) return 'N/A';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  };
+
   const uploadFiles = async (fileList: FileList) => {
     if (!fileList || fileList.length === 0) return;
 
@@ -104,7 +154,21 @@ const FileManagementPage: React.FC = () => {
       });
 
       const uploadedFiles = await Promise.all(uploadPromises);
-      setFiles(prev => [...uploadedFiles, ...prev]);
+
+      // Fetch the complete file info from the server to get size and other metadata
+      const refreshedFiles = await getFiles();
+      const convertedFiles: UploadedFile[] = refreshedFiles.map(file => ({
+        url: file.url,
+        name: file.fileName,
+        uploadedAt: new Date(file.createdAt),
+        folder: file.folder,
+        size: file.size || undefined,
+        uploaderName: file.uploader
+          ? `${file.uploader.firstName} ${file.uploader.lastName}`
+          : undefined,
+      }));
+
+      setFiles(convertedFiles);
       addNotification('success', `${uploadedFiles.length} fichier(s) uploadé(s) avec succès !`);
     } catch (error: any) {
       console.error('Upload error:', error);
@@ -187,35 +251,49 @@ const FileManagementPage: React.FC = () => {
       });
 
       setFiles(prev => prev.filter(f => !f.folder.startsWith(folderPath)));
-      setFolders(prev => prev.filter(f => !f.startsWith(folderPath) || f === 'documents'));
-      addNotification('success', 'Dossier supprimé avec succès !');
+      setFolders(prev => {
+        const newFolders = prev.filter(f => f !== folderPath && !f.startsWith(folderPath + '/'));
+        // Also update localStorage immediately
+        localStorage.setItem(FOLDERS_STORAGE_KEY, JSON.stringify(newFolders));
+        return newFolders;
+      });
+      addNotification('success', 'Dossier supprime avec succes !');
     };
 
-    if (folderFiles.length > 0 || subFolders.length > 0) {
-      const totalItems = folderFiles.length + subFolders.length;
-      setConfirmDialog({
-        isOpen: true,
-        title: 'Supprimer le dossier',
-        message: `Ce dossier contient ${totalItems} élément(s). Voulez-vous vraiment le supprimer ?`,
-        onConfirm: () => {
-          performDelete();
-          setConfirmDialog(prev => ({ ...prev, isOpen: false }));
-        },
-      });
-    } else {
-      performDelete();
-    }
+    const totalItems = folderFiles.length + subFolders.length;
+    const message = totalItems > 0
+      ? `Ce dossier contient ${totalItems} element(s). Voulez-vous vraiment le supprimer ?`
+      : `Voulez-vous vraiment supprimer le dossier "${folderPath.split('/').pop()}" ?`;
+
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Supprimer le dossier',
+      message,
+      onConfirm: () => {
+        performDelete();
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+      },
+    });
   };
 
-  const handleDelete = async (fileUrl: string) => {
-    try {
-      await deleteImage(fileUrl);
-      setFiles(prev => prev.filter(f => f.url !== fileUrl));
-      addNotification('success', 'Fichier supprimé avec succès !');
-    } catch (error: any) {
-      console.error('Delete error:', error);
-      addNotification('error', error.message || 'Erreur lors de la suppression');
-    }
+  const handleDelete = async (file: UploadedFile) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Supprimer le fichier',
+      message: `Voulez-vous vraiment supprimer "${file.name}" ?`,
+      onConfirm: async () => {
+        try {
+          await deleteImage(file.url);
+          setFiles(prev => prev.filter(f => f.url !== file.url));
+          addNotification('success', 'Fichier supprimé avec succès !');
+        } catch (error: any) {
+          console.error('Delete error:', error);
+          addNotification('error', error.message || 'Erreur lors de la suppression');
+        } finally {
+          setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        }
+      },
+    });
   };
 
   const handleMoveFile = (targetFolder: string) => {
@@ -289,7 +367,7 @@ const FileManagementPage: React.FC = () => {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-4xl font-bold text-accent-mint font-koulen">Gestion des Fichiers</h1>
+        <h1 className="text-4xl font-bold text-accent-mint font-koulen">GESTION DES FICHIERS</h1>
         <button
           onClick={() => setIsCreateFolderModalOpen(true)}
           className="bg-accent-mint text-darker-bg font-bold py-2 px-4 rounded hover:bg-white transition-colors flex items-center gap-2"
@@ -391,7 +469,14 @@ const FileManagementPage: React.FC = () => {
       )}
 
       {/* Files List */}
-      {currentFiles.length > 0 ? (
+      {isLoadingFiles ? (
+        <div className="card p-12 text-center">
+          <div className="flex items-center justify-center gap-3">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-mint"></div>
+            <p className="text-gray-400">Chargement des fichiers...</p>
+          </div>
+        </div>
+      ) : currentFiles.length > 0 ? (
         <div>
           <h2 className="text-xl font-bold mb-4">Fichiers ({currentFiles.length})</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -415,12 +500,16 @@ const FileManagementPage: React.FC = () => {
                   <p className="text-sm font-medium mb-1 truncate" title={file.name}>
                     {file.name}
                   </p>
-                  <p className="text-xs text-gray-500 mb-3">
-                    {file.uploadedAt.toLocaleDateString()} {file.uploadedAt.toLocaleTimeString()}
-                  </p>
+                  <div className="text-xs text-gray-500 mb-3 space-y-1">
+                    <p>{file.uploadedAt.toLocaleDateString()} {file.uploadedAt.toLocaleTimeString()}</p>
+                    <p className="font-medium text-accent-mint">{formatFileSize(file.size)}</p>
+                    {file.uploaderName && (
+                      <p className="text-gray-400">Par {file.uploaderName}</p>
+                    )}
+                  </div>
 
                   {/* Actions */}
-                  <div className="grid grid-cols-4 gap-2 mt-auto">
+                  <div className="grid grid-cols-5 gap-2 mt-auto">
                     <button
                       onClick={() => handleCopyUrl(file.url)}
                       className="bg-accent-mint/20 text-accent-mint font-bold py-2 px-2 rounded hover:bg-accent-mint/30 transition-colors flex items-center justify-center"
@@ -428,13 +517,21 @@ const FileManagementPage: React.FC = () => {
                     >
                       {copiedUrl === file.url ? <Check size={16} /> : <Copy size={16} />}
                     </button>
+                    <a
+                      href={file.url}
+                      download={file.name}
+                      className="bg-green-900/20 text-green-400 font-bold py-2 px-2 rounded hover:bg-green-900/30 transition-colors flex items-center justify-center"
+                      title="Télécharger"
+                    >
+                      <Download size={16} />
+                    </a>
                     <button
                       onClick={() => {
                         setFileToRename(file);
                         setNewFileName(file.name);
                         setIsRenameModalOpen(true);
                       }}
-                      className="bg-blue-900/20 text-blue-400 font-bold py-2 px-2 rounded hover:bg-blue-900/30 transition-colors"
+                      className="bg-blue-900/20 text-blue-400 font-bold py-2 px-2 rounded hover:bg-blue-900/30 transition-colors flex items-center justify-center"
                       title="Renommer"
                     >
                       <Edit size={16} />
@@ -444,14 +541,14 @@ const FileManagementPage: React.FC = () => {
                         setFileToMove(file);
                         setIsMoveModalOpen(true);
                       }}
-                      className="bg-purple-900/20 text-purple-400 font-bold py-2 px-2 rounded hover:bg-purple-900/30 transition-colors"
+                      className="bg-purple-900/20 text-purple-400 font-bold py-2 px-2 rounded hover:bg-purple-900/30 transition-colors flex items-center justify-center"
                       title="Déplacer"
                     >
                       <Move size={16} />
                     </button>
                     <button
-                      onClick={() => handleDelete(file.url)}
-                      className="bg-red-900/20 text-red-400 font-bold py-2 px-2 rounded hover:bg-red-900/30 transition-colors"
+                      onClick={() => handleDelete(file)}
+                      className="bg-red-900/20 text-red-400 font-bold py-2 px-2 rounded hover:bg-red-900/30 transition-colors flex items-center justify-center"
                       title="Supprimer"
                     >
                       <Trash2 size={16} />

@@ -1,19 +1,26 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getAllEvents, type Event } from '../api/events';
-import { Calendar, MapPin, Users } from 'lucide-react';
+import { Calendar, MapPin, Users, ChevronRight, Filter } from 'lucide-react';
 import BalanceDisplay from '../components/BalanceDisplay';
+
+type FilterType = 'all' | 'upcoming' | 'passed';
+
+// Fonction pour retirer les accents (pour la police Koulen qui ne les supporte pas)
+const removeAccents = (str: string): string => {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+};
 
 const EventsPage: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<FilterType>('upcoming');
 
   useEffect(() => {
     const fetchEvents = async () => {
       try {
         const data = await getAllEvents();
-        // Sort by date (nearest first)
         const sortedEvents = data.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         setEvents(sortedEvents);
       } catch (err) {
@@ -27,85 +34,181 @@ const EventsPage: React.FC = () => {
     fetchEvents();
   }, []);
 
+  const filteredEvents = events.filter(event => {
+    const isPassed = new Date(event.date) < new Date();
+    if (filter === 'upcoming') return !isPassed;
+    if (filter === 'passed') return isPassed;
+    return true;
+  });
+
+  const upcomingCount = events.filter(e => new Date(e.date) >= new Date()).length;
+  const passedCount = events.filter(e => new Date(e.date) < new Date()).length;
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8 relative">
-        <div className="absolute top-0 right-0 z-10">
-          <BalanceDisplay variant="compact" showRechargeButton={true} />
-        </div>
-        <h1 className="text-4xl font-bold text-accent-mint mb-6 font-koulen">Nos Evenements</h1>
-        <p className="text-lg text-gray-300">Decouvrez les prochains evenements organises par l'ADIIL.</p>
-      </div>
+    <div className="min-h-screen">
+      {/* Header Section */}
+      <section className="bg-darker-bg py-16 border-b border-gray-800">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div>
+              <span className="text-accent-mint text-sm font-bold uppercase tracking-wider">Calendrier</span>
+              <h1 className="text-5xl md:text-6xl font-koulen text-white mt-2">NOS EVENTS</h1>
+              <p className="text-gray-400 mt-4 max-w-xl font-montserrat">
+                Découvrez les événements organisés par l'ADIIL. Soirées, sorties, tournois... Il y en a pour tous les goûts !
+              </p>
+            </div>
+            <div className="flex-shrink-0">
+              <BalanceDisplay variant="compact" showRechargeButton={true} />
+            </div>
+          </div>
 
-      {loading ? (
-        <div className="flex justify-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent-mint"></div>
+          {/* Filter tabs */}
+          <div className="flex items-center gap-2 mt-8">
+            <Filter size={16} className="text-gray-500" />
+            <div className="flex bg-dark-bg rounded-lg p-1 border border-gray-800">
+              <button
+                onClick={() => setFilter('upcoming')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  filter === 'upcoming'
+                    ? 'bg-accent-mint text-darker-bg'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                À venir ({upcomingCount})
+              </button>
+              <button
+                onClick={() => setFilter('passed')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  filter === 'passed'
+                    ? 'bg-accent-mint text-darker-bg'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                Passés ({passedCount})
+              </button>
+              <button
+                onClick={() => setFilter('all')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  filter === 'all'
+                    ? 'bg-accent-mint text-darker-bg'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                Tous ({events.length})
+              </button>
+            </div>
+          </div>
         </div>
-      ) : error ? (
-        <div className="text-center py-10 bg-darker-bg rounded-lg border border-red-900/50">
-          <p className="text-red-400">{error}</p>
-        </div>
-      ) : events.length === 0 ? (
-        <div className="text-center py-16 bg-darker-bg rounded-2xl border border-gray-800">
-          <Calendar size={48} className="mx-auto text-gray-600 mb-4" />
-          <p className="text-gray-400 text-lg">Aucun evenement a venir pour le moment.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {events.map((event) => {
-            const eventDate = new Date(event.date);
-            const isPassed = eventDate < new Date();
-            const isFull = event.registeredPeople >= event.totalPlaces;
+      </section>
 
-            return (
-              <div key={event.id} className={`card p-6 flex flex-col h-full hover:shadow-lg transition-shadow border border-gray-800 hover:border-accent-mint/30 ${isPassed ? 'opacity-70 grayscale' : ''}`}>
-                <div className="h-40 mb-4 overflow-hidden rounded-md bg-dark-bg relative">
-                   <img 
-                      src={event.coverImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(event.title)}&background=0D8ABC&color=fff&size=400&font-size=0.33`} 
-                      alt={event.title} 
-                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" 
-                   />
-                   {isPassed && (
-                       <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                           <span className="text-white font-bold text-xl uppercase border-2 border-white px-4 py-2 rotate-12">Termine</span>
-                       </div>
-                   )}
-                </div>
-                
-                <h3 className="text-xl font-bold mb-2 line-clamp-2">{event.title}</h3>
-                
-                <div className="flex items-center text-gray-400 mb-2 text-sm">
-                   <Calendar size={16} className="mr-2 text-accent-mint" />
-                   <span>{eventDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
-                </div>
-                
-                <div className="flex items-center text-gray-400 mb-4 text-sm">
-                    <MapPin size={16} className="mr-2 text-accent-mint" />
-                    <span className="truncate">{event.location}</span>
-                </div>
+      {/* Events Grid */}
+      <section className="py-12 bg-dark-bg">
+        <div className="container mx-auto px-4">
+          {loading ? (
+            <div className="flex justify-center py-20">
+              <div className="w-12 h-12 border-2 border-accent-mint border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : error ? (
+            <div className="text-center py-16 bg-darker-bg rounded-2xl border border-red-900/30">
+              <p className="text-red-400 font-montserrat">{error}</p>
+            </div>
+          ) : filteredEvents.length === 0 ? (
+            <div className="text-center py-20 bg-darker-bg rounded-2xl border border-gray-800">
+              <Calendar size={56} className="mx-auto text-gray-700 mb-4" />
+              <p className="text-gray-400 text-lg font-montserrat">
+                {filter === 'upcoming' ? "Aucun événement à venir pour le moment." :
+                 filter === 'passed' ? "Aucun événement passé." :
+                 "Aucun événement."}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredEvents.map((event, index) => {
+                const eventDate = new Date(event.date);
+                const isPassed = eventDate < new Date();
+                const isUnlimited = event.totalPlaces === 0;
+                const isFull = !isUnlimited && event.registeredPeople >= event.totalPlaces;
 
-                <p className="text-gray-400 text-sm line-clamp-3 mb-4 flex-1">{event.description}</p>
-                
-                <div className="mt-auto">
-                  <div className="flex justify-between items-center mb-4 text-sm">
-                      <div className="flex items-center gap-2">
-                        <Users size={16} className={isFull ? "text-red-400" : "text-green-400"} />
-                        <span className={`font-bold ${isFull ? 'text-red-400' : 'text-green-400'}`}>
-                            {isFull ? 'Complet' : `${event.registeredPeople}/${event.totalPlaces} inscrits`}
-                        </span>
+                return (
+                  <Link
+                    key={event.id}
+                    to={`/events/${event.id}`}
+                    className={`group block ${index === 0 && filter === 'upcoming' ? 'md:col-span-2 lg:col-span-2' : ''}`}
+                  >
+                    <article className={`bg-darker-bg rounded-2xl border border-gray-800 hover:border-accent-mint/50 transition-all duration-300 overflow-hidden h-full flex flex-col hover:-translate-y-1 ${isPassed ? 'opacity-60' : ''}`}>
+                      {/* Image */}
+                      <div className={`${index === 0 && filter === 'upcoming' ? 'h-64' : 'h-48'} bg-darker-bg relative overflow-hidden`}>
+                        <img
+                          src={event.coverImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(event.title)}&background=111&color=77F1BE&size=512&font-size=0.33`}
+                          alt={event.title}
+                          className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 origin-bottom"
+                        />
+                        <div className="absolute inset-0 -bottom-4 bg-gradient-to-t from-darker-bg via-transparent to-transparent"></div>
+
+                        {/* Status badges */}
+                        <div className="absolute top-4 left-4 flex flex-wrap gap-2">
+                          <span className="px-3 py-1 bg-accent-mint text-darker-bg text-xs font-bold rounded-full">
+                            {eventDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                          </span>
+                          {isPassed && (
+                            <span className="px-3 py-1 bg-gray-800/90 text-gray-300 text-xs font-bold rounded-full border border-gray-600">
+                              Terminé
+                            </span>
+                          )}
+                          {!isPassed && !isUnlimited && isFull && (
+                            <span className="px-3 py-1 bg-red-500/90 text-white text-xs font-bold rounded-full">
+                              Complet
+                            </span>
+                          )}
+                          {!isPassed && !isFull && event.price === 0 && (
+                            <span className="px-3 py-1 bg-white/20 backdrop-blur text-white text-xs font-bold rounded-full">
+                              Gratuit
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Title overlay */}
+                        <div className="absolute bottom-4 left-4 right-4">
+                          <h3 className={`font-bold text-white ${index === 0 && filter === 'upcoming' ? 'text-2xl' : 'text-lg'}`}>
+                            {removeAccents(event.title)}
+                          </h3>
+                        </div>
                       </div>
-                      <span className="font-bold">{event.price === 0 ? 'Gratuit' : `${event.price} €`}</span>
-                  </div>
-                  
-                  <Link to={`/events/${event.id}`} className={`block w-full text-center font-bold py-2 px-4 rounded transition-colors ${isPassed ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'bg-accent-mint text-darker-bg hover:bg-white'}`}>
-                     {isPassed ? 'Evenement passe' : 'Voir Details'}
+
+                      {/* Content */}
+                      <div className="p-5 flex-1 flex flex-col">
+                        <div className="flex items-center text-gray-500 text-sm mb-2">
+                          <MapPin size={14} className="mr-2 text-accent-mint" />
+                          <span className="truncate">{event.location}</span>
+                        </div>
+
+                        <p className="text-gray-400 text-sm line-clamp-2 mb-4 flex-1 font-montserrat">
+                          {event.description}
+                        </p>
+
+                        <div className="flex items-center justify-between pt-4 border-t border-gray-800">
+                          <div className="flex items-center gap-2">
+                            <Users size={16} className={isFull ? "text-red-400" : "text-accent-mint"} />
+                            <span className={`text-sm font-medium ${isFull ? 'text-red-400' : 'text-gray-400'}`}>
+                              {isUnlimited ? `${event.registeredPeople} inscrits` : `${event.registeredPeople}/${event.totalPlaces}`}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {!isPassed && event.price > 0 && (
+                              <span className="text-accent-mint font-bold">{event.price} €</span>
+                            )}
+                            <ChevronRight size={18} className="text-accent-mint group-hover:translate-x-1 transition-transform" />
+                          </div>
+                        </div>
+                      </div>
+                    </article>
                   </Link>
-                </div>
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          )}
         </div>
-      )}
+      </section>
     </div>
   );
 };

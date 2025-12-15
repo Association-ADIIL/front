@@ -1,58 +1,89 @@
 import React from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import {
+  LayoutDashboard,
+  Calendar,
+  ShoppingBag,
+  ClipboardList,
+  BarChart3,
+  FolderOpen,
+  Users,
+  ScrollText,
+  ArrowLeft
+} from 'lucide-react';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
+const navItems = [
+  { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/admin/events', label: 'Evenements', icon: Calendar },
+  { path: '/admin/products', label: 'Produits', icon: ShoppingBag },
+  { path: '/admin/orders', label: 'Commandes', icon: ClipboardList },
+  { path: '/admin/statistics', label: 'Statistiques', icon: BarChart3 },
+  { path: '/admin/files', label: 'Fichiers', icon: FolderOpen },
+  { path: '/admin/users', label: 'Utilisateurs', icon: Users },
+  { path: '/admin/logs', label: 'Logs', icon: ScrollText },
+];
+
 const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const { isAdmin, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
-      return <div className="min-h-screen bg-dark-bg text-white flex items-center justify-center">Chargement...</div>;
+    return (
+      <div className="min-h-screen bg-darker-bg flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-accent-mint border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
   }
 
   if (!isAdmin) {
-      return <Navigate to="/" replace />;
+    return <Navigate to="/" replace />;
   }
 
   return (
     <div className="flex min-h-screen bg-dark-bg text-white">
       {/* Sidebar */}
-      <aside className="w-64 bg-darker-bg p-6 shadow-lg fixed h-full overflow-y-auto">
-        <Link to="/" className="block mb-8">
-            <h2 className="text-3xl font-koulen text-accent-mint hover:text-white transition-colors">Admin ADIIL</h2>
-            <p className="text-xs text-gray-400">Retour au site</p>
-        </Link>
-        <nav>
-          <ul className="space-y-4">
-            <li>
-              <Link to="/admin/dashboard" className="block text-lg hover:text-accent-mint transition-colors font-bold">Dashboard</Link>
-            </li>
-            <li>
-              <Link to="/admin/events" className="block text-lg hover:text-accent-mint transition-colors">Événements</Link>
-            </li>
-            <li>
-              <Link to="/admin/products" className="block text-lg hover:text-accent-mint transition-colors">Produits</Link>
-            </li>
-            <li>
-              <Link to="/admin/orders" className="block text-lg hover:text-accent-mint transition-colors">Commandes</Link>
-            </li>
-            <li>
-              <Link to="/admin/statistics" className="block text-lg hover:text-accent-mint transition-colors">Statistiques</Link>
-            </li>
-            <li>
-              <Link to="/admin/files" className="block text-lg hover:text-accent-mint transition-colors">Fichiers</Link>
-            </li>
-            <li>
-              <Link to="/admin/users" className="block text-lg hover:text-accent-mint transition-colors">Utilisateurs</Link>
-            </li>
-            <li>
-              <Link to="/admin/logs" className="block text-lg hover:text-accent-mint transition-colors">Logs d'Activité</Link>
-            </li>
-          </ul>
-        </nav>
+      <aside className="w-64 bg-darker-bg shadow-lg fixed h-full overflow-y-auto border-r border-gray-800">
+        <div className="p-6">
+          <Link to="/" className="block mb-8 group">
+            <h2 className="text-2xl font-koulen text-accent-mint group-hover:text-white transition-colors">
+              ADMIN ADIIL
+            </h2>
+            <div className="flex items-center gap-1 text-xs text-gray-500 group-hover:text-accent-mint transition-colors mt-1">
+              <ArrowLeft size={12} />
+              <span>Retour au site</span>
+            </div>
+          </Link>
+
+          <nav>
+            <ul className="space-y-1">
+              {navItems.map((item) => {
+                const isActive = location.pathname === item.path;
+                const Icon = item.icon;
+
+                return (
+                  <li key={item.path}>
+                    <Link
+                      to={item.path}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                        isActive
+                          ? 'bg-accent-mint/10 text-accent-mint border border-accent-mint/30'
+                          : 'text-gray-400 hover:bg-dark-bg hover:text-white border border-transparent'
+                      }`}
+                    >
+                      <Icon size={18} />
+                      <span className="font-medium">{item.label}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+        </div>
       </aside>
 
       {/* Main content */}

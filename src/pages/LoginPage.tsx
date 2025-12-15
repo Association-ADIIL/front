@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { Mail, Lock, LogIn, ArrowRight } from 'lucide-react';
 
 const LoginPage: React.FC = () => {
   const { login } = useAuth();
@@ -16,58 +17,104 @@ const LoginPage: React.FC = () => {
     try {
       await login({ email, password });
     } catch (err: any) {
-      setError(err.message || 'Échec de la connexion. Vérifiez vos identifiants.');
+      setError(err.message || 'Echec de la connexion. Verifiez vos identifiants.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-98px)]">
-      <div className="card p-8 w-full max-w-md">
-        <h1 className="text-3xl font-bold text-center text-accent-mint mb-6">Connexion</h1>
-        {error && <div className="mb-4 text-red-500 text-sm text-center bg-red-900/20 p-2 rounded border border-red-900">{error}</div>}
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div>
-            <label htmlFor="email" className="block text-gray-300 text-sm font-bold mb-2">Email</label>
-            <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-dark-bg border-gray-600 focus:border-accent-mint text-white"
-              placeholder="votre.email@etu.univ-lemans.fr"
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="password" className="block text-gray-300 text-sm font-bold mb-2">Mot de passe</label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline bg-dark-bg border-gray-600 focus:border-accent-mint text-white"
-              placeholder="********"
-              required
-            />
-          </div>
-          <div className="flex flex-col gap-4 mt-6">
+    <div className="min-h-screen bg-dark-bg flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <Link to="/" className="inline-block">
+            <span className="text-4xl font-koulen text-accent-mint">ADIIL</span>
+          </Link>
+          <h1 className="text-2xl font-koulen text-white mt-4">CONNEXION</h1>
+          <p className="text-gray-500 mt-2 font-montserrat text-sm">
+            Connectez-vous pour acceder a votre espace
+          </p>
+        </div>
+
+        {/* Form Card */}
+        <div className="bg-darker-bg rounded-2xl border border-gray-800 p-8">
+          {error && (
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+              <p className="text-red-400 text-sm text-center font-montserrat">{error}</p>
+            </div>
+          )}
+
+          <form className="space-y-5" onSubmit={handleSubmit}>
+            <div>
+              <label htmlFor="email" className="block text-sm font-semibold text-gray-400 mb-2 uppercase tracking-wide">
+                Email
+              </label>
+              <div className="relative">
+                <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+                <input
+                  type="email"
+                  id="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-dark-bg border border-gray-700 rounded-xl pl-12 pr-4 py-3.5 text-white placeholder-gray-600 focus:outline-none focus:border-accent-mint transition-colors"
+                  placeholder="votre.email@etu.univ-lemans.fr"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-semibold text-gray-400 mb-2 uppercase tracking-wide">
+                Mot de passe
+              </label>
+              <div className="relative">
+                <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+                <input
+                  type="password"
+                  id="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full bg-dark-bg border border-gray-700 rounded-xl pl-12 pr-4 py-3.5 text-white placeholder-gray-600 focus:outline-none focus:border-accent-mint transition-colors"
+                  placeholder="Votre mot de passe"
+                  required
+                />
+              </div>
+            </div>
+
             <button
               type="submit"
               disabled={isLoading}
-              className={`w-full bg-accent-mint text-darker-bg font-bold py-2.5 px-6 rounded focus:outline-none focus:shadow-outline hover-scale-sm transition-opacity ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className="w-full bg-accent-mint text-darker-bg font-bold py-4 rounded-xl hover:bg-white transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group mt-6"
             >
-              {isLoading ? 'Connexion...' : 'Se connecter'}
+              {isLoading ? (
+                <div className="w-5 h-5 border-2 border-darker-bg border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>
+                  <LogIn size={20} />
+                  Se connecter
+                  <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                </>
+              )}
             </button>
-            <p className="text-center text-sm text-gray-400">
+          </form>
+
+          <div className="mt-6 pt-6 border-t border-gray-800">
+            <p className="text-center text-gray-500 font-montserrat">
               Pas encore de compte ?{' '}
-              <Link to="/register" className="font-bold text-accent-mint hover:text-white transition-colors">
+              <Link to="/register" className="text-accent-mint font-bold hover:text-white transition-colors">
                 S'inscrire
               </Link>
             </p>
           </div>
-        </form>
+        </div>
+
+        {/* Back to home */}
+        <div className="mt-6 text-center">
+          <Link to="/" className="text-gray-600 hover:text-gray-400 transition-colors text-sm font-montserrat">
+            Retour a l'accueil
+          </Link>
+        </div>
       </div>
     </div>
   );

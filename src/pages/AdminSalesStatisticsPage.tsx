@@ -124,7 +124,7 @@ const AdminSalesStatisticsPage: React.FC = () => {
 
         // Revenue source pie chart data
         setRevenueSourceData([
-          { name: 'Commandes', value: Math.round(ordersRevenue * 100) / 100, color: '#00D9FF' },
+          { name: 'Commandes', value: Math.round(ordersRevenue * 100) / 100, color: '#77F1BE' },
           { name: 'Inscriptions', value: Math.round(inscriptionsRevenue * 100) / 100, color: '#FF6B9D' },
         ]);
 
@@ -138,8 +138,9 @@ const AdminSalesStatisticsPage: React.FC = () => {
         const methodLabels: { [key: string]: string } = {
           PAYPAL: 'PayPal',
           HELLOASSO: 'HelloAsso',
-          CASH_CB: 'Espèces/CB',
+          CASH_CB: 'Especes/CB',
           FREE: 'Gratuit',
+          BALANCE: 'Solde',
         };
 
         setPaymentMethodData(
@@ -161,58 +162,58 @@ const AdminSalesStatisticsPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent-mint"></div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-10 h-10 border-2 border-accent-mint border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="p-6">
+    <div>
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-white mb-2">Statistiques de Vente</h1>
+        <h1 className="text-4xl font-bold font-koulen text-accent-mint mb-2">STATISTIQUES DE VENTE</h1>
         <p className="text-gray-400">Vue d'ensemble des revenus et des ventes</p>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {/* Total Revenue */}
-        <div className="bg-dark-card p-6 rounded-lg border border-gray-800">
+        <div className="bg-darker-bg p-6 rounded-2xl border border-gray-800">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-accent-mint/10 rounded-lg">
+            <div className="p-3 bg-accent-mint/10 rounded-xl">
               <DollarSign className="text-accent-mint" size={24} />
             </div>
           </div>
           <h3 className="text-gray-400 text-sm mb-1">Revenu Total</h3>
-          <p className="text-2xl font-bold text-white">{stats.totalRevenue.toFixed(2)} €</p>
+          <p className="text-2xl font-bold text-white">{stats.totalRevenue.toFixed(2)} EUR</p>
         </div>
 
         {/* Revenue This Month */}
-        <div className="bg-dark-card p-6 rounded-lg border border-gray-800">
+        <div className="bg-darker-bg p-6 rounded-2xl border border-gray-800">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-accent-coral/10 rounded-lg">
-              <TrendingUp className="text-accent-coral" size={24} />
+            <div className="p-3 bg-orange-500/10 rounded-xl">
+              <TrendingUp className="text-orange-400" size={24} />
             </div>
           </div>
           <h3 className="text-gray-400 text-sm mb-1">Revenu ce mois</h3>
-          <p className="text-2xl font-bold text-white">{stats.revenueThisMonth.toFixed(2)} €</p>
+          <p className="text-2xl font-bold text-white">{stats.revenueThisMonth.toFixed(2)} EUR</p>
         </div>
 
         {/* Revenue This Year */}
-        <div className="bg-dark-card p-6 rounded-lg border border-gray-800">
+        <div className="bg-darker-bg p-6 rounded-2xl border border-gray-800">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-accent-purple/10 rounded-lg">
-              <Calendar className="text-accent-purple" size={24} />
+            <div className="p-3 bg-purple-500/10 rounded-xl">
+              <Calendar className="text-purple-400" size={24} />
             </div>
           </div>
-          <h3 className="text-gray-400 text-sm mb-1">Revenu cette année</h3>
-          <p className="text-2xl font-bold text-white">{stats.revenueThisYear.toFixed(2)} €</p>
+          <h3 className="text-gray-400 text-sm mb-1">Revenu cette annee</h3>
+          <p className="text-2xl font-bold text-white">{stats.revenueThisYear.toFixed(2)} EUR</p>
         </div>
 
         {/* Total Transactions */}
-        <div className="bg-dark-card p-6 rounded-lg border border-gray-800">
+        <div className="bg-darker-bg p-6 rounded-2xl border border-gray-800">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-blue-500/10 rounded-lg">
+            <div className="p-3 bg-blue-500/10 rounded-xl">
               <Users className="text-blue-500" size={24} />
             </div>
           </div>
@@ -222,60 +223,60 @@ const AdminSalesStatisticsPage: React.FC = () => {
       </div>
 
       {/* Detailed Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Orders Stats */}
-        <div className="bg-dark-card p-6 rounded-lg border border-gray-800">
+        <div className="bg-darker-bg p-6 rounded-2xl border border-gray-800">
           <div className="flex items-center gap-3 mb-4">
             <ShoppingBag className="text-accent-mint" size={24} />
             <h2 className="text-xl font-bold text-white">Commandes Boutique</h2>
           </div>
           <div className="space-y-3">
-            <div className="flex justify-between items-center py-2 border-b border-gray-700">
+            <div className="flex justify-between items-center py-2 border-b border-gray-800">
               <span className="text-gray-400">Total des commandes</span>
               <span className="text-white font-semibold">{stats.totalOrders}</span>
             </div>
-            <div className="flex justify-between items-center py-2 border-b border-gray-700">
+            <div className="flex justify-between items-center py-2 border-b border-gray-800">
               <span className="text-gray-400">Panier moyen</span>
-              <span className="text-white font-semibold">{stats.averageOrderValue.toFixed(2)} €</span>
+              <span className="text-white font-semibold">{stats.averageOrderValue.toFixed(2)} EUR</span>
             </div>
           </div>
         </div>
 
         {/* Inscriptions Stats */}
-        <div className="bg-dark-card p-6 rounded-lg border border-gray-800">
+        <div className="bg-darker-bg p-6 rounded-2xl border border-gray-800">
           <div className="flex items-center gap-3 mb-4">
-            <Calendar className="text-accent-coral" size={24} />
-            <h2 className="text-xl font-bold text-white">Inscriptions Événements</h2>
+            <Calendar className="text-pink-400" size={24} />
+            <h2 className="text-xl font-bold text-white">Inscriptions Evenements</h2>
           </div>
           <div className="space-y-3">
-            <div className="flex justify-between items-center py-2 border-b border-gray-700">
+            <div className="flex justify-between items-center py-2 border-b border-gray-800">
               <span className="text-gray-400">Total des inscriptions</span>
               <span className="text-white font-semibold">{stats.totalInscriptions}</span>
             </div>
-            <div className="flex justify-between items-center py-2 border-b border-gray-700">
+            <div className="flex justify-between items-center py-2 border-b border-gray-800">
               <span className="text-gray-400">Prix moyen</span>
-              <span className="text-white font-semibold">{stats.averageInscriptionValue.toFixed(2)} €</span>
+              <span className="text-white font-semibold">{stats.averageInscriptionValue.toFixed(2)} EUR</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Charts Section */}
-      <div className="mt-8 space-y-6">
+      <div className="space-y-6">
         {/* Monthly Revenue Trend */}
-        <div className="bg-dark-card p-6 rounded-lg border border-gray-800">
-          <h2 className="text-xl font-bold text-white mb-6">Évolution du Revenu (6 derniers mois)</h2>
+        <div className="bg-darker-bg p-6 rounded-2xl border border-gray-800">
+          <h2 className="text-xl font-bold text-white mb-6">Evolution du Revenu (6 derniers mois)</h2>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={monthlyData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis dataKey="month" stroke="#9CA3AF" />
               <YAxis stroke="#9CA3AF" />
               <Tooltip
-                contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151', borderRadius: '8px' }}
+                contentStyle={{ backgroundColor: '#0F0F0F', border: '1px solid #374151', borderRadius: '12px' }}
                 labelStyle={{ color: '#F3F4F6' }}
               />
               <Legend />
-              <Line type="monotone" dataKey="Commandes" stroke="#00D9FF" strokeWidth={2} />
+              <Line type="monotone" dataKey="Commandes" stroke="#77F1BE" strokeWidth={2} />
               <Line type="monotone" dataKey="Inscriptions" stroke="#FF6B9D" strokeWidth={2} />
               <Line type="monotone" dataKey="Total" stroke="#9333EA" strokeWidth={3} strokeDasharray="5 5" />
             </LineChart>
@@ -284,8 +285,8 @@ const AdminSalesStatisticsPage: React.FC = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Revenue Source Pie Chart */}
-          <div className="bg-dark-card p-6 rounded-lg border border-gray-800">
-            <h2 className="text-xl font-bold text-white mb-6">Répartition du Revenu</h2>
+          <div className="bg-darker-bg p-6 rounded-2xl border border-gray-800">
+            <h2 className="text-xl font-bold text-white mb-6">Repartition du Revenu</h2>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
@@ -293,7 +294,7 @@ const AdminSalesStatisticsPage: React.FC = () => {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, value, percent }) => `${name}: ${value}€ (${(percent * 100).toFixed(0)}%)`}
+                  label={({ name, value, percent }) => `${name}: ${value}EUR (${(percent * 100).toFixed(0)}%)`}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
@@ -303,25 +304,25 @@ const AdminSalesStatisticsPage: React.FC = () => {
                   ))}
                 </Pie>
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151', borderRadius: '8px' }}
+                  contentStyle={{ backgroundColor: '#0F0F0F', border: '1px solid #374151', borderRadius: '12px' }}
                 />
               </PieChart>
             </ResponsiveContainer>
           </div>
 
           {/* Payment Methods Bar Chart */}
-          <div className="bg-dark-card p-6 rounded-lg border border-gray-800">
-            <h2 className="text-xl font-bold text-white mb-6">Méthodes de Paiement</h2>
+          <div className="bg-darker-bg p-6 rounded-2xl border border-gray-800">
+            <h2 className="text-xl font-bold text-white mb-6">Methodes de Paiement</h2>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={paymentMethodData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis dataKey="method" stroke="#9CA3AF" />
                 <YAxis stroke="#9CA3AF" />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151', borderRadius: '8px' }}
+                  contentStyle={{ backgroundColor: '#0F0F0F', border: '1px solid #374151', borderRadius: '12px' }}
                   labelStyle={{ color: '#F3F4F6' }}
                 />
-                <Bar dataKey="montant" fill="#00D9FF" />
+                <Bar dataKey="montant" fill="#77F1BE" radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

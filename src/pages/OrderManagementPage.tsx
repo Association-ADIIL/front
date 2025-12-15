@@ -405,7 +405,7 @@ const OrderManagementPage: React.FC = () => {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-4xl font-bold text-accent-mint font-koulen">Gestion des Commandes & Inscriptions</h1>
+        <h1 className="text-4xl font-bold text-accent-mint font-koulen">GESTION DES COMMANDES & INSCRIPTIONS</h1>
       </div>
 
       {/* Tabs */}

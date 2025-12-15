@@ -124,7 +124,7 @@ const UserManagementPage: React.FC = () => {
   return (
     <div>
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-        <h1 className="text-4xl font-bold text-accent-mint font-koulen">Gestion des Utilisateurs</h1>
+        <h1 className="text-4xl font-bold text-accent-mint font-koulen">GESTION DES UTILISATEURS</h1>
         <div className="flex gap-4 w-full md:w-auto">
             <div className="relative flex-grow md:flex-grow-0">
                 <input 

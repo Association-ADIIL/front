@@ -1,6 +1,28 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { Mail, Lock, User, Users, UserPlus, ArrowRight, GraduationCap } from 'lucide-react';
+
+const STUDENT_GROUPS = [
+  { value: 'G11A', label: '11A' },
+  { value: 'G11B', label: '11B' },
+  { value: 'G12C', label: '12C' },
+  { value: 'G12D', label: '12D' },
+  { value: 'G21A', label: '21A' },
+  { value: 'G21B', label: '21B' },
+  { value: 'G22C', label: '22C' },
+  { value: 'G22D', label: '22D' },
+  { value: 'G31A', label: '31A' },
+  { value: 'G31B', label: '31B' },
+  { value: 'G32C', label: '32C' },
+  { value: 'G32D', label: '32D' },
+];
+
+const ACCOUNT_TYPES = [
+  { value: 'STUDENT', label: 'Etudiant', icon: GraduationCap },
+  { value: 'PROFESSOR', label: 'Professeur', icon: User },
+  { value: 'EXTERNAL', label: 'Externe', icon: Users },
+];
 
 const RegisterPage: React.FC = () => {
   const { register } = useAuth();
@@ -17,10 +39,8 @@ const RegisterPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.id === 'name' ? 'lastName' : e.target.id === 'firstname' ? 'firstName' : e.target.id === 'tpGroup' ? 'studentGroup' : e.target.id === 'accountType' ? 'type' : e.target.id]: e.target.value
-    });
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,8 +53,8 @@ const RegisterPage: React.FC = () => {
     }
 
     if (formData.type === 'STUDENT' && !formData.studentGroup) {
-       setError("Le groupe TP est obligatoire pour les étudiants.");
-       return;
+      setError("Le groupe TP est obligatoire pour les etudiants.");
+      return;
     }
 
     setIsLoading(true);
@@ -47,135 +67,215 @@ const RegisterPage: React.FC = () => {
         type: formData.type,
         studentGroup: formData.type === 'STUDENT' ? formData.studentGroup : undefined
       });
-      // Redirect handled in AuthContext or here if needed (AuthContext currently redirects to login)
     } catch (err: any) {
-      setError(err.message || 'Échec de l\'inscription.');
+      setError(err.message || 'Echec de l\'inscription.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-98px)] py-12">
-      <div className="card p-8 w-full max-w-md">
-        <h1 className="text-3xl font-bold text-center text-accent-mint mb-6">Inscription</h1>
-        {error && <div className="mb-4 text-red-500 text-sm text-center bg-red-900/20 p-2 rounded border border-red-900">{error}</div>}
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div>
-            <label htmlFor="name" className="block text-gray-300 text-sm font-bold mb-2">Nom</label>
-            <input
-              type="text"
-              id="name"
-              value={formData.lastName}
-              onChange={handleChange}
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-dark-bg border-gray-600 focus:border-accent-mint text-white"
-              placeholder="Votre Nom"
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="firstname" className="block text-gray-300 text-sm font-bold mb-2">Prénom</label>
-            <input
-              type="text"
-              id="firstname"
-              value={formData.firstName}
-              onChange={handleChange}
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-dark-bg border-gray-600 focus:border-accent-mint text-white"
-              placeholder="Votre Prénom"
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="email" className="block text-gray-300 text-sm font-bold mb-2">Email</label>
-            <input
-              type="email"
-              id="email"
-              value={formData.email}
-              onChange={handleChange}
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-dark-bg border-gray-600 focus:border-accent-mint text-white"
-              placeholder="votre.email@etu.univ-lemans.fr"
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="password" className="block text-gray-300 text-sm font-bold mb-2">Mot de passe</label>
-            <input
-              type="password"
-              id="password"
-              value={formData.password}
-              onChange={handleChange}
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-dark-bg border-gray-600 focus:border-accent-mint text-white"
-              placeholder="********"
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="confirmPassword" className="block text-gray-300 text-sm font-bold mb-2">Confirmer mot de passe</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-dark-bg border-gray-600 focus:border-accent-mint text-white"
-              placeholder="********"
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="accountType" className="block text-gray-300 text-sm font-bold mb-2">Type de compte</label>
-            <select
-              id="accountType"
-              value={formData.type}
-              onChange={handleChange}
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-dark-bg border-gray-600 focus:border-accent-mint text-white"
-            >
-              <option value="STUDENT">Étudiant</option>
-              <option value="PROFESSOR">Professeur</option>
-              <option value="EXTERNAL">Externe</option>
-            </select>
-          </div>
-          {formData.type === 'STUDENT' && (
-            <div>
-              <label htmlFor="tpGroup" className="block text-gray-300 text-sm font-bold mb-2">Groupe TP</label>
-              <select
-                id="tpGroup"
-                value={formData.studentGroup}
-                onChange={handleChange}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-dark-bg border-gray-600 focus:border-accent-mint text-white"
-                required
-              >
-                <option value="">Sélectionner un groupe</option>
-                <option value="G11A">G11A</option>
-                <option value="G11B">G11B</option>
-                <option value="G12C">G12C</option>
-                <option value="G12D">G12D</option>
-                <option value="G21A">G21A</option>
-                <option value="G21B">G21B</option>
-                <option value="G22C">G22C</option>
-                <option value="G22D">G22D</option>
-                <option value="G31A">G31A</option>
-                <option value="G31B">G31B</option>
-                <option value="G32C">G32C</option>
-                <option value="G32D">G32D</option>
-              </select>
+    <div className="min-h-screen bg-dark-bg flex items-center justify-center p-4 py-12">
+      <div className="w-full max-w-md">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <Link to="/" className="inline-block">
+            <span className="text-4xl font-koulen text-accent-mint">ADIIL</span>
+          </Link>
+          <h1 className="text-2xl font-koulen text-white mt-4">INSCRIPTION</h1>
+          <p className="text-gray-500 mt-2 font-montserrat text-sm">
+            Creez votre compte pour rejoindre la communaute
+          </p>
+        </div>
+
+        {/* Form Card */}
+        <div className="bg-darker-bg rounded-2xl border border-gray-800 p-8">
+          {error && (
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+              <p className="text-red-400 text-sm text-center font-montserrat">{error}</p>
             </div>
           )}
-          <div className="flex flex-col gap-4 mt-6">
+
+          <form className="space-y-5" onSubmit={handleSubmit}>
+            {/* Name fields */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="lastName" className="block text-sm font-semibold text-gray-400 mb-2 uppercase tracking-wide">
+                  Nom
+                </label>
+                <div className="relative">
+                  <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+                  <input
+                    type="text"
+                    id="lastName"
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleChange}
+                    className="w-full bg-dark-bg border border-gray-700 rounded-xl pl-12 pr-4 py-3.5 text-white placeholder-gray-600 focus:outline-none focus:border-accent-mint transition-colors"
+                    placeholder="Nom"
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="firstName" className="block text-sm font-semibold text-gray-400 mb-2 uppercase tracking-wide">
+                  Prenom
+                </label>
+                <input
+                  type="text"
+                  id="firstName"
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  className="w-full bg-dark-bg border border-gray-700 rounded-xl px-4 py-3.5 text-white placeholder-gray-600 focus:outline-none focus:border-accent-mint transition-colors"
+                  placeholder="Prenom"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Email */}
+            <div>
+              <label htmlFor="email" className="block text-sm font-semibold text-gray-400 mb-2 uppercase tracking-wide">
+                Email
+              </label>
+              <div className="relative">
+                <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="w-full bg-dark-bg border border-gray-700 rounded-xl pl-12 pr-4 py-3.5 text-white placeholder-gray-600 focus:outline-none focus:border-accent-mint transition-colors"
+                  placeholder="votre.email@etu.univ-lemans.fr"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Password fields */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="password" className="block text-sm font-semibold text-gray-400 mb-2 uppercase tracking-wide">
+                  Mot de passe
+                </label>
+                <div className="relative">
+                  <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+                  <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    className="w-full bg-dark-bg border border-gray-700 rounded-xl pl-12 pr-4 py-3.5 text-white placeholder-gray-600 focus:outline-none focus:border-accent-mint transition-colors"
+                    placeholder="********"
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-semibold text-gray-400 mb-2 uppercase tracking-wide">
+                  Confirmer
+                </label>
+                <div className="relative">
+                  <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+                  <input
+                    type="password"
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    className="w-full bg-dark-bg border border-gray-700 rounded-xl pl-12 pr-4 py-3.5 text-white placeholder-gray-600 focus:outline-none focus:border-accent-mint transition-colors"
+                    placeholder="********"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Account type */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wide">
+                Type de compte
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {ACCOUNT_TYPES.map(({ value, label, icon: Icon }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, type: value, studentGroup: value !== 'STUDENT' ? '' : prev.studentGroup }))}
+                    className={`p-3 rounded-xl border transition-all flex flex-col items-center gap-1.5 ${
+                      formData.type === value
+                        ? 'bg-accent-mint/10 border-accent-mint text-accent-mint'
+                        : 'bg-dark-bg border-gray-700 text-gray-400 hover:border-gray-600'
+                    }`}
+                  >
+                    <Icon size={20} />
+                    <span className="text-xs font-semibold">{label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Student group */}
+            {formData.type === 'STUDENT' && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wide">
+                  Groupe TP
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {STUDENT_GROUPS.map(({ value, label }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, studentGroup: value }))}
+                      className={`py-2.5 px-3 rounded-xl border font-bold text-sm transition-all ${
+                        formData.studentGroup === value
+                          ? 'bg-accent-mint text-darker-bg border-accent-mint'
+                          : 'bg-dark-bg border-gray-700 text-gray-400 hover:border-gray-600 hover:text-white'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={isLoading}
-              className={`w-full bg-accent-mint text-darker-bg font-bold py-2.5 px-6 rounded focus:outline-none focus:shadow-outline hover-scale-sm transition-opacity ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className="w-full bg-accent-mint text-darker-bg font-bold py-4 rounded-xl hover:bg-white transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group mt-6"
             >
-              {isLoading ? 'Inscription...' : 'S\'inscrire'}
+              {isLoading ? (
+                <div className="w-5 h-5 border-2 border-darker-bg border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>
+                  <UserPlus size={20} />
+                  S'inscrire
+                  <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                </>
+              )}
             </button>
-            <p className="text-center text-sm text-gray-400">
-              Déjà un compte ?{' '}
-              <Link to="/login" className="font-bold text-accent-mint hover:text-white transition-colors">
+          </form>
+
+          <div className="mt-6 pt-6 border-t border-gray-800">
+            <p className="text-center text-gray-500 font-montserrat">
+              Deja un compte ?{' '}
+              <Link to="/login" className="text-accent-mint font-bold hover:text-white transition-colors">
                 Se connecter
               </Link>
             </p>
           </div>
-        </form>
+        </div>
+
+        {/* Back to home */}
+        <div className="mt-6 text-center">
+          <Link to="/" className="text-gray-600 hover:text-gray-400 transition-colors text-sm font-montserrat">
+            Retour a l'accueil
+          </Link>
+        </div>
       </div>
     </div>
   );

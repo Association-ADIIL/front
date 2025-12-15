@@ -39,6 +39,9 @@ const EventManagementPage: React.FC = () => {
     options: []
   });
 
+  // Track if user manually edited the registration deadline
+  const [deadlineManuallyEdited, setDeadlineManuallyEdited] = useState(false);
+
   const fetchEvents = async () => {
     try {
       const data = await getAllEvents();
@@ -57,6 +60,7 @@ const EventManagementPage: React.FC = () => {
   const handleOpenCreate = () => {
     setCurrentEvent(null);
     uploadedImagesRef.current = [];
+    setDeadlineManuallyEdited(false);
     setFormData({
       title: '',
       description: '',
@@ -82,6 +86,7 @@ const EventManagementPage: React.FC = () => {
 
   const handleOpenEdit = (event: Event) => {
     setCurrentEvent(event);
+    setDeadlineManuallyEdited(true); // En édition, on considère que la deadline a été définie
     setFormData({
       title: event.title,
       description: event.description,
@@ -189,11 +194,38 @@ const EventManagementPage: React.FC = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'number' ? parseFloat(value) : value
-    }));
+
+    // Limit year to 4 digits for date fields
+    if (type === 'datetime-local' && value) {
+      const year = value.split('-')[0];
+      if (year && year.length > 4) {
+        return; // Don't update if year is more than 4 digits
+      }
+    }
+
+    // Track if user manually edits the deadline
+    if (name === 'registrationDeadline') {
+      setDeadlineManuallyEdited(true);
+    }
+
+    setFormData(prev => {
+      const updated = {
+        ...prev,
+        [name]: type === 'number' ? parseFloat(value) : value
+      };
+
+      // Sync registration deadline with event date if not manually edited (even partial values)
+      if (name === 'date' && !deadlineManuallyEdited) {
+        updated.registrationDeadline = value;
+      }
+
+      return updated;
+    });
   };
+
+  // Check if registration deadline is after event date
+  const isDeadlineAfterEvent = formData.date && formData.registrationDeadline &&
+    new Date(formData.registrationDeadline) > new Date(formData.date);
 
   const handleAddFormField = () => {
     if (!newField.label.trim()) {
@@ -251,17 +283,18 @@ const EventManagementPage: React.FC = () => {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-4xl font-bold text-accent-mint font-koulen">Gestion des Événements</h1>
+        <h1 className="text-4xl font-bold text-accent-mint font-koulen">GESTION DES EVENEMENTS</h1>
         <button onClick={handleOpenCreate} className="bg-accent-mint text-darker-bg font-bold py-2 px-4 rounded hover:bg-white transition-colors flex items-center">
-          <Plus size={20} className="mr-2" /> Créer un événement
+          <Plus size={20} className="mr-2" /> Creer un evenement
         </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {events.map((event) => {
-          const isFull = event.registeredPeople >= event.totalPlaces;
+          const isUnlimited = event.totalPlaces === 0;
+          const isFull = !isUnlimited && event.registeredPeople >= event.totalPlaces;
           return (
-          <div key={event.id} className="bg-darker-bg border border-gray-700 rounded-lg p-6 flex flex-col relative group">
+          <div key={event.id} className="bg-darker-bg border border-gray-800 rounded-2xl p-6 flex flex-col relative group hover:border-gray-700 transition-colors">
              <div className="flex items-start justify-between mb-4">
                  <div className="w-16 h-16 rounded bg-dark-bg flex items-center justify-center overflow-hidden">
                      <img 
@@ -294,11 +327,14 @@ const EventManagementPage: React.FC = () => {
                 {event.location}
             </div>
             
-            <div className="mt-auto pt-4 border-t border-gray-700 space-y-2">
+            <div className="mt-auto pt-4 border-t border-gray-800 space-y-2">
               <div className="flex justify-between text-sm items-center">
-                <span className="text-gray-400">Inscrits: {event.registeredPeople} / {event.totalPlaces}</span>
+                <span className="text-gray-400">
+                  Inscrits: {event.registeredPeople}{isUnlimited ? '' : ` / ${event.totalPlaces}`}
+                  {isUnlimited && <span className="text-accent-mint ml-1">(illimite)</span>}
+                </span>
                 <span className={`text-xs font-bold px-2 py-1 rounded ${!isFull ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
-                    {event.status === 'OPEN' && !isFull ? 'Ouvert' : 'Complet/Fermé'}
+                    {event.status === 'OPEN' && !isFull ? 'Ouvert' : 'Complet/Ferme'}
                 </span>
               </div>
               {event.formFields && (event.formFields as any[]).length > 0 && (
@@ -320,7 +356,7 @@ const EventManagementPage: React.FC = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
-        title={currentEvent ? "Modifier l'événement" : "Créer un événement"}
+        title={currentEvent ? "Modifier l'evenement" : "Creer un evenement"}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -333,8 +369,15 @@ const EventManagementPage: React.FC = () => {
                 <textarea name="description" value={formData.description} onChange={handleChange} required className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white h-24" />
             </div>
             <div>
-                <label className="block text-gray-400 mb-1">Date</label>
-                <input type="datetime-local" name="date" value={formData.date} onChange={handleChange} required className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
+                <label className="block text-gray-400 mb-1">Date de l'evenement</label>
+                <input type="datetime-local" name="date" value={formData.date} onChange={handleChange} required max="9999-12-31T23:59" className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
+            </div>
+            <div>
+                <label className="block text-gray-400 mb-1">Date limite inscription</label>
+                <input type="datetime-local" name="registrationDeadline" value={formData.registrationDeadline} onChange={handleChange} required max="9999-12-31T23:59" className={`w-full bg-dark-bg border rounded p-2 text-white ${isDeadlineAfterEvent ? 'border-orange-500' : 'border-gray-600'}`} />
+                {isDeadlineAfterEvent && (
+                  <p className="text-orange-400 text-xs mt-1">La date limite est apres la date de l'evenement</p>
+                )}
             </div>
             <div>
                 <label className="block text-gray-400 mb-1">Lieu</label>
@@ -346,15 +389,13 @@ const EventManagementPage: React.FC = () => {
             </div>
             <div>
                 <label className="block text-gray-400 mb-1">Places Totales</label>
-                <input type="number" name="totalPlaces" value={formData.totalPlaces} onChange={handleChange} required className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
+                <input type="number" name="totalPlaces" value={formData.totalPlaces} onChange={handleChange} required min="0" className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
+                <p className="text-gray-500 text-xs mt-1">0 = places illimitees</p>
             </div>
             <div>
                 <label className="block text-gray-400 mb-1">Max places / pers</label>
-                <input type="number" name="maxPlacesPerPerson" value={formData.maxPlacesPerPerson} onChange={handleChange} required min="1" className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
-            </div>
-            <div>
-                <label className="block text-gray-400 mb-1">Date limite inscription</label>
-                <input type="datetime-local" name="registrationDeadline" value={formData.registrationDeadline} onChange={handleChange} required className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
+                <input type="number" name="maxPlacesPerPerson" value={formData.maxPlacesPerPerson} onChange={handleChange} required min="0" className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
+                <p className="text-gray-500 text-xs mt-1">0 = illimite</p>
             </div>
             <div>
               <label className="block text-gray-400 mb-1">Statut</label>

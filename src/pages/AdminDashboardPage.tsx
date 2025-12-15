@@ -19,7 +19,7 @@ const AdminDashboardPage: React.FC = () => {
     totalEvents: 0,
     upcomingEvents: 0,
     totalOrders: 0,
-    pendingOrders: 0,
+    ordersToCollectCount: 0,
     totalRevenue: 0,
     revenueThisMonth: 0,
     totalInscriptions: 0,
@@ -66,8 +66,13 @@ const AdminDashboardPage: React.FC = () => {
           .filter(e => new Date(e.date) >= now)
           .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-        // Order stats
-        const pendingOrders = orders.filter(o => o.paymentStatus === 'PENDING').length;
+        // Order stats - orders to collect: paid + waiting for collection OR cash_cb pending
+        const ordersToCollectCount = orders.filter(o =>
+          o.orderStatus !== 'COLLECTED' &&
+          o.orderStatus !== 'CANCELLED' &&
+          o.paymentStatus !== 'REFUNDED' &&
+          (o.paymentStatus === 'PAID' || (o.paymentMethod === 'CASH_CB' && o.paymentStatus === 'PENDING'))
+        ).length;
         const totalRevenue = orders
           .filter(o => o.paymentStatus === 'PAID')
           .reduce((sum, o) => sum + o.totalPrice, 0);
@@ -102,7 +107,7 @@ const AdminDashboardPage: React.FC = () => {
           totalEvents: events.length,
           upcomingEvents: upcoming.length,
           totalOrders: orders.length,
-          pendingOrders,
+          ordersToCollectCount,
           totalRevenue,
           revenueThisMonth,
           totalInscriptions: inscriptions.length,
@@ -134,7 +139,7 @@ const AdminDashboardPage: React.FC = () => {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-4xl font-bold text-accent-mint mb-2 font-koulen">Tableau de Bord</h1>
+        <h1 className="text-4xl font-bold text-accent-mint mb-2 font-koulen">TABLEAU DE BORD</h1>
         <p className="text-gray-400">Vue d'ensemble de l'activité du BDE ADIIL</p>
       </div>
 
@@ -204,9 +209,9 @@ const AdminDashboardPage: React.FC = () => {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Users */}
-        <div className="card p-6 border border-gray-700">
+        <div className="bg-darker-bg rounded-2xl p-6 border border-gray-800">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-blue-900/20 rounded-lg">
+            <div className="p-3 bg-blue-900/20 rounded-xl">
               <Users className="text-blue-400" size={24} />
             </div>
             <span className="text-xs text-green-400 font-bold">+{stats.newUsersThisMonth} ce mois</span>
@@ -216,27 +221,27 @@ const AdminDashboardPage: React.FC = () => {
         </div>
 
         {/* Events */}
-        <div className="card p-6 border border-gray-700">
+        <div className="bg-darker-bg rounded-2xl p-6 border border-gray-800">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-purple-900/20 rounded-lg">
+            <div className="p-3 bg-purple-900/20 rounded-xl">
               <Calendar className="text-purple-400" size={24} />
             </div>
-            <span className="text-xs text-purple-400 font-bold">{stats.upcomingEvents} à venir</span>
+            <span className="text-xs text-purple-400 font-bold">{stats.upcomingEvents} a venir</span>
           </div>
           <h3 className="text-2xl font-bold mb-1">{stats.totalEvents}</h3>
-          <p className="text-sm text-gray-400">Événements créés</p>
+          <p className="text-sm text-gray-400">Evenements crees</p>
         </div>
 
         {/* Orders */}
-        <div className="card p-6 border border-gray-700">
+        <div className="bg-darker-bg rounded-2xl p-6 border border-gray-800">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-orange-900/20 rounded-lg">
+            <div className="p-3 bg-orange-900/20 rounded-xl">
               <ShoppingBag className="text-orange-400" size={24} />
             </div>
-            {stats.pendingOrders > 0 && (
+            {stats.ordersToCollectCount > 0 && (
               <span className="text-xs text-yellow-400 font-bold flex items-center gap-1">
                 <Clock size={12} />
-                {stats.pendingOrders} en attente
+                {stats.ordersToCollectCount} a recuperer
               </span>
             )}
           </div>
@@ -245,9 +250,9 @@ const AdminDashboardPage: React.FC = () => {
         </div>
 
         {/* Revenue */}
-        <div className="card p-6 border border-gray-700">
+        <div className="bg-darker-bg rounded-2xl p-6 border border-gray-800">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-green-900/20 rounded-lg">
+            <div className="p-3 bg-green-900/20 rounded-xl">
               <TrendingUp className="text-accent-mint" size={24} />
             </div>
             <span className="text-xs text-accent-mint font-bold">{stats.revenueThisMonth.toFixed(2)}€ ce mois</span>
@@ -261,9 +266,9 @@ const AdminDashboardPage: React.FC = () => {
       {balanceStats && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Total Balance */}
-          <div className="card p-6 border border-gray-700">
+          <div className="bg-darker-bg rounded-2xl p-6 border border-gray-800">
             <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-purple-900/20 rounded-lg">
+              <div className="p-3 bg-purple-900/20 rounded-xl">
                 <Wallet className="text-purple-400" size={24} />
               </div>
             </div>
@@ -272,34 +277,34 @@ const AdminDashboardPage: React.FC = () => {
           </div>
 
           {/* Total Recharged */}
-          <div className="card p-6 border border-gray-700">
+          <div className="bg-darker-bg rounded-2xl p-6 border border-gray-800">
             <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-cyan-900/20 rounded-lg">
+              <div className="p-3 bg-cyan-900/20 rounded-xl">
                 <CreditCard className="text-cyan-400" size={24} />
               </div>
               <span className="text-xs text-cyan-400 font-bold">{balanceStats.rechargedThisMonth.toFixed(2)}€ ce mois</span>
             </div>
             <h3 className="text-2xl font-bold text-cyan-400 mb-1">{balanceStats.totalRecharged.toFixed(2)} €</h3>
-            <p className="text-sm text-gray-400">Total rechargé</p>
+            <p className="text-sm text-gray-400">Total recharge</p>
           </div>
 
           {/* Recharges Count */}
-          <div className="card p-6 border border-gray-700">
+          <div className="bg-darker-bg rounded-2xl p-6 border border-gray-800">
             <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-pink-900/20 rounded-lg">
+              <div className="p-3 bg-pink-900/20 rounded-xl">
                 <TrendingUp className="text-pink-400" size={24} />
               </div>
               <span className="text-xs text-pink-400 font-bold">{balanceStats.rechargesThisMonth} ce mois</span>
             </div>
             <h3 className="text-2xl font-bold text-pink-400 mb-1">{balanceStats.totalRecharges}</h3>
-            <p className="text-sm text-gray-400">Recharges effectuées</p>
+            <p className="text-sm text-gray-400">Recharges effectuees</p>
           </div>
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Upcoming Events */}
-        <div className="card p-6 border border-gray-700">
+        <div className="bg-darker-bg rounded-2xl p-6 border border-gray-800">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold flex items-center gap-2">
               <CalendarCheck className="text-accent-mint" size={20} />
@@ -354,7 +359,7 @@ const AdminDashboardPage: React.FC = () => {
         </div>
 
         {/* Recent Inscriptions */}
-        <div className="card p-6 border border-gray-700">
+        <div className="bg-darker-bg rounded-2xl p-6 border border-gray-800">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold flex items-center gap-2">
               <CalendarCheck className="text-accent-mint" size={20} />
@@ -406,7 +411,7 @@ const AdminDashboardPage: React.FC = () => {
 
       {/* Orders to Collect Section */}
       {ordersToCollect.length > 0 && (
-        <div className="card p-6 border border-gray-700">
+        <div className="bg-darker-bg rounded-2xl p-6 border border-gray-800">
           <h2 className="text-xl font-bold flex items-center gap-2 mb-4">
             <ShoppingBag className="text-accent-mint" size={20} />
             Commandes en attente de récupération

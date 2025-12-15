@@ -73,7 +73,7 @@ function App() {
                 element={
                   <>
                     <Header />
-                    <main className="flex-grow pt-[98px]"> {/* Added padding to account for fixed header height */}
+                    <main className="flex-grow pt-20"> {/* Added padding to account for fixed header height (~80px) */}
                       <Routes>
                         <Route path="/" element={<HomePage />} />
                         <Route path="/about" element={<AboutPage />} />
