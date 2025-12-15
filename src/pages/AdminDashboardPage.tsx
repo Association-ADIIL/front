@@ -10,6 +10,7 @@ import {
   ArrowRight, Clock, CheckCircle, CalendarCheck, CreditCard, Wallet
 } from 'lucide-react';
 import AddBalanceModal from '../components/AddBalanceModal';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const AdminDashboardPage: React.FC = () => {
@@ -34,15 +35,23 @@ const AdminDashboardPage: React.FC = () => {
   const [ordersToCollect, setOrdersToCollect] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddBalanceModalOpen, setIsAddBalanceModalOpen] = useState(false);
+  const [confirmOrderId, setConfirmOrderId] = useState<number | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
   const handleMarkCollected = async (orderId: number) => {
+    setConfirmLoading(true);
     try {
       await updateOrderStatus(orderId, 'COLLECTED');
       setOrdersToCollect(prev => prev.filter(o => o.id !== orderId));
+      setConfirmOrderId(null);
     } catch (error) {
       console.error("Failed to mark order as collected:", error);
+    } finally {
+      setConfirmLoading(false);
     }
   };
+
+  const orderToConfirm = ordersToCollect.find(o => o.id === confirmOrderId);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -145,8 +154,8 @@ const AdminDashboardPage: React.FC = () => {
         <p className="text-gray-400">Vue d'ensemble de l'activité du BDE ADIIL</p>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* Quick Actions - Hidden on mobile */}
+      <div className="hidden md:grid grid-cols-2 lg:grid-cols-5 gap-4">
         <button
           onClick={() => navigate('/admin/events')}
           className="bg-gradient-to-br from-purple-600/20 to-purple-900/20 border border-purple-600/30 hover:border-purple-500 p-4 rounded-lg transition-all group"
@@ -423,26 +432,33 @@ const AdminDashboardPage: React.FC = () => {
               <div key={order.id} className="flex flex-col p-4 bg-dark-bg rounded-lg border border-gray-700 gap-4">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
                       <span className="font-bold text-white">#{order.id}</span>
                       <span className="text-gray-400">- {order.user ? `${order.user.firstName} ${order.user.lastName}` : 'Client Inconnu'}</span>
                       {order.paymentMethod === 'CASH_CB' && (
-                          <span className="px-2 py-0.5 rounded-full bg-yellow-900/50 text-yellow-200 text-xs font-bold border border-yellow-700">
-                              Paiement Sur Place
-                          </span>
+                        <span className="hidden md:inline px-2 py-0.5 rounded-full bg-yellow-900/50 text-yellow-200 text-xs font-bold border border-yellow-700">
+                          Paiement Sur Place
+                        </span>
                       )}
                     </div>
                     <div className="text-sm text-gray-400">
                       {order.items.length} article(s) • Total: {order.totalPrice.toFixed(2)} €
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleMarkCollected(order.id)}
-                    className="px-4 py-2 bg-accent-mint hover:bg-accent-mint/80 text-darker-bg font-bold rounded-lg transition-colors flex items-center gap-2 self-start md:self-center"
-                  >
-                    <CheckCircle size={18} />
-                    Valider Récupération
-                  </button>
+                  <div className="flex flex-col items-center md:items-end gap-2">
+                    {order.paymentMethod === 'CASH_CB' && (
+                      <span className="md:hidden px-2 py-0.5 rounded-full bg-yellow-900/50 text-yellow-200 text-xs font-bold border border-yellow-700">
+                        Paiement Sur Place
+                      </span>
+                    )}
+                    <button
+                      onClick={() => setConfirmOrderId(order.id)}
+                      className="px-4 py-2 bg-accent-mint hover:bg-accent-mint/80 text-darker-bg font-bold rounded-lg transition-colors flex items-center gap-2"
+                    >
+                      <CheckCircle size={18} />
+                      Valider Récupération
+                    </button>
+                  </div>
                 </div>
 
                 {/* Order Items Detail */}
@@ -479,6 +495,22 @@ const AdminDashboardPage: React.FC = () => {
           // Optionally refresh balance stats
           getBalanceStats().then(setBalanceStats).catch(console.error);
         }}
+      />
+
+      {/* Confirm Order Collection Dialog */}
+      <ConfirmDialog
+        isOpen={confirmOrderId !== null}
+        onClose={() => setConfirmOrderId(null)}
+        onConfirm={() => confirmOrderId && handleMarkCollected(confirmOrderId)}
+        title="Confirmer la récupération"
+        message={orderToConfirm
+          ? `Voulez-vous confirmer la récupération de la commande #${orderToConfirm.id} de ${orderToConfirm.user?.firstName} ${orderToConfirm.user?.lastName} (${orderToConfirm.totalPrice.toFixed(2)} €) ?`
+          : ''
+        }
+        confirmText="Valider"
+        cancelText="Annuler"
+        variant="info"
+        loading={confirmLoading}
       />
     </div>
   );
