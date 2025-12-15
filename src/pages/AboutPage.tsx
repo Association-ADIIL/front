@@ -1,5 +1,6 @@
 import React from 'react';
 import { Users, Mail, MapPin, Heart, Target, Sparkles } from 'lucide-react';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 // TODO: Remplacer par les vraies données des membres
 const teamMembers = [
@@ -78,6 +79,8 @@ const teamMembers = [
 ];
 
 const AboutPage: React.FC = () => {
+  useDocumentTitle('A propos');
+
   return (
     <div className="min-h-screen">
       {/* Hero Section */}

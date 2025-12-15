@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { Mail, Lock, LogIn, ArrowRight } from 'lucide-react';
 
 const LoginPage: React.FC = () => {
+  useDocumentTitle('Connexion');
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

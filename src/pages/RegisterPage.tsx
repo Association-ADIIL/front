@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { Mail, Lock, User, Users, UserPlus, ArrowRight, GraduationCap } from 'lucide-react';
 
 const STUDENT_GROUPS = [
@@ -25,6 +26,7 @@ const ACCOUNT_TYPES = [
 ];
 
 const RegisterPage: React.FC = () => {
+  useDocumentTitle('Inscription');
   const { register } = useAuth();
   const [formData, setFormData] = useState({
     firstName: '',

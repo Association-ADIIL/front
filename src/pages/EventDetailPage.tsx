@@ -5,6 +5,7 @@ import { Calendar, MapPin, ArrowLeft, Users, Clock, Share2, ChevronRight, LogIn 
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import EventRegistrationModal from '../components/EventRegistrationModal';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 // Fonction pour retirer les accents (pour la police Koulen qui ne les supporte pas)
 const removeAccents = (str: string): string => {
@@ -20,6 +21,8 @@ const EventDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  useDocumentTitle(event?.title);
 
   useEffect(() => {
     const fetchEvent = async () => {

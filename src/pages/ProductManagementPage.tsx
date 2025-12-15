@@ -5,8 +5,10 @@ import Modal from '../components/Modal';
 import ImageUpload from '../components/ImageUpload';
 import { deleteImage } from '../api/upload';
 import { useNotification } from '../context/NotificationContext';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const ProductManagementPage: React.FC = () => {
+  useDocumentTitle('Admin - Produits');
   const { addNotification } = useNotification();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);

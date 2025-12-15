@@ -5,8 +5,10 @@ import { useCart } from '../context/CartContext';
 import { confirmPayPalPayment, confirmHelloAssoPayment } from '../api/inscriptions';
 import { confirmPayPalOrderPayment, confirmHelloAssoOrderPayment } from '../api/orders';
 import { confirmPayPalBalanceRecharge, confirmHelloAssoBalanceRecharge } from '../api/balance';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const PaymentCallbackPage: React.FC = () => {
+  useDocumentTitle('Paiement');
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { addNotification } = useNotification();

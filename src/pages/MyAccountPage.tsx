@@ -18,8 +18,10 @@ import {
   Ticket
 } from 'lucide-react';
 import BalanceDisplay from '../components/BalanceDisplay';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const MyAccountPage: React.FC = () => {
+  useDocumentTitle('Mon Compte');
   const { user, token, loading: authLoading, logout } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [inscriptions, setInscriptions] = useState<Inscription[]>([]);

@@ -10,8 +10,10 @@ import {
   ArrowRight, Clock, CheckCircle, CalendarCheck, CreditCard, Wallet
 } from 'lucide-react';
 import AddBalanceModal from '../components/AddBalanceModal';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const AdminDashboardPage: React.FC = () => {
+  useDocumentTitle('Admin - Dashboard');
   const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalUsers: 0,

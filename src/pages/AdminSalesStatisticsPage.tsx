@@ -17,6 +17,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 interface Stats {
   totalRevenue: number;
@@ -29,6 +30,7 @@ interface Stats {
 }
 
 const AdminSalesStatisticsPage: React.FC = () => {
+  useDocumentTitle('Admin - Statistiques');
   const [stats, setStats] = useState<Stats>({
     totalRevenue: 0,
     revenueThisMonth: 0,

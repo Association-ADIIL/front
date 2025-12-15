@@ -4,8 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { CreditCard, Plus, History, Wallet, ChevronRight, Euro } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const BalancePage: React.FC = () => {
+  useDocumentTitle('Ma Carte ADIIL');
   const { token } = useAuth();
   const { addNotification } = useNotification();
   const navigate = useNavigate();

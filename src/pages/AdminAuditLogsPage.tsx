@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { getRecentAuditLogs } from '../api/auditLogs';
 import { FileText, User, Calendar, Filter, Eye, Search, X } from 'lucide-react';
 import Modal from '../components/Modal';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 interface AuditLog {
   id: number;
@@ -15,6 +16,7 @@ interface AuditLog {
 }
 
 const AdminAuditLogsPage: React.FC = () => {
+  useDocumentTitle('Admin - Logs');
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [filteredLogs, setFilteredLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);

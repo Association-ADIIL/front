@@ -7,6 +7,7 @@ import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import MultiSelect from '../components/MultiSelect';
 import { useNotification } from '../context/NotificationContext';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 type ViewMode = 'orders' | 'inscriptions';
 
@@ -31,6 +32,7 @@ const PAYMENT_METHOD_OPTIONS = [
 ];
 
 const OrderManagementPage: React.FC = () => {
+  useDocumentTitle('Admin - Commandes');
   const { addNotification } = useNotification();
   const [viewMode, setViewMode] = useState<ViewMode>('orders');
   const [orders, setOrders] = useState<Order[]>([]);

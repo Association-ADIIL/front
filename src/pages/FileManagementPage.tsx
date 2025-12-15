@@ -4,6 +4,7 @@ import { uploadImage, deleteImage, getFiles } from '../api/upload';
 import { useNotification } from '../context/NotificationContext';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 interface UploadedFile {
   url: string;
@@ -23,6 +24,7 @@ interface FolderItem {
 const FOLDERS_STORAGE_KEY = 'file-management-folders';
 
 const FileManagementPage: React.FC = () => {
+  useDocumentTitle('Admin - Fichiers');
   const { addNotification } = useNotification();
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [folders, setFolders] = useState<string[]>(() => {

@@ -6,8 +6,10 @@ import { exportEventInscriptionsCsv } from '../api/inscriptions';
 import ImageUpload from '../components/ImageUpload';
 import { deleteImage } from '../api/upload';
 import { useNotification } from '../context/NotificationContext';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const EventManagementPage: React.FC = () => {
+  useDocumentTitle('Admin - Events');
   const { addNotification } = useNotification();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);

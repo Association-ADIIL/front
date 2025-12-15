@@ -6,6 +6,7 @@ import { Minus, Plus, Trash2, ShoppingBag, CreditCard, Heart, ArrowLeft, Chevron
 import { useAuth } from '../context/AuthContext';
 import { createOrder, type OrderItem as ApiOrderItem } from '../api/orders';
 import { getMyBalance, purchaseWithBalance } from '../api/balance';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const PayPalLogo: React.FC<{ className?: string }> = ({ className = '' }) => (
   <svg viewBox="0 0 24 24" className={className} fill="currentColor">
@@ -23,6 +24,7 @@ const CashLogo: React.FC<{ className?: string }> = ({ className = '' }) => (
 );
 
 const CartPage: React.FC = () => {
+  useDocumentTitle('Panier');
   const { items, updateQuantity, removeFromCart, totalPrice, clearCart } = useCart();
   const { addNotification } = useNotification();
   const { user } = useAuth();

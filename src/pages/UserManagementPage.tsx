@@ -3,8 +3,10 @@ import { getAllUsers, deleteUser, createUser, updateUser } from '../api/users';
 import { type User } from '../api/auth';
 import { Edit2, Trash2, Plus, User as UserIcon, Search } from 'lucide-react';
 import Modal from '../components/Modal';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const UserManagementPage: React.FC = () => {
+  useDocumentTitle('Admin - Utilisateurs');
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);

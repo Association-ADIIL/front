@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { getAllEvents, type Event } from '../api/events';
 import { Calendar, MapPin, Users, ChevronRight, Filter } from 'lucide-react';
 import BalanceDisplay from '../components/BalanceDisplay';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 type FilterType = 'all' | 'upcoming' | 'passed';
 
@@ -12,6 +13,7 @@ const removeAccents = (str: string): string => {
 };
 
 const EventsPage: React.FC = () => {
+  useDocumentTitle('Events');
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

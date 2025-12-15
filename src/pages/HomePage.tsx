@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getAllEvents, type Event } from '../api/events';
 import { getAllProducts, type Product } from '../api/products';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import {
   Calendar,
   MapPin,
@@ -13,6 +14,7 @@ import {
 } from 'lucide-react';
 
 const HomePage: React.FC = () => {
+  useDocumentTitle('Accueil');
   const [events, setEvents] = useState<Event[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
@@ -123,12 +125,6 @@ const HomePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Scroll indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
-          <div className="w-6 h-10 border-2 border-gray-600 rounded-full flex justify-center pt-2">
-            <div className="w-1 h-2 bg-accent-mint rounded-full"></div>
-          </div>
-        </div>
       </section>
 
       {/* Next Event Highlight */}

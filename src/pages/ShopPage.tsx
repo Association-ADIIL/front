@@ -6,8 +6,10 @@ import { useNotification } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
 import BalanceDisplay from '../components/BalanceDisplay';
 import { Link, useNavigate } from 'react-router-dom';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const ShopPage: React.FC = () => {
+  useDocumentTitle('Boutique');
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
