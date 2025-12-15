@@ -43,6 +43,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               <Link to="/admin/statistics" className="block text-lg hover:text-accent-mint transition-colors">Statistiques</Link>
             </li>
             <li>
+              <Link to="/admin/files" className="block text-lg hover:text-accent-mint transition-colors">Fichiers</Link>
+            </li>
+            <li>
               <Link to="/admin/users" className="block text-lg hover:text-accent-mint transition-colors">Utilisateurs</Link>
             </li>
             <li>
@@ -53,7 +56,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 p-8 ml-64">
+      <main className="flex-1 p-8 ml-64 min-w-0">
         {children}
       </main>
     </div>

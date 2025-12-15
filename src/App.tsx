@@ -10,6 +10,7 @@ import EventsPage from './pages/EventsPage';
 import EventDetailPage from './pages/EventDetailPage';
 import ShopPage from './pages/ShopPage';
 import CartPage from './pages/CartPage';
+import BalancePage from './pages/BalancePage';
 import MyAccountPage from './pages/MyAccountPage';
 import PaymentCallbackPage from './pages/PaymentCallbackPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
@@ -20,6 +21,7 @@ import ProductManagementPage from './pages/ProductManagementPage';
 import OrderManagementPage from './pages/OrderManagementPage';
 import AdminSalesStatisticsPage from './pages/AdminSalesStatisticsPage';
 import AdminAuditLogsPage from './pages/AdminAuditLogsPage';
+import FileManagementPage from './pages/FileManagementPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider, useNotification } from './context/NotificationContext';
 import { CartProvider } from './context/CartContext';
@@ -62,6 +64,7 @@ function App() {
               <Route path="/admin/products" element={<AdminLayout><ProductManagementPage /></AdminLayout>} />
               <Route path="/admin/orders" element={<AdminLayout><OrderManagementPage /></AdminLayout>} />
               <Route path="/admin/statistics" element={<AdminLayout><AdminSalesStatisticsPage /></AdminLayout>} />
+              <Route path="/admin/files" element={<AdminLayout><FileManagementPage /></AdminLayout>} />
               <Route path="/admin/logs" element={<AdminLayout><AdminAuditLogsPage /></AdminLayout>} />
 
               {/* Public Routes (with Header/Footer) */}
@@ -81,6 +84,7 @@ function App() {
                         <Route path="/events/:id" element={<EventDetailPage />} />
                         <Route path="/shop" element={<ShopPage />} />
                         <Route path="/cart" element={<CartPage />} />
+                        <Route path="/balance" element={<BalancePage />} />
                         <Route path="/my-account" element={<MyAccountPage />} />
                         <Route path="/payment/callback" element={<PaymentCallbackPage />} />
                         <Route path="*" element={<div className="min-h-screen flex items-center justify-center"><div className="text-center"><h1 className="text-4xl font-bold mb-4">404 - Page non trouvée</h1><p className="text-gray-400">La page que vous recherchez n'existe pas.</p></div></div>} />

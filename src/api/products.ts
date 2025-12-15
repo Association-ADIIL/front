@@ -1,5 +1,12 @@
 import { fetchJson } from './client';
 
+export interface ProductVariant {
+  id: number;
+  name: string;
+  priceModifier: number; // Price difference from base price (can be 0)
+  stock?: number;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -7,9 +14,12 @@ export interface Product {
   price: number;
   imageUrl?: string;
   active: boolean;
+  variants?: ProductVariant[];
 }
 
-export type ProductFormData = Omit<Product, 'id'>;
+export type ProductFormData = Omit<Product, 'id'> & {
+  variants?: ProductVariant[];
+};
 
 export const getAllProducts = async (): Promise<Product[]> => {
   return fetchJson('/products');

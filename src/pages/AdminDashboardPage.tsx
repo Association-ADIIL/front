@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { getAllUsers } from '../api/users';
 import { getAllEvents, type Event } from '../api/events';
-import { getAllOrders, type Order } from '../api/orders';
+import { getAllOrders, updateOrderStatus, type Order } from '../api/orders';
 import { getAllInscriptions, type Inscription } from '../api/inscriptions';
+import { getBalanceStats, type BalanceStats } from '../api/balance';
 import { useNavigate } from 'react-router-dom';
 import {
   Users, Calendar, ShoppingBag, TrendingUp, Plus,
-  ArrowRight, Clock, CheckCircle, AlertCircle, CalendarCheck
+  ArrowRight, Clock, CheckCircle, AlertCircle, CalendarCheck, CreditCard, Wallet
 } from 'lucide-react';
+import AddBalanceModal from '../components/AddBalanceModal';
 
 const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -22,21 +24,36 @@ const AdminDashboardPage: React.FC = () => {
     revenueThisMonth: 0,
     totalInscriptions: 0,
   });
+  const [balanceStats, setBalanceStats] = useState<BalanceStats | null>(null);
   const [recentEvents, setRecentEvents] = useState<Event[]>([]);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [recentInscriptions, setRecentInscriptions] = useState<Inscription[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
+  const [ordersToCollect, setOrdersToCollect] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAddBalanceModalOpen, setIsAddBalanceModalOpen] = useState(false);
+
+  const handleMarkCollected = async (orderId: number) => {
+    try {
+      await updateOrderStatus(orderId, 'COLLECTED');
+      setOrdersToCollect(prev => prev.filter(o => o.id !== orderId));
+    } catch (error) {
+      console.error("Failed to mark order as collected:", error);
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [users, events, orders, inscriptions] = await Promise.all([
+        const [users, events, orders, inscriptions, balanceStatsData] = await Promise.all([
           getAllUsers(),
           getAllEvents(),
           getAllOrders(),
           getAllInscriptions({}),
+          getBalanceStats(),
         ]);
+
+        setBalanceStats(balanceStatsData);
 
         const now = new Date();
         const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -57,6 +74,14 @@ const AdminDashboardPage: React.FC = () => {
         const revenueThisMonth = orders
           .filter(o => o.paymentStatus === 'PAID' && new Date(o.createdAt) >= firstDayOfMonth)
           .reduce((sum, o) => sum + o.totalPrice, 0);
+
+        // Orders to collect
+        setOrdersToCollect(orders.filter(o => 
+          o.orderStatus !== 'COLLECTED' && 
+          o.orderStatus !== 'CANCELLED' && 
+          o.paymentStatus !== 'REFUNDED' &&
+          (o.paymentStatus === 'PAID' || (o.paymentMethod === 'CASH_CB' && o.paymentStatus === 'PENDING'))
+        ));
 
         // Recent items
         const recentEventsList = events
@@ -114,7 +139,7 @@ const AdminDashboardPage: React.FC = () => {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <button
           onClick={() => navigate('/admin/events')}
           className="bg-gradient-to-br from-purple-600/20 to-purple-900/20 border border-purple-600/30 hover:border-purple-500 p-4 rounded-lg transition-all group"
@@ -137,6 +162,18 @@ const AdminDashboardPage: React.FC = () => {
           </div>
           <h3 className="text-base font-bold text-white mb-1">Nouveau Produit</h3>
           <p className="text-xs text-gray-400">Ajouter à la boutique</p>
+        </button>
+
+        <button
+          onClick={() => setIsAddBalanceModalOpen(true)}
+          className="bg-gradient-to-br from-cyan-600/20 to-cyan-900/20 border border-cyan-600/30 hover:border-cyan-500 p-4 rounded-lg transition-all group"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <Wallet className="text-cyan-400" size={24} />
+            <Plus className="text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity" size={18} />
+          </div>
+          <h3 className="text-base font-bold text-white mb-1">Recharger Solde</h3>
+          <p className="text-xs text-gray-400">Ajouter du crédit</p>
         </button>
 
         <button
@@ -219,6 +256,46 @@ const AdminDashboardPage: React.FC = () => {
           <p className="text-sm text-gray-400">Chiffre d'affaires total</p>
         </div>
       </div>
+
+      {/* Balance Stats */}
+      {balanceStats && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Total Balance */}
+          <div className="card p-6 border border-gray-700">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-purple-900/20 rounded-lg">
+                <Wallet className="text-purple-400" size={24} />
+              </div>
+            </div>
+            <h3 className="text-2xl font-bold text-purple-400 mb-1">{balanceStats.totalBalance.toFixed(2)} €</h3>
+            <p className="text-sm text-gray-400">Solde total des cartes</p>
+          </div>
+
+          {/* Total Recharged */}
+          <div className="card p-6 border border-gray-700">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-cyan-900/20 rounded-lg">
+                <CreditCard className="text-cyan-400" size={24} />
+              </div>
+              <span className="text-xs text-cyan-400 font-bold">{balanceStats.rechargedThisMonth.toFixed(2)}€ ce mois</span>
+            </div>
+            <h3 className="text-2xl font-bold text-cyan-400 mb-1">{balanceStats.totalRecharged.toFixed(2)} €</h3>
+            <p className="text-sm text-gray-400">Total rechargé</p>
+          </div>
+
+          {/* Recharges Count */}
+          <div className="card p-6 border border-gray-700">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-pink-900/20 rounded-lg">
+                <TrendingUp className="text-pink-400" size={24} />
+              </div>
+              <span className="text-xs text-pink-400 font-bold">{balanceStats.rechargesThisMonth} ce mois</span>
+            </div>
+            <h3 className="text-2xl font-bold text-pink-400 mb-1">{balanceStats.totalRecharges}</h3>
+            <p className="text-sm text-gray-400">Recharges effectuées</p>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Upcoming Events */}
@@ -327,20 +404,75 @@ const AdminDashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Alerts Section */}
-      {stats.pendingOrders > 0 && (
-        <div className="card p-6 border border-yellow-600/30 bg-yellow-900/10">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="text-yellow-400 flex-shrink-0 mt-1" size={20} />
-            <div>
-              <h3 className="font-bold text-yellow-400 mb-2">Actions requises</h3>
-              <p className="text-sm text-gray-300">
-                {stats.pendingOrders} commande{stats.pendingOrders > 1 ? 's' : ''} en attente de paiement
-              </p>
-            </div>
+      {/* Orders to Collect Section */}
+      {ordersToCollect.length > 0 && (
+        <div className="card p-6 border border-gray-700">
+          <h2 className="text-xl font-bold flex items-center gap-2 mb-4">
+            <ShoppingBag className="text-accent-mint" size={20} />
+            Commandes en attente de récupération
+          </h2>
+          <div className="space-y-3">
+            {ordersToCollect.map(order => (
+              <div key={order.id} className="flex flex-col p-4 bg-dark-bg rounded-lg border border-gray-700 gap-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-bold text-white">#{order.id}</span>
+                      <span className="text-gray-400">- {order.user ? `${order.user.firstName} ${order.user.lastName}` : 'Client Inconnu'}</span>
+                      {order.paymentMethod === 'CASH_CB' && (
+                          <span className="px-2 py-0.5 rounded-full bg-yellow-900/50 text-yellow-200 text-xs font-bold border border-yellow-700">
+                              Paiement Sur Place
+                          </span>
+                      )}
+                    </div>
+                    <div className="text-sm text-gray-400">
+                      {order.items.length} article(s) • Total: {order.totalPrice.toFixed(2)} €
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleMarkCollected(order.id)}
+                    className="px-4 py-2 bg-accent-mint hover:bg-accent-mint/80 text-darker-bg font-bold rounded-lg transition-colors flex items-center gap-2 self-start md:self-center"
+                  >
+                    <CheckCircle size={18} />
+                    Valider Récupération
+                  </button>
+                </div>
+
+                {/* Order Items Detail */}
+                <div className="bg-darker-bg p-3 rounded-md border border-gray-700">
+                  <p className="font-bold text-gray-300 mb-2 text-sm">Détail de la commande:</p>
+                  <ul className="space-y-2">
+                    {order.items.map((item) => (
+                      <li key={item.id} className="flex justify-between text-sm">
+                        <span className="text-gray-400">
+                          {item.product.name}
+                          {item.variantId && item.product.variants && (
+                            <span className="text-accent-mint ml-2">
+                              ({(item.product.variants as any[]).find((v: any) => v.id === item.variantId)?.name})
+                            </span>
+                          )}
+                          <span className="text-gray-500 ml-2">x{item.quantity}</span>
+                        </span>
+                        <span className="text-white font-medium">{(item.price * item.quantity).toFixed(2)} €</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
+
+      {/* Add Balance Modal */}
+      <AddBalanceModal
+        isOpen={isAddBalanceModalOpen}
+        onClose={() => setIsAddBalanceModalOpen(false)}
+        onSuccess={() => {
+          // Optionally refresh balance stats
+          getBalanceStats().then(setBalanceStats).catch(console.error);
+        }}
+      />
     </div>
   );
 };

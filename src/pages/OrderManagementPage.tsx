@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { getAllOrders, updateOrderStatus, updatePaymentStatus, refundOrderItems, type Order } from '../api/orders';
 import { getAllInscriptions, updateInscriptionPaymentStatus, refundInscription, type Inscription } from '../api/inscriptions';
 import { getAllEvents, type Event } from '../api/events';
-import { Edit2, ShoppingBag, Calendar, CheckSquare, Square } from 'lucide-react';
+import { Edit2, ShoppingBag, Calendar, CheckSquare, Square, Download, Eye } from 'lucide-react';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import MultiSelect from '../components/MultiSelect';
@@ -282,6 +282,7 @@ const OrderManagementPage: React.FC = () => {
                   await refundOrderItems(currentOrder.id, itemsToRefund);
                   addNotification('success', 'Remboursement effectué avec succès'); 
                   setIsModalOpen(false);
+                  setConfirmDialog(prev => ({ ...prev, isOpen: false }));
                   fetchOrders();
               } catch (error: any) {
                   console.error("Refund failed:", error);
@@ -296,6 +297,108 @@ const OrderManagementPage: React.FC = () => {
       const availableRefund = item.quantity - (item.refundedQuantity || 0);
       return (refundSelection[item.id] || 0) === availableRefund;
   }) || false;
+
+  // Export inscriptions to CSV
+  const exportInscriptionsToCSV = () => {
+    if (filteredInscriptions.length === 0) {
+      addNotification('info', 'Aucune inscription à exporter');
+      return;
+    }
+
+    // Collect all unique form fields and options across all events
+    const allFormFieldIds = new Set<string>();
+    const formFieldLabels: { [key: string]: string } = {};
+
+    filteredInscriptions.forEach(inscription => {
+      if (inscription.formResponses) {
+        Object.keys(inscription.formResponses as any).forEach(fieldId => {
+          allFormFieldIds.add(fieldId);
+          // Try to get the label
+          const formField = inscription.event?.formFields?.find(
+            (field: any) => String(field.id) === String(fieldId)
+          );
+          if (formField) {
+            formFieldLabels[fieldId] = formField.label;
+          }
+        });
+      }
+    });
+
+    // Build CSV headers
+    const headers = [
+      'ID',
+      'Événement',
+      'Date événement',
+      'Participant',
+      'Email',
+      'Date inscription',
+      'Places',
+      'Options',
+      'Montant',
+      'Statut paiement',
+      'Méthode paiement',
+      ...Array.from(allFormFieldIds).map(id => formFieldLabels[id] || `Question #${id}`)
+    ];
+
+    // Build CSV rows
+    const rows = filteredInscriptions.map(inscription => {
+      const options = inscription.options && (inscription.options as any[]).length > 0
+        ? (inscription.options as any[]).map((opt: any) => opt.name || 'Option').join('; ')
+        : '';
+
+      const formResponsesRow = Array.from(allFormFieldIds).map(fieldId => {
+        if (!inscription.formResponses) return '';
+        const response = (inscription.formResponses as any)[fieldId];
+        if (response === undefined || response === null) return '';
+
+        // Handle object responses
+        if (response && typeof response === 'object' && !Array.isArray(response)) {
+          return response.value !== undefined ? String(response.value) : '';
+        }
+
+        // Handle boolean
+        if (typeof response === 'boolean') {
+          return response ? 'Oui' : 'Non';
+        }
+
+        return String(response);
+      });
+
+      return [
+        inscription.id,
+        inscription.event?.title || 'N/A',
+        inscription.event?.date ? new Date(inscription.event.date).toLocaleDateString('fr-FR') : 'N/A',
+        inscription.user ? `${inscription.user.firstName} ${inscription.user.lastName}` : 'N/A',
+        inscription.user?.email || 'N/A',
+        new Date(inscription.createdAt).toLocaleDateString('fr-FR'),
+        inscription.quantity,
+        options,
+        inscription.totalPrice === 0 ? 'Gratuit' : `${inscription.totalPrice} €`,
+        inscription.paymentStatus === 'PENDING' ? 'En attente' : inscription.paymentStatus === 'PAID' ? 'Payé' : 'Remboursé',
+        inscription.paymentMethod === 'HELLOASSO' ? 'HelloAsso' : inscription.paymentMethod === 'PAYPAL' ? 'PayPal' : inscription.paymentMethod === 'CASH_CB' ? 'Espèces/CB' : 'Gratuit',
+        ...formResponsesRow
+      ];
+    });
+
+    // Generate CSV content
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    // Download CSV
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `inscriptions_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    addNotification('success', 'Export CSV réussi !');
+  };
 
   if (loading) return <div className="text-center p-8">Chargement...</div>;
 
@@ -372,8 +475,9 @@ const OrderManagementPage: React.FC = () => {
 
       {/* Filters for inscriptions */}
       {viewMode === 'inscriptions' && (
-        <div className="bg-darker-bg border border-gray-700 rounded-lg p-4 mb-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <>
+          <div className="bg-darker-bg border border-gray-700 rounded-lg p-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Search Filter */}
             <div>
               <label className="text-gray-400 font-bold block mb-2 text-sm">Rechercher (ID, Nom, Email, Événement):</label>
@@ -407,75 +511,91 @@ const OrderManagementPage: React.FC = () => {
             </div>
           </div>
         </div>
+        </>
       )}
 
       {viewMode === 'orders' ? (
         <div className="bg-darker-bg border border-gray-700 rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-700">
-          <thead className="bg-dark-bg">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">ID</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Client</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Date</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Montant</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Paiement</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Statut</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-700">
-            {filteredOrders.length === 0 ? (
+          <table className="min-w-full divide-y divide-gray-700">
+            <thead className="bg-dark-bg">
               <tr>
-                <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
-                  Aucune commande trouvée
-                </td>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">ID</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Client</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Date</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Paiement</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Statut</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Méthode</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Montant</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
               </tr>
-            ) : (
-              filteredOrders.map((order) => (
-                <tr key={order.id} className="hover:bg-gray-800/50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                    #{order.id.toString().padStart(6, '0')}
+            </thead>
+            <tbody className="divide-y divide-gray-700">
+              {filteredOrders.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                    Aucune commande trouvée
                   </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                   <div className="text-sm font-medium text-white">
-                       {order.user ? `${order.user.firstName} ${order.user.lastName}` : 'Utilisateur inconnu'}
-                   </div>
-                   <div className="text-xs text-gray-500">{order.user?.email}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                  {new Date(order.createdAt).toLocaleDateString()}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-white">
-                  {order.totalPrice.toFixed(2)} €
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${ 
+                </tr>
+              ) : (
+                filteredOrders.map((order) => (
+                  <tr key={order.id} className="hover:bg-darker-bg/50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-white">
+                      #{order.id.toString().padStart(6, '0')}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-white">
+                        {order.user ? `${order.user.firstName} ${order.user.lastName}` : 'Utilisateur inconnu'}
+                      </div>
+                      <div className="text-xs text-gray-500">{order.user?.email}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      {new Date(order.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                         order.paymentStatus === 'PAID' ? 'bg-green-900/50 text-green-200' :
                         order.paymentStatus === 'REFUNDED' ? 'bg-purple-900/50 text-purple-200' :
                         'bg-red-900/50 text-red-200'
-                    }`}>
+                      }`}>
                         {order.paymentStatus === 'PENDING' ? 'Non Payé' :
                          order.paymentStatus === 'PAID' ? 'Payé' : 'Remboursé'}
-                    </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${ 
-                    order.orderStatus === 'COLLECTED' ? 'bg-green-900/50 text-green-200' : 
-                    order.orderStatus === 'CANCELLED' ? 'bg-red-900/50 text-red-200' : 
-                    'bg-yellow-900/50 text-yellow-200'
-                  }`}>
-                    {order.orderStatus === 'PENDING' ? 'En attente' :
-                     order.orderStatus === 'PAID' ? 'Payée' :
-                     order.orderStatus === 'COLLECTED' ? 'Récupérée' : 'Annulée'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button onClick={() => handleOpenEditOrder(order)} className="text-accent-mint hover:text-white"><Edit2 size={18} /></button>
-                </td>
-              </tr>
-            )))}
-          </tbody>
-        </table>
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        order.orderStatus === 'COLLECTED' ? 'bg-green-900/50 text-green-200' :
+                        order.orderStatus === 'CANCELLED' ? 'bg-red-900/50 text-red-200' :
+                        'bg-yellow-900/50 text-yellow-200'
+                      }`}>
+                        {order.orderStatus === 'PENDING' ? 'En attente' :
+                         order.orderStatus === 'PAID' ? 'Payée' :
+                         order.orderStatus === 'COLLECTED' ? 'Récupérée' : 'Annulée'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      {order.paymentMethod === 'HELLOASSO' ? 'HelloAsso' :
+                       order.paymentMethod === 'PAYPAL' ? 'PayPal' :
+                       order.paymentMethod === 'CASH_CB' ? 'Espèces/CB' :
+                       order.paymentMethod === 'FREE' ? 'Gratuit' :
+                       order.paymentMethod === 'BALANCE' ? 'Solde' : order.paymentMethod}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-accent-mint">
+                      {order.totalPrice.toFixed(2)} €
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button
+                        onClick={() => handleOpenEditOrder(order)}
+                        className="text-accent-mint hover:text-white transition-colors"
+                        title="Voir les détails"
+                      >
+                        <Eye size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       ) : (
         <div className="bg-darker-bg border border-gray-700 rounded-lg overflow-hidden">
@@ -600,6 +720,55 @@ const OrderManagementPage: React.FC = () => {
                 </div>
             </div>
 
+            {/* Order Details Section */}
+            <div className="border-t border-gray-700 pt-4 mt-4">
+                <h3 className="text-lg font-bold mb-3 text-gray-300">Détails de la commande</h3>
+                <div className="bg-darker-bg p-4 rounded border border-gray-700">
+                    <ul className="space-y-3">
+                        {currentOrder.items.map((item) => (
+                            <li key={item.id} className="flex justify-between items-start pb-3 border-b border-gray-700 last:border-0 last:pb-0">
+                                <div className="flex-1">
+                                    <div className="text-white font-medium">
+                                        {item.product.name}
+                                    </div>
+                                    {item.variantId && item.product.variants && (
+                                        <div className="text-accent-mint text-sm mt-1">
+                                            {(item.product.variants as any[]).find((v: any) => v.id === item.variantId)?.name}
+                                        </div>
+                                    )}
+                                    <div className="text-gray-400 text-sm mt-1">
+                                        Quantité: {item.quantity}
+                                        {item.refundedQuantity > 0 && (
+                                            <span className="text-red-400 ml-2">
+                                                (dont {item.refundedQuantity} remboursé{item.refundedQuantity > 1 ? 's' : ''})
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="text-gray-400 text-sm">
+                                        Prix unitaire: {item.price.toFixed(2)} €
+                                    </div>
+                                </div>
+                                <div className="text-right ml-4">
+                                    <div className="text-white font-bold">
+                                        {(item.price * item.quantity).toFixed(2)} €
+                                    </div>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                    <div className="mt-4 pt-4 border-t border-gray-700 flex justify-between items-center">
+                        <span className="text-gray-400 font-medium">Total de la commande:</span>
+                        <span className="text-accent-mint font-bold text-xl">{currentOrder.totalPrice.toFixed(2)} €</span>
+                    </div>
+                    {currentOrder.refundedAmount > 0 && (
+                        <div className="mt-2 flex justify-between items-center text-sm">
+                            <span className="text-gray-400">Montant remboursé:</span>
+                            <span className="text-red-400 font-bold">-{currentOrder.refundedAmount.toFixed(2)} €</span>
+                        </div>
+                    )}
+                </div>
+            </div>
+
             {/* Partial Refund Section */}
             {currentOrder.paymentStatus === 'PAID' && (
                 <div className="border-t border-gray-700 pt-4 mt-4">
@@ -625,22 +794,33 @@ const OrderManagementPage: React.FC = () => {
                                     const availableRefund = item.quantity - (item.refundedQuantity || 0);
                                     if (availableRefund <= 0) return null;
 
+                                    // Find variant info if variantId exists
+                                    const variantInfo = item.variantId && item.product.variants ?
+                                        (item.product.variants as any[]).find((v: any) => v.id === item.variantId) : null;
+
                                     return (
                                         <tr key={item.id} className="border-b border-gray-700 last:border-0">
-                                            <td className="py-2">{item.product.name}</td>
+                                            <td className="py-2">
+                                                {item.product.name}
+                                                {variantInfo && (
+                                                    <span className="ml-2 text-xs text-accent-mint">
+                                                        ({variantInfo.name})
+                                                    </span>
+                                                )}
+                                            </td>
                                             <td className="py-2">{item.price} €</td>
                                             <td className="py-2 text-center">{item.quantity}</td>
                                             <td className="py-2 text-center">{item.refundedQuantity || 0}</td>
                                             <td className="py-2 text-right flex items-center justify-end gap-2">
-                                                <input 
-                                                    type="number" 
-                                                    min="0" 
+                                                <input
+                                                    type="number"
+                                                    min="0"
                                                     max={availableRefund}
                                                     value={refundSelection[item.id] || 0}
                                                     onChange={(e) => updateRefundQuantity(item.id, parseInt(e.target.value) || 0, availableRefund)}
                                                     className="w-16 bg-dark-bg border border-gray-600 rounded px-2 py-1 text-right text-white"
                                                 />
-                                                <button 
+                                                <button
                                                     onClick={() => toggleRefundItem(item.id, availableRefund)}
                                                     className={`p-1 rounded ${refundSelection[item.id] > 0 ? 'text-accent-mint' : 'text-gray-500'}`}
                                                 >
@@ -687,6 +867,89 @@ const OrderManagementPage: React.FC = () => {
                     ))}
                 </div>
             </div>
+
+            {/* Display selected options and form responses */}
+            {((currentInscription.options && (currentInscription.options as any[]).length > 0) ||
+              currentInscription.formResponses) && (
+              <div className="border-t border-gray-700 pt-4 mt-4">
+                <h3 className="text-lg font-bold mb-3 text-gray-300">Détails de l'inscription</h3>
+
+                {/* Display selected options */}
+                {currentInscription.options && (currentInscription.options as any[]).length > 0 && (
+                  <div className="mb-4">
+                    <h4 className="text-sm font-bold text-gray-400 mb-2">Options sélectionnées:</h4>
+                    <div className="space-y-2">
+                      {(currentInscription.options as any[]).map((option: any, index: number) => {
+                        // Find the option details from the event
+                        const eventOption = currentInscription.event?.options?.find(
+                          (opt: any) => opt.id === option.id
+                        );
+
+                        return (
+                          <div
+                            key={index}
+                            className="bg-darker-bg border border-gray-700 rounded p-3"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-white font-medium">
+                                {eventOption?.name || option.name || 'Option'}
+                              </span>
+                              <span className="text-accent-mint font-bold">
+                                {option.price > 0 ? `+${option.price} €` : 'Gratuit'}
+                              </span>
+                            </div>
+                            {eventOption?.description && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                {eventOption.description}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Display form responses */}
+                {currentInscription.formResponses && Object.keys(currentInscription.formResponses as any).length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-400 mb-2">Réponses au formulaire:</h4>
+                    <div className="space-y-2">
+                      {Object.entries(currentInscription.formResponses as any).map(([fieldId, response]: [string, any]) => {
+                        // Find the field details from the event
+                        // Try both string comparison and number comparison
+                        const formField = currentInscription.event?.formFields?.find(
+                          (field: any) => String(field.id) === String(fieldId)
+                        );
+
+                        // Extract value from response (handle both object and primitive values)
+                        let displayValue = response;
+                        if (response && typeof response === 'object' && !Array.isArray(response)) {
+                          displayValue = response.value !== undefined ? response.value : JSON.stringify(response);
+                        }
+
+                        return (
+                          <div
+                            key={fieldId}
+                            className="bg-darker-bg border border-gray-700 rounded p-3"
+                          >
+                            <div className="text-xs text-gray-400 mb-1">
+                              {formField?.label || `Question #${fieldId}`}
+                              {formField?.required && <span className="text-red-400 ml-1">*</span>}
+                            </div>
+                            <div className="text-white">
+                              {typeof displayValue === 'boolean'
+                                ? (displayValue ? 'Oui' : 'Non')
+                                : (displayValue || 'N/A')}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Refund Button - Only for PAID inscriptions with PAYPAL or HELLOASSO */}
             {currentInscription.paymentStatus === 'PAID' &&

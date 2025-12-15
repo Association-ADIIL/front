@@ -7,11 +7,17 @@ export interface InscriptionOption {
   quantity: number;
 }
 
+export interface FormFieldResponse {
+  fieldId: number;
+  value: string;
+}
+
 export interface CreateInscriptionData {
   eventId: number;
   quantity: number;
   paymentMethod: PaymentMethod;
   options?: InscriptionOption[];
+  formResponses?: FormFieldResponse[];
   returnUrl?: string;
   cancelUrl?: string;
 }

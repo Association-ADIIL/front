@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getAllEvents, type Event } from '../api/events';
 import { Calendar, MapPin, Users } from 'lucide-react';
+import BalanceDisplay from '../components/BalanceDisplay';
 
 const EventsPage: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
@@ -28,8 +29,13 @@ const EventsPage: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold text-accent-mint mb-6 font-koulen">Nos Evenements</h1>
-      <p className="text-lg mb-8 text-gray-300">Découvrez les prochains événements organisés par l'ADIIL.</p>
+      <div className="mb-8 relative">
+        <div className="absolute top-0 right-0 z-10">
+          <BalanceDisplay variant="compact" showRechargeButton={true} />
+        </div>
+        <h1 className="text-4xl font-bold text-accent-mint mb-6 font-koulen">Nos Evenements</h1>
+        <p className="text-lg text-gray-300">Decouvrez les prochains evenements organises par l'ADIIL.</p>
+      </div>
 
       {loading ? (
         <div className="flex justify-center py-20">
@@ -42,7 +48,7 @@ const EventsPage: React.FC = () => {
       ) : events.length === 0 ? (
         <div className="text-center py-16 bg-darker-bg rounded-2xl border border-gray-800">
           <Calendar size={48} className="mx-auto text-gray-600 mb-4" />
-          <p className="text-gray-400 text-lg">Aucun événement à venir pour le moment.</p>
+          <p className="text-gray-400 text-lg">Aucun evenement a venir pour le moment.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -61,7 +67,7 @@ const EventsPage: React.FC = () => {
                    />
                    {isPassed && (
                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                           <span className="text-white font-bold text-xl uppercase border-2 border-white px-4 py-2 rotate-12">Terminé</span>
+                           <span className="text-white font-bold text-xl uppercase border-2 border-white px-4 py-2 rotate-12">Termine</span>
                        </div>
                    )}
                 </div>
@@ -92,7 +98,7 @@ const EventsPage: React.FC = () => {
                   </div>
                   
                   <Link to={`/events/${event.id}`} className={`block w-full text-center font-bold py-2 px-4 rounded transition-colors ${isPassed ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'bg-accent-mint text-darker-bg hover:bg-white'}`}>
-                     {isPassed ? 'Événement passé' : 'Voir Détails'}
+                     {isPassed ? 'Evenement passe' : 'Voir Details'}
                   </Link>
                 </div>
               </div>

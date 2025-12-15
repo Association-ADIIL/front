@@ -1,5 +1,13 @@
 import { fetchJson } from './client';
 
+export interface EventFormField {
+  id: number;
+  label: string;
+  type: 'TEXT' | 'TEXTAREA' | 'SELECT' | 'CHECKBOX';
+  required: boolean;
+  options?: string[]; // For SELECT type
+}
+
 export interface Event {
   id: number;
   title: string;
@@ -15,11 +23,13 @@ export interface Event {
   status: 'OPEN' | 'FULL' | 'CLOSED' | 'FINISHED';
   visibility: 'PUBLIC' | 'PRIVATE' | 'DRAFT';
   options?: { id: number; name: string }[];
+  formFields?: EventFormField[];
 }
 
-export type EventFormData = Omit<Event, 'id' | 'registeredPeople' | 'status' | 'visibility'> & {
+export type EventFormData = Omit<Event, 'id' | 'registeredPeople'> & {
   status?: 'OPEN' | 'FULL' | 'CLOSED' | 'FINISHED';
   visibility?: 'PUBLIC' | 'PRIVATE' | 'DRAFT';
+  formFields?: EventFormField[];
 };
 
 export const getAllEvents = async (): Promise<Event[]> => {

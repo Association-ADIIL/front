@@ -3,12 +3,14 @@ import { getAllProducts, type Product } from '../api/products';
 import { ShoppingBag, MinusCircle, PlusCircle } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useNotification } from '../context/NotificationContext';
+import BalanceDisplay from '../components/BalanceDisplay';
 
 const ShopPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [quantities, setQuantities] = useState<{ [key: string]: number }>({});
+  const [selectedVariants, setSelectedVariants] = useState<{ [key: string]: number | undefined }>({});
   const { addToCart } = useCart();
   const { addNotification } = useNotification();
 
@@ -45,16 +47,32 @@ const ShopPage: React.FC = () => {
 
   const handleAddToCart = (product: Product) => {
     const quantity = quantities[product.id] || 1;
-    addToCart(product, quantity);
-    addNotification('success', `${quantity}x ${product.name} ajouté${quantity > 1 ? 's' : ''} au panier !`);
+    const variantId = selectedVariants[product.id];
+
+    // Check if product has variants and none is selected
+    if (product.variants && product.variants.length > 0 && !variantId) {
+      addNotification('error', 'Veuillez sélectionner un format');
+      return;
+    }
+
+    const variant = product.variants?.find(v => v.id === variantId);
+    const variantText = variant ? ` (${variant.name})` : '';
+
+    addToCart(product, quantity, variantId);
+    addNotification('success', `${quantity}x ${product.name}${variantText} ajouté${quantity > 1 ? 's' : ''} au panier !`);
     // Réinitialiser la quantité à 1 après ajout
     setQuantities(prev => ({ ...prev, [product.id]: 1 }));
   };
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold text-accent-mint mb-6 font-koulen">Notre Boutique</h1>
-      <p className="text-lg mb-8 text-gray-300">Découvrez nos produits et soutenez l'ADIIL !</p>
+      <div className="mb-6 relative">
+        <div className="absolute top-0 right-0 z-10">
+          <BalanceDisplay variant="compact" showRechargeButton={true} />
+        </div>
+        <h1 className="text-4xl font-bold text-accent-mint font-koulen">Notre Boutique</h1>
+        <p className="text-lg text-gray-300">Decouvrez nos produits et soutenez l'ADIIL !</p>
+      </div>
 
       {loading ? (
         <div className="flex justify-center py-20">
@@ -95,8 +113,39 @@ const ShopPage: React.FC = () => {
                   <p className="text-gray-400 text-sm mb-3 line-clamp-2 flex-grow">{product.description}</p>
                 )}
 
+                {/* Sélection de variante */}
+                {product.variants && product.variants.length > 0 && (
+                  <div className="mb-3">
+                    <label className="block text-xs text-gray-400 mb-2">Format</label>
+                    <select
+                      value={selectedVariants[product.id] || ''}
+                      onChange={(e) => setSelectedVariants(prev => ({
+                        ...prev,
+                        [product.id]: e.target.value ? parseInt(e.target.value) : undefined
+                      }))}
+                      className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white text-sm focus:border-accent-mint outline-none"
+                    >
+                      <option value="">Choisir un format</option>
+                      {product.variants.map((variant) => {
+                        const variantPrice = product.price + variant.priceModifier;
+                        return (
+                          <option key={variant.id} value={variant.id}>
+                            {variant.name} {variant.priceModifier !== 0 && `(${variantPrice.toFixed(2)} €)`}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                )}
+
                 {/* Prix */}
-                <p className="text-accent-mint text-2xl font-bold mb-4">{product.price} €</p>
+                <p className="text-accent-mint text-2xl font-bold mb-4">
+                  {(() => {
+                    const variant = product.variants?.find(v => v.id === selectedVariants[product.id]);
+                    const price = variant ? product.price + variant.priceModifier : product.price;
+                    return `${price.toFixed(2)} €`;
+                  })()}
+                </p>
 
                 {/* Sélecteur de quantité */}
                 <div className="flex items-center justify-center border border-gray-600 rounded-md mb-3">
@@ -118,7 +167,7 @@ const ShopPage: React.FC = () => {
                   </button>
                 </div>
 
-                {/* Bouton Ajouter au panier */}
+                {/* Bouton ajouter au panier */}
                 <button
                   onClick={() => handleAddToCart(product)}
                   className="w-full bg-accent-mint text-darker-bg font-bold py-3 px-4 rounded hover:bg-white transition-colors flex items-center justify-center gap-2"

@@ -4,6 +4,7 @@ import { getMyOrders, type Order } from '../api/orders';
 import { getMyInscriptions, type Inscription } from '../api/inscriptions';
 import { Link, Navigate } from 'react-router-dom';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import BalanceDisplay from '../components/BalanceDisplay';
 
 const MyAccountPage: React.FC = () => {
   const { user, token, loading: authLoading, logout } = useAuth();
@@ -55,9 +56,9 @@ const MyAccountPage: React.FC = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
-          <h1 className="text-4xl font-bold text-accent-mint">Mon Compte</h1>
+          <h1 className="text-4xl font-bold text-accent-mint font-koulen">Mon Compte</h1>
           <button onClick={logout} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition-colors">
-              Déconnexion
+              Deconnexion
           </button>
       </div>
 
@@ -79,7 +80,7 @@ const MyAccountPage: React.FC = () => {
           <div>
             <p className="text-gray-400">Type de compte:</p>
             <p className="text-xl">
-                {user.type === 'STUDENT' ? `Étudiant` :
+                {user.type === 'STUDENT' ? `Etudiant` :
                  user.type === 'PROFESSOR' ? 'Professeur' :
                  user.type === 'EXTERNAL' ? 'Externe' :
                  user.type === 'ADMIN_BDE' ? 'Admin BDE' :
@@ -91,6 +92,11 @@ const MyAccountPage: React.FC = () => {
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Balance Display */}
+      <div className="mb-8">
+        <BalanceDisplay variant="card" showRechargeButton={true} />
       </div>
 
       <div className="card p-8 mb-8">
@@ -165,7 +171,7 @@ const MyAccountPage: React.FC = () => {
             onClick={() => setIsInscriptionsExpanded(!isInscriptionsExpanded)}
             className="w-full flex justify-between items-center text-left mb-4 focus:outline-none group"
           >
-            <h2 className="text-2xl font-bold group-hover:text-accent-mint transition-colors">Mes Inscriptions aux Événements</h2>
+            <h2 className="text-2xl font-bold group-hover:text-accent-mint transition-colors">Mes Inscriptions aux Evenements</h2>
             {isInscriptionsExpanded ? <ChevronDown size={24} /> : <ChevronRight size={24} />}
           </button>
 
