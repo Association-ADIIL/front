@@ -1,4 +1,4 @@
-export const API_BASE_URL = 'https://localhost:5173/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 type UnauthorizedCallback = () => void;
 type ErrorCallback = (status: number, message: string) => void;
