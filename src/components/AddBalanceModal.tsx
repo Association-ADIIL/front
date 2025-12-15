@@ -6,7 +6,7 @@ import Modal from './Modal';
 import { Loader, Plus } from 'lucide-react';
 
 interface User {
-  id: number;
+  id: string;
   firstName: string;
   lastName: string;
   email: string;

@@ -29,10 +29,6 @@ const PaymentCallbackPage: React.FC = () => {
 
       console.log('Payment callback params:', { paypalToken, checkoutIntentId, code });
 
-      // Determine the type of payment
-      const orderId = sessionStorage.getItem('paypal_order_id') || sessionStorage.getItem('helloasso_order_id');
-      const inscriptionId = sessionStorage.getItem('paypal_inscription_id') || sessionStorage.getItem('helloasso_inscription_id');
-      const rechargeId = sessionStorage.getItem('paypal_recharge_id') || sessionStorage.getItem('helloasso_recharge_id');
 
       // Handle PayPal payment
       if (paypalToken) {

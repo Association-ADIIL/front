@@ -25,12 +25,18 @@ export interface Order {
     quantity: number;
     price: number;
     refundedQuantity: number;
+    variantId?: number;
     product: {
       id: number;
       name: string;
       description: string;
       price: number;
       imageUrl?: string;
+      variants?: Array<{
+        id: number;
+        name: string;
+        priceModifier: number;
+      }>;
     };
   }>;
   user?: {

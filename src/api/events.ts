@@ -22,8 +22,10 @@ export interface Event {
   coverImage?: string;
   status: 'OPEN' | 'FULL' | 'CLOSED' | 'FINISHED';
   visibility: 'PUBLIC' | 'PRIVATE' | 'DRAFT';
-  options?: { id: number; name: string }[];
+  options?: { id: number; name: string; price?: number }[];
   formFields?: EventFormField[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export type EventFormData = Omit<Event, 'id' | 'registeredPeople'> & {

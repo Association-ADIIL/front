@@ -91,7 +91,10 @@ const UserManagementPage: React.FC = () => {
         }
         await updateUser(currentUser.id, updateData);
       } else {
-        await createUser(formData);
+        await createUser({
+          ...formData,
+          type: formData.type as 'STUDENT' | 'PROFESSOR' | 'EXTERNAL' | 'ADMIN_BDE' | 'ADMIN_PROF',
+        });
       }
       setIsModalOpen(false);
       fetchUsers();

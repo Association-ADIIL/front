@@ -334,31 +334,6 @@ const FileManagementPage: React.FC = () => {
     setTimeout(() => setCopiedUrl(null), 2000);
   };
 
-  const getFileIcon = (fileName: string) => {
-    const ext = fileName.split('.').pop()?.toLowerCase();
-    const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
-
-    if (imageExts.includes(ext || '')) {
-      return 'Image';
-    }
-
-    switch (ext) {
-      case 'pdf':
-        return 'PDF';
-      case 'doc':
-      case 'docx':
-        return 'Word';
-      case 'xls':
-      case 'xlsx':
-        return 'Excel';
-      case 'zip':
-      case 'rar':
-        return 'Archive';
-      default:
-        return 'Fichier';
-    }
-  };
-
   const childFolders = getChildFolders();
   const currentFiles = getCurrentFolderFiles();
   const breadcrumbs = getBreadcrumbs();
@@ -386,7 +361,7 @@ const FileManagementPage: React.FC = () => {
           <Home size={16} />
           Racine
         </button>
-        {breadcrumbs.slice(1).map((crumb, index) => (
+        {breadcrumbs.slice(1).map((crumb) => (
           <React.Fragment key={crumb.path}>
             <ChevronRight size={16} className="text-gray-600" />
             <button
@@ -480,11 +455,11 @@ const FileManagementPage: React.FC = () => {
         <div>
           <h2 className="text-xl font-bold mb-4">Fichiers ({currentFiles.length})</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {currentFiles.map((file, index) => {
+            {currentFiles.map((file) => {
               const isImage = file.url.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i);
 
               return (
-                <div key={index} className="card p-4 flex flex-col">
+                <div key={file.url} className="card p-4 flex flex-col">
                   {/* Preview */}
                   {isImage ? (
                     <div className="w-full h-32 bg-dark-bg rounded mb-3 flex items-center justify-center overflow-hidden">
@@ -721,7 +696,7 @@ const FileManagementPage: React.FC = () => {
         message={confirmDialog.message}
         confirmText="Supprimer"
         cancelText="Annuler"
-        confirmClassName="bg-red-600 hover:bg-red-700"
+        variant="danger"
       />
     </div>
   );

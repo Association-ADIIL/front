@@ -7,7 +7,7 @@ import { getBalanceStats, type BalanceStats } from '../api/balance';
 import { useNavigate } from 'react-router-dom';
 import {
   Users, Calendar, ShoppingBag, TrendingUp, Plus,
-  ArrowRight, Clock, CheckCircle, AlertCircle, CalendarCheck, CreditCard, Wallet
+  ArrowRight, Clock, CheckCircle, CalendarCheck, CreditCard, Wallet
 } from 'lucide-react';
 import AddBalanceModal from '../components/AddBalanceModal';
 
@@ -25,8 +25,8 @@ const AdminDashboardPage: React.FC = () => {
     totalInscriptions: 0,
   });
   const [balanceStats, setBalanceStats] = useState<BalanceStats | null>(null);
-  const [recentEvents, setRecentEvents] = useState<Event[]>([]);
-  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [, setRecentEvents] = useState<Event[]>([]);
+  const [, setRecentOrders] = useState<Order[]>([]);
   const [recentInscriptions, setRecentInscriptions] = useState<Inscription[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [ordersToCollect, setOrdersToCollect] = useState<Order[]>([]);
@@ -90,7 +90,7 @@ const AdminDashboardPage: React.FC = () => {
 
         // Recent items
         const recentEventsList = events
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime())
           .slice(0, 3);
 
         const recentOrdersList = orders

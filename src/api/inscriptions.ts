@@ -54,12 +54,37 @@ export interface Inscription {
   paymentMethod: PaymentMethod;
   paymentStatus: 'PENDING' | 'PAID' | 'REFUNDED';
   createdAt: string;
+  options?: Array<{
+    id: number;
+    inscriptionId: number;
+    eventOptionId: number;
+    quantity: number;
+    eventOption?: {
+      id: number;
+      name: string;
+      price?: number;
+    };
+  }>;
+  formResponses?: Array<{
+    id: number;
+    inscriptionId: number;
+    fieldId: number;
+    value: string;
+  }>;
   event?: {
     id: number;
     title: string;
     date: string;
     location: string;
     price: number;
+    options?: Array<{ id: number; name: string; price?: number }>;
+    formFields?: Array<{
+      id: number;
+      label: string;
+      type: string;
+      required: boolean;
+      options?: string[];
+    }>;
   };
   user?: {
     id: number;

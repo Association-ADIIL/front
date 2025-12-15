@@ -38,8 +38,8 @@ const AdminSalesStatisticsPage: React.FC = () => {
     averageOrderValue: 0,
     averageInscriptionValue: 0,
   });
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [inscriptions, setInscriptions] = useState<Inscription[]>([]);
+  const [, setOrders] = useState<Order[]>([]);
+  const [, setInscriptions] = useState<Inscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
   const [revenueSourceData, setRevenueSourceData] = useState<any[]>([]);
@@ -294,7 +294,7 @@ const AdminSalesStatisticsPage: React.FC = () => {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, value, percent }) => `${name}: ${value}EUR (${(percent * 100).toFixed(0)}%)`}
+                  label={({ name, value, percent }) => `${name}: ${value}EUR (${((percent ?? 0) * 100).toFixed(0)}%)`}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"

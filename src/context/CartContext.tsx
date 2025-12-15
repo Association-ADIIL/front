@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { type Product, type ProductVariant } from '../api/products';
+import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { type Product } from '../api/products';
 
 interface CartItem {
   product: Product;

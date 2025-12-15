@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { getAllOrders, updateOrderStatus, updatePaymentStatus, refundOrderItems, type Order } from '../api/orders';
 import { getAllInscriptions, updateInscriptionPaymentStatus, refundInscription, type Inscription } from '../api/inscriptions';
 import { getAllEvents, type Event } from '../api/events';
-import { Edit2, ShoppingBag, Calendar, CheckSquare, Square, Download, Eye } from 'lucide-react';
+import { Edit2, ShoppingBag, Calendar, CheckSquare, Square, Eye } from 'lucide-react';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import MultiSelect from '../components/MultiSelect';
@@ -47,7 +47,7 @@ const OrderManagementPage: React.FC = () => {
   const [paymentFilter, setPaymentFilter] = useState<string[]>([]);
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string[]>([]);
   const [inscriptionSearchQuery, setInscriptionSearchQuery] = useState('');
-  const [events, setEvents] = useState<Event[]>([]);
+  const [, setEvents] = useState<Event[]>([]);
   
   // Order specific filters
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
@@ -297,108 +297,6 @@ const OrderManagementPage: React.FC = () => {
       const availableRefund = item.quantity - (item.refundedQuantity || 0);
       return (refundSelection[item.id] || 0) === availableRefund;
   }) || false;
-
-  // Export inscriptions to CSV
-  const exportInscriptionsToCSV = () => {
-    if (filteredInscriptions.length === 0) {
-      addNotification('info', 'Aucune inscription à exporter');
-      return;
-    }
-
-    // Collect all unique form fields and options across all events
-    const allFormFieldIds = new Set<string>();
-    const formFieldLabels: { [key: string]: string } = {};
-
-    filteredInscriptions.forEach(inscription => {
-      if (inscription.formResponses) {
-        Object.keys(inscription.formResponses as any).forEach(fieldId => {
-          allFormFieldIds.add(fieldId);
-          // Try to get the label
-          const formField = inscription.event?.formFields?.find(
-            (field: any) => String(field.id) === String(fieldId)
-          );
-          if (formField) {
-            formFieldLabels[fieldId] = formField.label;
-          }
-        });
-      }
-    });
-
-    // Build CSV headers
-    const headers = [
-      'ID',
-      'Événement',
-      'Date événement',
-      'Participant',
-      'Email',
-      'Date inscription',
-      'Places',
-      'Options',
-      'Montant',
-      'Statut paiement',
-      'Méthode paiement',
-      ...Array.from(allFormFieldIds).map(id => formFieldLabels[id] || `Question #${id}`)
-    ];
-
-    // Build CSV rows
-    const rows = filteredInscriptions.map(inscription => {
-      const options = inscription.options && (inscription.options as any[]).length > 0
-        ? (inscription.options as any[]).map((opt: any) => opt.name || 'Option').join('; ')
-        : '';
-
-      const formResponsesRow = Array.from(allFormFieldIds).map(fieldId => {
-        if (!inscription.formResponses) return '';
-        const response = (inscription.formResponses as any)[fieldId];
-        if (response === undefined || response === null) return '';
-
-        // Handle object responses
-        if (response && typeof response === 'object' && !Array.isArray(response)) {
-          return response.value !== undefined ? String(response.value) : '';
-        }
-
-        // Handle boolean
-        if (typeof response === 'boolean') {
-          return response ? 'Oui' : 'Non';
-        }
-
-        return String(response);
-      });
-
-      return [
-        inscription.id,
-        inscription.event?.title || 'N/A',
-        inscription.event?.date ? new Date(inscription.event.date).toLocaleDateString('fr-FR') : 'N/A',
-        inscription.user ? `${inscription.user.firstName} ${inscription.user.lastName}` : 'N/A',
-        inscription.user?.email || 'N/A',
-        new Date(inscription.createdAt).toLocaleDateString('fr-FR'),
-        inscription.quantity,
-        options,
-        inscription.totalPrice === 0 ? 'Gratuit' : `${inscription.totalPrice} €`,
-        inscription.paymentStatus === 'PENDING' ? 'En attente' : inscription.paymentStatus === 'PAID' ? 'Payé' : 'Remboursé',
-        inscription.paymentMethod === 'HELLOASSO' ? 'HelloAsso' : inscription.paymentMethod === 'PAYPAL' ? 'PayPal' : inscription.paymentMethod === 'CASH_CB' ? 'Espèces/CB' : 'Gratuit',
-        ...formResponsesRow
-      ];
-    });
-
-    // Generate CSV content
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-    ].join('\n');
-
-    // Download CSV
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `inscriptions_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    addNotification('success', 'Export CSV réussi !');
-  };
 
   if (loading) return <div className="text-center p-8">Chargement...</div>;
 
@@ -898,11 +796,6 @@ const OrderManagementPage: React.FC = () => {
                                 {option.price > 0 ? `+${option.price} €` : 'Gratuit'}
                               </span>
                             </div>
-                            {eventOption?.description && (
-                              <p className="text-xs text-gray-500 mt-1">
-                                {eventOption.description}
-                              </p>
-                            )}
                           </div>
                         );
                       })}
@@ -985,7 +878,7 @@ const OrderManagementPage: React.FC = () => {
         message={confirmDialog.message}
         confirmText="Rembourser"
         cancelText="Annuler"
-        confirmClassName="bg-red-600 hover:bg-red-700"
+        variant="danger"
       />
     </div>
   );

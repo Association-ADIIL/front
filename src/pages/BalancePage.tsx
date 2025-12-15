@@ -6,7 +6,7 @@ import { CreditCard, Plus, History, Wallet, ChevronRight, Euro } from 'lucide-re
 import { useNavigate } from 'react-router-dom';
 
 const BalancePage: React.FC = () => {
-  const { user, token } = useAuth();
+  const { token } = useAuth();
   const { addNotification } = useNotification();
   const navigate = useNavigate();
   const [balance, setBalance] = useState<number>(0);

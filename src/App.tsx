@@ -39,7 +39,7 @@ const ApiInterceptor = () => {
       addNotification('error', 'Session expirée. Veuillez vous reconnecter.');
     });
 
-    setErrorCallback((status, message) => {
+    setErrorCallback((_status, message) => {
       addNotification('error', message);
     });
   }, [logout, addNotification]);
