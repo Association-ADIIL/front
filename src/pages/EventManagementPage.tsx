@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { getAllEvents, deleteEvent, createEvent, updateEvent, type Event, type EventFormData, type EventFormField } from '../api/events';
-import { Edit2, Trash2, Plus, Calendar, MapPin, Download, X } from 'lucide-react';
+import { Edit2, Trash2, Plus, Calendar, MapPin, Download, X, Search } from 'lucide-react';
 import Modal from '../components/Modal';
 import { exportEventInscriptionsCsv } from '../api/inscriptions';
 import ImageUpload from '../components/ImageUpload';
@@ -13,6 +13,7 @@ const EventManagementPage: React.FC = () => {
   const { addNotification } = useNotification();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentEvent, setCurrentEvent] = useState<Event | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -282,17 +283,42 @@ const EventManagementPage: React.FC = () => {
 
   if (loading) return <div className="text-center p-8">Chargement...</div>;
 
+  const filteredEvents = events.filter(event =>
+    event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    event.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    event.location?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <h1 className="text-4xl font-bold text-accent-mint font-koulen">GESTION DES EVENEMENTS</h1>
         <button onClick={handleOpenCreate} className="bg-accent-mint text-darker-bg font-bold py-2 px-4 rounded hover:bg-white transition-colors flex items-center">
           <Plus size={20} className="mr-2" /> Creer un evenement
         </button>
       </div>
 
+      {/* Search bar */}
+      <div className="mb-6">
+        <div className="relative max-w-md">
+          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+          <input
+            type="text"
+            placeholder="Rechercher un evenement..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-dark-bg border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-accent-mint focus:outline-none transition-colors"
+          />
+        </div>
+        {searchQuery && (
+          <p className="text-sm text-gray-400 mt-2">
+            {filteredEvents.length} evenement(s) trouve(s)
+          </p>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {events.map((event) => {
+        {filteredEvents.map((event) => {
           const isUnlimited = event.totalPlaces === 0;
           const isFull = !isUnlimited && event.registeredPeople >= event.totalPlaces;
           return (

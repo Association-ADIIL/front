@@ -49,7 +49,7 @@ export interface Order {
 
 export interface CreateOrderPayload {
   items: OrderItem[];
-  paymentMethod: 'HELLOASSO' | 'PAYPAL' | 'CASH_CB';
+  paymentMethod: 'HELLOASSO' | 'PAYPAL' | 'CASH_CB' | 'FREE';
   returnUrl?: string;
   cancelUrl?: string;
 }

@@ -1,4 +1,5 @@
 import { fetchJson } from './client';
+import type { Category, Subcategory } from './categories';
 
 export interface ProductVariant {
   id: number;
@@ -15,14 +16,29 @@ export interface Product {
   imageUrl?: string;
   active: boolean;
   variants?: ProductVariant[];
+  subcategoryId?: number;
+  subcategory?: Subcategory & {
+    category?: Category;
+  };
 }
 
-export type ProductFormData = Omit<Product, 'id'> & {
+export type ProductFormData = Omit<Product, 'id' | 'subcategory'> & {
   variants?: ProductVariant[];
+  subcategoryId?: number | null;
 };
 
-export const getAllProducts = async (): Promise<Product[]> => {
-  return fetchJson('/products');
+export interface ProductFilters {
+  categoryId?: number;
+  subcategoryId?: number;
+}
+
+export const getAllProducts = async (filters?: ProductFilters): Promise<Product[]> => {
+  const params = new URLSearchParams();
+  if (filters?.categoryId) params.append('categoryId', filters.categoryId.toString());
+  if (filters?.subcategoryId) params.append('subcategoryId', filters.subcategoryId.toString());
+
+  const query = params.toString();
+  return fetchJson(`/products${query ? `?${query}` : ''}`);
 };
 
 export const getProductById = async (id: string): Promise<Product> => {

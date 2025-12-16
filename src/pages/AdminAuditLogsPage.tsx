@@ -125,6 +125,10 @@ const AdminAuditLogsPage: React.FC = () => {
         return 'bg-pink-500/20 text-pink-400 border-pink-500/30';
       case 'FILE':
         return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
+      case 'CATEGORY':
+        return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
+      case 'SUBCATEGORY':
+        return 'bg-lime-500/20 text-lime-400 border-lime-500/30';
       default:
         return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
     }
@@ -154,6 +158,8 @@ const AdminAuditLogsPage: React.FC = () => {
       ORDER: 'Commande',
       USER: 'Utilisateur',
       FILE: 'Fichier',
+      CATEGORY: 'Categorie',
+      SUBCATEGORY: 'Sous-categorie',
     };
     return labels[entityType] || entityType;
   };

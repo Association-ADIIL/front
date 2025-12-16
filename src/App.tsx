@@ -22,6 +22,7 @@ import OrderManagementPage from './pages/OrderManagementPage';
 import AdminSalesStatisticsPage from './pages/AdminSalesStatisticsPage';
 import AdminAuditLogsPage from './pages/AdminAuditLogsPage';
 import FileManagementPage from './pages/FileManagementPage';
+import CategoryManagementPage from './pages/CategoryManagementPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider, useNotification } from './context/NotificationContext';
 import { CartProvider } from './context/CartContext';
@@ -62,6 +63,7 @@ function App() {
               <Route path="/admin/users" element={<AdminLayout><UserManagementPage /></AdminLayout>} />
               <Route path="/admin/events" element={<AdminLayout><EventManagementPage /></AdminLayout>} />
               <Route path="/admin/products" element={<AdminLayout><ProductManagementPage /></AdminLayout>} />
+              <Route path="/admin/categories" element={<AdminLayout><CategoryManagementPage /></AdminLayout>} />
               <Route path="/admin/orders" element={<AdminLayout><OrderManagementPage /></AdminLayout>} />
               <Route path="/admin/statistics" element={<AdminLayout><AdminSalesStatisticsPage /></AdminLayout>} />
               <Route path="/admin/files" element={<AdminLayout><FileManagementPage /></AdminLayout>} />

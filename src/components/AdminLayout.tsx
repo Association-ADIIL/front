@@ -12,7 +12,8 @@ import {
   ScrollText,
   ArrowLeft,
   Menu,
-  X
+  X,
+  Tags
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -23,6 +24,7 @@ const navItems = [
   { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/admin/events', label: 'Evenements', icon: Calendar },
   { path: '/admin/products', label: 'Produits', icon: ShoppingBag },
+  { path: '/admin/categories', label: 'Categories', icon: Tags },
   { path: '/admin/orders', label: 'Commandes', icon: ClipboardList },
   { path: '/admin/statistics', label: 'Statistiques', icon: BarChart3 },
   { path: '/admin/files', label: 'Fichiers', icon: FolderOpen },

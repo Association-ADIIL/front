@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { getAllProducts, deleteProduct, createProduct, updateProduct, type Product, type ProductFormData, type ProductVariant } from '../api/products';
-import { Edit2, Trash2, Plus, X } from 'lucide-react';
+import { getAllCategories, type Category } from '../api/categories';
+import { Edit2, Trash2, Plus, X, Search } from 'lucide-react';
 import Modal from '../components/Modal';
 import ImageUpload from '../components/ImageUpload';
 import { deleteImage } from '../api/upload';
@@ -11,7 +12,9 @@ const ProductManagementPage: React.FC = () => {
   useDocumentTitle('Admin - Produits');
   const { addNotification } = useNotification();
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentProduct, setCurrentProduct] = useState<Product | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -24,7 +27,8 @@ const ProductManagementPage: React.FC = () => {
     price: 0,
     imageUrl: '',
     active: true,
-    variants: []
+    variants: [],
+    subcategoryId: undefined
   });
 
   const [newVariant, setNewVariant] = useState<Omit<ProductVariant, 'id'>>({
@@ -44,8 +48,18 @@ const ProductManagementPage: React.FC = () => {
     }
   };
 
+  const fetchCategories = async () => {
+    try {
+      const data = await getAllCategories();
+      setCategories(data);
+    } catch (error) {
+      console.error("Failed to fetch categories:", error);
+    }
+  };
+
   useEffect(() => {
     fetchProducts();
+    fetchCategories();
   }, []);
 
   const handleOpenCreate = () => {
@@ -57,7 +71,8 @@ const ProductManagementPage: React.FC = () => {
       price: 0,
       imageUrl: '',
       active: true,
-      variants: []
+      variants: [],
+      subcategoryId: undefined
     });
     setNewVariant({
       name: '',
@@ -76,7 +91,8 @@ const ProductManagementPage: React.FC = () => {
       price: product.price,
       imageUrl: product.imageUrl || '',
       active: product.active,
-      variants: product.variants || []
+      variants: product.variants || [],
+      subcategoryId: product.subcategoryId || undefined
     });
     setNewVariant({
       name: '',
@@ -184,17 +200,41 @@ const ProductManagementPage: React.FC = () => {
 
   if (loading) return <div className="text-center p-8">Chargement...</div>;
 
+  const filteredProducts = products.filter(product =>
+    product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    product.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <h1 className="text-4xl font-bold text-accent-mint font-koulen">GESTION DES PRODUITS</h1>
         <button onClick={handleOpenCreate} className="bg-accent-mint text-darker-bg font-bold py-2 px-4 rounded hover:bg-white transition-colors flex items-center">
           <Plus size={20} className="mr-2" /> Ajouter un produit
         </button>
       </div>
 
+      {/* Search bar */}
+      <div className="mb-6">
+        <div className="relative max-w-md">
+          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+          <input
+            type="text"
+            placeholder="Rechercher un produit..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-dark-bg border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-accent-mint focus:outline-none transition-colors"
+          />
+        </div>
+        {searchQuery && (
+          <p className="text-sm text-gray-400 mt-2">
+            {filteredProducts.length} produit(s) trouve(s)
+          </p>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {products.map((product) => (
+        {filteredProducts.map((product) => (
           <div key={product.id} className={`bg-darker-bg border border-gray-800 rounded-2xl p-6 flex flex-col relative group hover:border-gray-700 transition-colors ${!product.active ? 'opacity-60' : ''}`}>
             <div className="flex items-start justify-between mb-4">
                  <div className="w-16 h-16 rounded bg-dark-bg flex items-center justify-center overflow-hidden">
@@ -215,10 +255,15 @@ const ProductManagementPage: React.FC = () => {
             <p className="text-lg font-bold text-accent-mint mb-2">{product.price} €</p>
 
             <div className="mt-auto pt-4 border-t border-gray-800 space-y-2">
-                <div>
+                <div className="flex flex-wrap gap-2">
                   <span className={`text-xs font-bold px-2 py-1 rounded ${product.active ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
                       {product.active ? 'Disponible' : 'Indisponible'}
                   </span>
+                  {product.subcategory && (
+                    <span className="text-xs font-medium px-2 py-1 rounded bg-blue-900/30 text-blue-400">
+                      {product.subcategory.category?.name} / {product.subcategory.name}
+                    </span>
+                  )}
                 </div>
                 {product.variants && (product.variants as any[]).length > 0 && (
                   <div className="text-xs text-accent-mint flex items-center gap-1">
@@ -255,6 +300,25 @@ const ProductManagementPage: React.FC = () => {
                 <select name="active" value={String(formData.active)} onChange={handleChange} className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white">
                     <option value="true">Disponible</option>
                     <option value="false">Indisponible</option>
+                </select>
+            </div>
+            <div>
+                <label className="block text-gray-400 mb-1">Sous-categorie (optionnel)</label>
+                <select
+                  value={formData.subcategoryId || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, subcategoryId: e.target.value ? parseInt(e.target.value) : undefined }))}
+                  className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white"
+                >
+                    <option value="">-- Aucune sous-categorie --</option>
+                    {categories.map(category => (
+                      <optgroup key={category.id} label={category.name}>
+                        {category.subcategories?.map(subcategory => (
+                          <option key={subcategory.id} value={subcategory.id}>
+                            {subcategory.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
                 </select>
             </div>
             <div>

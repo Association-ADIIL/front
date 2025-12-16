@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getAllProducts, type Product } from '../api/products';
-import { ShoppingBag, Minus, Plus, ShoppingCart, Search, LogIn } from 'lucide-react';
+import { getAllCategories, type Category } from '../api/categories';
+import { ShoppingBag, Minus, Plus, ShoppingCart, Search, LogIn, X } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useNotification } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
@@ -11,22 +12,29 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle';
 const ShopPage: React.FC = () => {
   useDocumentTitle('Boutique');
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [quantities, setQuantities] = useState<{ [key: string]: number }>({});
   const [selectedVariants, setSelectedVariants] = useState<{ [key: string]: number | undefined }>({});
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<number | null>(null);
   const { addToCart, items: cartItems } = useCart();
   const { addNotification } = useNotification();
   const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchData = async () => {
       try {
-        const data = await getAllProducts();
-        const activeProducts = data.filter(p => p.active);
+        const [productsData, categoriesData] = await Promise.all([
+          getAllProducts(),
+          getAllCategories()
+        ]);
+        const activeProducts = productsData.filter(p => p.active);
         setProducts(activeProducts);
+        setCategories(categoriesData);
 
         const initialQuantities: { [key: string]: number } = {};
         activeProducts.forEach(product => {
@@ -34,15 +42,24 @@ const ShopPage: React.FC = () => {
         });
         setQuantities(initialQuantities);
       } catch (err) {
-        console.error("Failed to fetch products:", err);
+        console.error("Failed to fetch data:", err);
         setError("Impossible de charger les produits.");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProducts();
+    fetchData();
   }, []);
+
+  const handleCategoryClick = (categoryId: number | null) => {
+    setSelectedCategoryId(categoryId);
+    setSelectedSubcategoryId(null);
+  };
+
+  const handleSubcategoryClick = (subcategoryId: number | null) => {
+    setSelectedSubcategoryId(subcategoryId);
+  };
 
   const updateQuantity = (productId: string, delta: number) => {
     setQuantities(prev => ({
@@ -74,9 +91,22 @@ const ShopPage: React.FC = () => {
     setQuantities(prev => ({ ...prev, [product.id]: 1 }));
   };
 
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredProducts = products.filter(product => {
+    // Text search
+    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
+
+    // Category filter
+    const matchesCategory = !selectedCategoryId ||
+      (product.subcategory?.category?.id === selectedCategoryId);
+
+    // Subcategory filter
+    const matchesSubcategory = !selectedSubcategoryId ||
+      (product.subcategoryId === selectedSubcategoryId);
+
+    return matchesSearch && matchesCategory && matchesSubcategory;
+  });
+
+  const selectedCategory = categories.find(c => c.id === selectedCategoryId);
 
   const cartItemsCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -135,6 +165,91 @@ const ShopPage: React.FC = () => {
               />
             </div>
           </div>
+
+          {/* Category filters */}
+          {categories.length > 0 && (
+            <div className="mt-6">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => handleCategoryClick(null)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    !selectedCategoryId
+                      ? 'bg-accent-mint text-darker-bg'
+                      : 'bg-dark-bg text-gray-400 hover:text-white border border-gray-700'
+                  }`}
+                >
+                  Tout
+                </button>
+                {categories.map(category => (
+                  <button
+                    key={category.id}
+                    onClick={() => handleCategoryClick(category.id)}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                      selectedCategoryId === category.id
+                        ? 'bg-accent-mint text-darker-bg'
+                        : 'bg-dark-bg text-gray-400 hover:text-white border border-gray-700'
+                    }`}
+                  >
+                    {category.name}
+                  </button>
+                ))}
+              </div>
+
+              {/* Subcategory filters */}
+              {selectedCategory && selectedCategory.subcategories && selectedCategory.subcategories.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    onClick={() => handleSubcategoryClick(null)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                      !selectedSubcategoryId
+                        ? 'bg-blue-500/30 text-blue-300 border border-blue-500/50'
+                        : 'bg-dark-bg text-gray-500 hover:text-gray-300 border border-gray-700'
+                    }`}
+                  >
+                    Tous les {selectedCategory.name.toLowerCase()}
+                  </button>
+                  {selectedCategory.subcategories.map(subcategory => (
+                    <button
+                      key={subcategory.id}
+                      onClick={() => handleSubcategoryClick(subcategory.id)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                        selectedSubcategoryId === subcategory.id
+                          ? 'bg-blue-500/30 text-blue-300 border border-blue-500/50'
+                          : 'bg-dark-bg text-gray-500 hover:text-gray-300 border border-gray-700'
+                      }`}
+                    >
+                      {subcategory.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Active filter indicator */}
+              {(selectedCategoryId || selectedSubcategoryId) && (
+                <div className="mt-3 flex items-center gap-2">
+                  <span className="text-xs text-gray-500">Filtres actifs:</span>
+                  {selectedCategoryId && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-accent-mint/20 text-accent-mint text-xs rounded-full">
+                      {selectedCategory?.name}
+                      {!selectedSubcategoryId && (
+                        <button onClick={() => handleCategoryClick(null)} className="hover:text-white">
+                          <X size={12} />
+                        </button>
+                      )}
+                    </span>
+                  )}
+                  {selectedSubcategoryId && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full">
+                      {selectedCategory?.subcategories?.find(s => s.id === selectedSubcategoryId)?.name}
+                      <button onClick={() => handleSubcategoryClick(null)} className="hover:text-white">
+                        <X size={12} />
+                      </button>
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </section>
 

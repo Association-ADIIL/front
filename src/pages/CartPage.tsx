@@ -75,6 +75,37 @@ const CartPage: React.FC = () => {
       return;
     }
 
+    // Free order - use FREE payment method
+    if (totalPrice === 0) {
+      setIsProcessingOrder(true);
+      try {
+        const orderItems: ApiOrderItem[] = items.map(item => ({
+          productId: item.product.id,
+          quantity: item.quantity,
+        }));
+
+        const returnUrl = `${window.location.origin}/payment/callback`;
+        const cancelUrl = `${window.location.origin}/cart`;
+
+        await createOrder({
+          items: orderItems,
+          paymentMethod: 'FREE',
+          returnUrl,
+          cancelUrl,
+        });
+
+        addNotification('success', 'Commande confirmee !');
+        clearCart();
+        navigate('/my-account');
+      } catch (error: any) {
+        console.error('Erreur lors de la commande:', error);
+        addNotification('error', error.message || 'Echec de la commande.');
+      } finally {
+        setIsProcessingOrder(false);
+      }
+      return;
+    }
+
     if (!selectedPaymentMethod) {
       addNotification('error', 'Veuillez sélectionner une méthode de paiement.');
       return;
@@ -272,141 +303,156 @@ const CartPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Payment methods */}
-                  <h3 className="text-sm font-bold text-white mb-3 uppercase tracking-wider">Paiement</h3>
-                  <div className="space-y-2 mb-6">
-                    {user && (
-                      <>
-                        {balance > 0 && balance < totalPrice ? (
-                          /* Balance too low - grayed out with recharge invite */
-                          <div className="p-3 rounded-xl border border-gray-700 bg-dark-bg">
-                            <div className="flex items-center opacity-50">
-                              <CreditCard size={18} className="text-gray-500" />
-                              <div className="ml-3 flex-1">
-                                <span className="text-gray-400 text-sm font-medium">Carte ADIIL</span>
-                                <span className="text-xs ml-2 text-red-400">
-                                  ({balance.toFixed(2)}EUR)
-                                </span>
+                  {/* Payment methods - only show if total > 0 */}
+                  {totalPrice > 0 ? (
+                    <>
+                      <h3 className="text-sm font-bold text-white mb-3 uppercase tracking-wider">Paiement</h3>
+                      <div className="space-y-2 mb-6">
+                        {user && (
+                          <>
+                            {balance > 0 && balance < totalPrice ? (
+                              /* Balance too low - grayed out with recharge invite */
+                              <div className="p-3 rounded-xl border border-gray-700 bg-dark-bg">
+                                <div className="flex items-center opacity-50">
+                                  <CreditCard size={18} className="text-gray-500" />
+                                  <div className="ml-3 flex-1">
+                                    <span className="text-gray-400 text-sm font-medium">Carte ADIIL</span>
+                                    <span className="text-xs ml-2 text-red-400">
+                                      ({balance.toFixed(2)}EUR)
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="mt-3 flex items-center justify-between bg-accent-mint/10 rounded-lg p-2">
+                                  <p className="text-xs text-gray-400">
+                                    Solde insuffisant
+                                  </p>
+                                  <button
+                                    onClick={() => navigate('/balance')}
+                                    className="text-xs bg-accent-mint text-darker-bg font-bold py-1.5 px-3 rounded-lg hover:bg-white transition-colors"
+                                  >
+                                    Recharger
+                                  </button>
+                                </div>
                               </div>
-                            </div>
-                            <div className="mt-3 flex items-center justify-between bg-accent-mint/10 rounded-lg p-2">
-                              <p className="text-xs text-gray-400">
-                                Solde insuffisant
-                              </p>
-                              <button
-                                onClick={() => navigate('/balance')}
-                                className="text-xs bg-accent-mint text-darker-bg font-bold py-1.5 px-3 rounded-lg hover:bg-white transition-colors"
-                              >
-                                Recharger
-                              </button>
-                            </div>
-                          </div>
-                        ) : balance >= totalPrice ? (
-                          /* Balance sufficient - clickable */
-                          <label className={`flex items-center cursor-pointer p-3 rounded-xl border transition-all ${
-                            selectedPaymentMethod === 'BALANCE'
-                              ? 'bg-accent-mint/10 border-accent-mint'
-                              : 'bg-dark-bg border-gray-700 hover:border-gray-600'
-                          }`}>
-                            <input
-                              type="radio"
-                              name="paymentMethod"
-                              value="BALANCE"
-                              checked={selectedPaymentMethod === 'BALANCE'}
-                              onChange={() => setSelectedPaymentMethod('BALANCE')}
-                              className="sr-only"
-                            />
-                            <CreditCard size={18} className={selectedPaymentMethod === 'BALANCE' ? 'text-accent-mint' : 'text-gray-500'} />
-                            <div className="ml-3 flex-1">
-                              <span className="text-white text-sm font-medium">Carte ADIIL</span>
-                              <span className="text-xs ml-2 text-green-400">
-                                ({balance.toFixed(2)}EUR)
-                              </span>
-                            </div>
-                            {selectedPaymentMethod === 'BALANCE' && (
-                              <div className="w-2 h-2 bg-accent-mint rounded-full"></div>
-                            )}
-                          </label>
-                        ) : null}
-                      </>
-                    )}
+                            ) : balance >= totalPrice ? (
+                              /* Balance sufficient - clickable */
+                              <label className={`flex items-center cursor-pointer p-3 rounded-xl border transition-all ${
+                                selectedPaymentMethod === 'BALANCE'
+                                  ? 'bg-accent-mint/10 border-accent-mint'
+                                  : 'bg-dark-bg border-gray-700 hover:border-gray-600'
+                              }`}>
+                                <input
+                                  type="radio"
+                                  name="paymentMethod"
+                                  value="BALANCE"
+                                  checked={selectedPaymentMethod === 'BALANCE'}
+                                  onChange={() => setSelectedPaymentMethod('BALANCE')}
+                                  className="sr-only"
+                                />
+                                <CreditCard size={18} className={selectedPaymentMethod === 'BALANCE' ? 'text-accent-mint' : 'text-gray-500'} />
+                                <div className="ml-3 flex-1">
+                                  <span className="text-white text-sm font-medium">Carte ADIIL</span>
+                                  <span className="text-xs ml-2 text-green-400">
+                                    ({balance.toFixed(2)}EUR)
+                                  </span>
+                                </div>
+                                {selectedPaymentMethod === 'BALANCE' && (
+                                  <div className="w-2 h-2 bg-accent-mint rounded-full"></div>
+                                )}
+                              </label>
+                            ) : null}
+                          </>
+                        )}
 
-                    <label className={`flex items-center cursor-pointer p-3 rounded-xl border transition-all ${
-                      totalPrice < 0.50 ? 'opacity-50 cursor-not-allowed' :
-                      selectedPaymentMethod === 'HELLOASSO'
-                        ? 'bg-blue-500/10 border-blue-500'
-                        : 'bg-dark-bg border-gray-700 hover:border-gray-600'
-                    }`}>
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        value="HELLOASSO"
-                        checked={selectedPaymentMethod === 'HELLOASSO'}
-                        onChange={() => setSelectedPaymentMethod('HELLOASSO')}
-                        disabled={totalPrice < 0.50}
-                        className="sr-only"
-                      />
-                      <Heart size={18} className={selectedPaymentMethod === 'HELLOASSO' ? 'text-blue-400' : 'text-gray-500'} />
-                      <span className="ml-3 text-white text-sm font-medium flex-1">HelloAsso</span>
-                      {totalPrice < 0.50 ? (
-                        <span className="text-xs text-orange-400">Min 0.50EUR</span>
-                      ) : (
-                        <span className="text-xs text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded-full">Recommandé</span>
-                      )}
-                      {selectedPaymentMethod === 'HELLOASSO' && (
-                        <div className="w-2 h-2 bg-blue-500 rounded-full ml-2"></div>
-                      )}
-                    </label>
+                        <label className={`flex items-center cursor-pointer p-3 rounded-xl border transition-all ${
+                          totalPrice < 0.50 ? 'opacity-50 cursor-not-allowed' :
+                          selectedPaymentMethod === 'HELLOASSO'
+                            ? 'bg-blue-500/10 border-blue-500'
+                            : 'bg-dark-bg border-gray-700 hover:border-gray-600'
+                        }`}>
+                          <input
+                            type="radio"
+                            name="paymentMethod"
+                            value="HELLOASSO"
+                            checked={selectedPaymentMethod === 'HELLOASSO'}
+                            onChange={() => setSelectedPaymentMethod('HELLOASSO')}
+                            disabled={totalPrice < 0.50}
+                            className="sr-only"
+                          />
+                          <Heart size={18} className={selectedPaymentMethod === 'HELLOASSO' ? 'text-blue-400' : 'text-gray-500'} />
+                          <span className="ml-3 text-white text-sm font-medium flex-1">HelloAsso</span>
+                          {totalPrice < 0.50 ? (
+                            <span className="text-xs text-orange-400">Min 0.50EUR</span>
+                          ) : (
+                            <span className="text-xs text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded-full">Recommande</span>
+                          )}
+                          {selectedPaymentMethod === 'HELLOASSO' && (
+                            <div className="w-2 h-2 bg-blue-500 rounded-full ml-2"></div>
+                          )}
+                        </label>
 
-                    <label className={`flex items-center cursor-pointer p-3 rounded-xl border transition-all ${
-                      selectedPaymentMethod === 'PAYPAL'
-                        ? 'bg-indigo-500/10 border-indigo-500'
-                        : 'bg-dark-bg border-gray-700 hover:border-gray-600'
-                    }`}>
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        value="PAYPAL"
-                        checked={selectedPaymentMethod === 'PAYPAL'}
-                        onChange={() => setSelectedPaymentMethod('PAYPAL')}
-                        className="sr-only"
-                      />
-                      <PayPalLogo className={`w-5 h-5 ${selectedPaymentMethod === 'PAYPAL' ? 'text-indigo-400' : 'text-gray-500'}`} />
-                      <span className="ml-3 text-white text-sm font-medium flex-1">PayPal</span>
-                      {selectedPaymentMethod === 'PAYPAL' && (
-                        <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
-                      )}
-                    </label>
+                        <label className={`flex items-center cursor-pointer p-3 rounded-xl border transition-all ${
+                          selectedPaymentMethod === 'PAYPAL'
+                            ? 'bg-indigo-500/10 border-indigo-500'
+                            : 'bg-dark-bg border-gray-700 hover:border-gray-600'
+                        }`}>
+                          <input
+                            type="radio"
+                            name="paymentMethod"
+                            value="PAYPAL"
+                            checked={selectedPaymentMethod === 'PAYPAL'}
+                            onChange={() => setSelectedPaymentMethod('PAYPAL')}
+                            className="sr-only"
+                          />
+                          <PayPalLogo className={`w-5 h-5 ${selectedPaymentMethod === 'PAYPAL' ? 'text-indigo-400' : 'text-gray-500'}`} />
+                          <span className="ml-3 text-white text-sm font-medium flex-1">PayPal</span>
+                          {selectedPaymentMethod === 'PAYPAL' && (
+                            <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+                          )}
+                        </label>
 
-                    <label className={`flex items-center cursor-pointer p-3 rounded-xl border transition-all ${
-                      selectedPaymentMethod === 'CASH_CB'
-                        ? 'bg-green-500/10 border-green-500'
-                        : 'bg-dark-bg border-gray-700 hover:border-gray-600'
-                    }`}>
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        value="CASH_CB"
-                        checked={selectedPaymentMethod === 'CASH_CB'}
-                        onChange={() => setSelectedPaymentMethod('CASH_CB')}
-                        className="sr-only"
-                      />
-                      <CashLogo className={`w-5 h-5 ${selectedPaymentMethod === 'CASH_CB' ? 'text-green-400' : 'text-gray-500'}`} />
-                      <span className="ml-3 text-white text-sm font-medium flex-1">Sur place</span>
-                      {selectedPaymentMethod === 'CASH_CB' && (
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      )}
-                    </label>
-                  </div>
+                        <label className={`flex items-center cursor-pointer p-3 rounded-xl border transition-all ${
+                          selectedPaymentMethod === 'CASH_CB'
+                            ? 'bg-green-500/10 border-green-500'
+                            : 'bg-dark-bg border-gray-700 hover:border-gray-600'
+                        }`}>
+                          <input
+                            type="radio"
+                            name="paymentMethod"
+                            value="CASH_CB"
+                            checked={selectedPaymentMethod === 'CASH_CB'}
+                            onChange={() => setSelectedPaymentMethod('CASH_CB')}
+                            className="sr-only"
+                          />
+                          <CashLogo className={`w-5 h-5 ${selectedPaymentMethod === 'CASH_CB' ? 'text-green-400' : 'text-gray-500'}`} />
+                          <span className="ml-3 text-white text-sm font-medium flex-1">Sur place</span>
+                          {selectedPaymentMethod === 'CASH_CB' && (
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          )}
+                        </label>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="mb-6 p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
+                      <p className="text-green-400 text-sm text-center font-medium">
+                        Commande gratuite
+                      </p>
+                    </div>
+                  )}
 
                   {/* Checkout button */}
                   <button
                     onClick={handleCheckout}
-                    disabled={isProcessingOrder || items.length === 0 || !selectedPaymentMethod}
+                    disabled={isProcessingOrder || items.length === 0 || (totalPrice > 0 && !selectedPaymentMethod)}
                     className="w-full py-4 bg-accent-mint text-darker-bg font-bold rounded-xl hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-accent-mint flex items-center justify-center gap-2 group"
                   >
                     {isProcessingOrder ? (
                       <div className="w-5 h-5 border-2 border-darker-bg border-t-transparent rounded-full animate-spin"></div>
+                    ) : totalPrice === 0 ? (
+                      <>
+                        Confirmer la commande
+                        <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                      </>
                     ) : (
                       <>
                         Payer {totalPrice.toFixed(2)}€
