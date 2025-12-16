@@ -129,7 +129,7 @@ const UserManagementPage: React.FC = () => {
   return (
     <div>
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-        <h1 className="text-4xl font-bold text-accent-mint font-koulen">GESTION DES UTILISATEURS</h1>
+        <h1 className="text-2xl sm:text-4xl font-bold text-accent-mint font-koulen">GESTION DES UTILISATEURS</h1>
         <div className="flex gap-4 w-full md:w-auto">
             <div className="relative flex-grow md:flex-grow-0">
                 <input 
@@ -147,47 +147,49 @@ const UserManagementPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-darker-bg border border-gray-700 rounded-lg overflow-hidden">
+      <div className="bg-darker-bg border border-gray-700 rounded-lg overflow-hidden overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-700">
           <thead className="bg-dark-bg">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Utilisateur</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Email</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Type</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Groupe</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Utilisateur</th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">Email</th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Type</th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden sm:table-cell">Groupe</th>
+              <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-700">
             {filteredUsers.map((user) => (
               <tr key={user.id} className="hover:bg-gray-800/50 transition-colors">
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                   <div className="flex items-center">
-                    <div className="flex-shrink-0 h-10 w-10 bg-gray-700 rounded-full flex items-center justify-center text-gray-400">
-                        <UserIcon size={20} />
+                    <div className="flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10 bg-gray-700 rounded-full flex items-center justify-center text-gray-400">
+                        <UserIcon size={18} className="sm:hidden" />
+                        <UserIcon size={20} className="hidden sm:block" />
                     </div>
-                    <div className="ml-4">
+                    <div className="ml-3 sm:ml-4">
                       <div className="text-sm font-medium text-white capitalize">{user.firstName} {user.lastName}</div>
+                      <div className="text-xs text-gray-500 md:hidden">{user.email}</div>
                     </div>
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap hidden md:table-cell">
                   <div className="text-sm text-gray-300">{user.email}</div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                    user.type.includes('ADMIN') ? 'bg-purple-900/50 text-purple-200' : 
-                    user.type === 'PROFESSOR' ? 'bg-blue-900/50 text-blue-200' : 
+                    user.type.includes('ADMIN') ? 'bg-purple-900/50 text-purple-200' :
+                    user.type === 'PROFESSOR' ? 'bg-blue-900/50 text-blue-200' :
                     'bg-green-900/50 text-green-200'
                   }`}>
                     {user.type}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-400 hidden sm:table-cell">
                   {user.studentGroup || '-'}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button onClick={() => handleOpenEdit(user)} className="text-accent-mint hover:text-white mr-4"><Edit2 size={18} /></button>
+                <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <button onClick={() => handleOpenEdit(user)} className="text-accent-mint hover:text-white mr-3 sm:mr-4"><Edit2 size={18} /></button>
                   <button onClick={() => handleOpenDelete(user)} className="text-red-400 hover:text-red-300"><Trash2 size={18} /></button>
                 </td>
               </tr>

@@ -180,7 +180,7 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/80 backdrop-blur-sm"
@@ -188,7 +188,7 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-lg mx-4 max-h-[80vh] mt-20 bg-darker-bg rounded-3xl border border-gray-800 shadow-2xl flex flex-col">
+      <div className="relative w-full max-w-lg mx-4 max-h-[85vh] sm:max-h-[80vh] mt-4 sm:mt-20 mb-4 bg-darker-bg rounded-3xl border border-gray-800 shadow-2xl flex flex-col">
         {/* Header */}
         <div className="relative p-6 border-b border-gray-800 flex-shrink-0">
           <button

@@ -305,32 +305,34 @@ const OrderManagementPage: React.FC = () => {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-4xl font-bold text-accent-mint font-koulen">GESTION DES COMMANDES & INSCRIPTIONS</h1>
+        <h1 className="text-2xl sm:text-4xl font-bold text-accent-mint font-koulen">COMMANDES & INSCRIPTIONS</h1>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-2 mb-6">
         <button
           onClick={() => setViewMode('orders')}
-          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-bold transition-all ${ 
+          className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg font-bold transition-all text-sm sm:text-base ${
             viewMode === 'orders'
               ? 'bg-accent-mint text-darker-bg'
               : 'bg-darker-bg text-gray-400 hover:bg-gray-800 border border-gray-700'
           }`}
         >
-          <ShoppingBag size={20} />
-          Commandes Boutique
+          <ShoppingBag size={18} />
+          <span className="hidden sm:inline">Commandes</span>
+          <span className="sm:hidden">Cmd</span>
         </button>
         <button
           onClick={() => setViewMode('inscriptions')}
-          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-bold transition-all ${ 
+          className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg font-bold transition-all text-sm sm:text-base ${
             viewMode === 'inscriptions'
               ? 'bg-accent-mint text-darker-bg'
               : 'bg-darker-bg text-gray-400 hover:bg-gray-800 border border-gray-700'
           }`}
         >
-          <Calendar size={20} />
-          Inscriptions Événements
+          <Calendar size={18} />
+          <span className="hidden sm:inline">Inscriptions</span>
+          <span className="sm:hidden">Insc</span>
         </button>
       </div>
 
@@ -415,43 +417,43 @@ const OrderManagementPage: React.FC = () => {
       )}
 
       {viewMode === 'orders' ? (
-        <div className="bg-darker-bg border border-gray-700 rounded-lg overflow-hidden">
+        <div className="bg-darker-bg border border-gray-700 rounded-lg overflow-hidden overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-700">
             <thead className="bg-dark-bg">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Client</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Paiement</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Statut</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Méthode</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Montant</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">ID</th>
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Client</th>
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">Date</th>
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Paiement</th>
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden sm:table-cell">Statut</th>
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">Méthode</th>
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Montant</th>
+                <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-700">
               {filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={8} className="px-3 sm:px-6 py-8 text-center text-gray-500">
                     Aucune commande trouvée
                   </td>
                 </tr>
               ) : (
                 filteredOrders.map((order) => (
                   <tr key={order.id} className="hover:bg-darker-bg/50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-white">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm font-bold text-white">
                       #{order.id.toString().padStart(6, '0')}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-white">
                         {order.user ? `${order.user.firstName} ${order.user.lastName}` : 'Utilisateur inconnu'}
                       </div>
-                      <div className="text-xs text-gray-500">{order.user?.email}</div>
+                      <div className="text-xs text-gray-500 hidden sm:block">{order.user?.email}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-300 hidden md:table-cell">
                       {new Date(order.createdAt).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                         order.paymentStatus === 'PAID' ? 'bg-green-900/50 text-green-200' :
                         order.paymentStatus === 'REFUNDED' ? 'bg-purple-900/50 text-purple-200' :
@@ -461,7 +463,7 @@ const OrderManagementPage: React.FC = () => {
                          order.paymentStatus === 'PAID' ? 'Payé' : 'Remboursé'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap hidden sm:table-cell">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                         order.orderStatus === 'COLLECTED' ? 'bg-green-900/50 text-green-200' :
                         order.orderStatus === 'CANCELLED' ? 'bg-red-900/50 text-red-200' :
@@ -472,17 +474,17 @@ const OrderManagementPage: React.FC = () => {
                          order.orderStatus === 'COLLECTED' ? 'Récupérée' : 'Annulée'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-300 hidden lg:table-cell">
                       {order.paymentMethod === 'HELLOASSO' ? 'HelloAsso' :
                        order.paymentMethod === 'PAYPAL' ? 'PayPal' :
                        order.paymentMethod === 'CASH_CB' ? 'Espèces/CB' :
                        order.paymentMethod === 'FREE' ? 'Gratuit' :
                        order.paymentMethod === 'BALANCE' ? 'Solde' : order.paymentMethod}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-accent-mint">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm font-bold text-accent-mint">
                       {order.totalPrice.toFixed(2)} €
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
                         onClick={() => handleOpenEditOrder(order)}
                         className="text-accent-mint hover:text-white transition-colors"
@@ -498,59 +500,59 @@ const OrderManagementPage: React.FC = () => {
           </table>
         </div>
       ) : (
-        <div className="bg-darker-bg border border-gray-700 rounded-lg overflow-hidden">
+        <div className="bg-darker-bg border border-gray-700 rounded-lg overflow-hidden overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-700">
           <thead className="bg-dark-bg">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">ID</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Événement</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Participant</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Date</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Places</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Montant</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Paiement</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Méthode</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">ID</th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Événement</th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden sm:table-cell">Participant</th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">Date</th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">Places</th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Montant</th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Paiement</th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">Méthode</th>
+              <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-700">
             {filteredInscriptions.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={9} className="px-3 sm:px-6 py-8 text-center text-gray-500">
                   Aucune inscription trouvée
                 </td>
               </tr>
             ) : (
               filteredInscriptions.map((inscription) => (
                 <tr key={inscription.id} className="hover:bg-gray-800/50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-300">
                     #{inscription.id}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-white">
                       {inscription.event?.title || 'N/A'}
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-gray-500 hidden sm:block">
                       {inscription.event?.date ? new Date(inscription.event.date).toLocaleDateString('fr-FR') : 'N/A'}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap hidden sm:table-cell">
                     <div className="text-sm font-medium text-white">
                       {inscription.user ? `${inscription.user.firstName} ${inscription.user.lastName}` : 'N/A'}
                     </div>
                     <div className="text-xs text-gray-500">{inscription.user?.email}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-400 hidden lg:table-cell">
                     {new Date(inscription.createdAt).toLocaleDateString()}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-white hidden md:table-cell">
                     {inscription.quantity}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-white">
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm font-bold text-white">
                     {inscription.totalPrice === 0 ? 'Gratuit' : `${inscription.totalPrice} €`}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${ 
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                       inscription.paymentStatus === 'PAID' ? 'bg-green-900/50 text-green-200' :
                       inscription.paymentStatus === 'REFUNDED' ? 'bg-purple-900/50 text-purple-200' :
                       'bg-red-900/50 text-red-200'
@@ -559,12 +561,12 @@ const OrderManagementPage: React.FC = () => {
                        inscription.paymentStatus === 'PAID' ? 'Payé' : 'Remboursé'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-400 hidden lg:table-cell">
                     {inscription.paymentMethod === 'HELLOASSO' ? 'HelloAsso' :
                      inscription.paymentMethod === 'PAYPAL' ? 'PayPal' :
                      inscription.paymentMethod === 'CASH_CB' ? 'Espèces/CB' : 'Gratuit'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button onClick={() => handleOpenEditInscription(inscription)} className="text-accent-mint hover:text-white">
                       <Edit2 size={18} />
                     </button>

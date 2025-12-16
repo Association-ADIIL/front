@@ -136,6 +136,16 @@ const EventDetailPage: React.FC = () => {
                   Gratuit
                 </span>
               )}
+              {event.visibility === 'DRAFT' && (
+                <span className="px-4 py-1.5 bg-yellow-500/80 text-yellow-100 text-sm font-bold rounded-full">
+                  Brouillon
+                </span>
+              )}
+              {event.visibility === 'PRIVATE' && (
+                <span className="px-4 py-1.5 bg-purple-500/80 text-purple-100 text-sm font-bold rounded-full">
+                  Prive
+                </span>
+              )}
             </div>
             <h1 className="text-4xl md:text-6xl font-koulen text-white mb-4">{removeAccents(event.title).toUpperCase()}</h1>
             <div className="flex items-center gap-2 text-gray-300">

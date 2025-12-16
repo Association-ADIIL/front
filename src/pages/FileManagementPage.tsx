@@ -343,14 +343,14 @@ const FileManagementPage: React.FC = () => {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-4xl font-bold text-accent-mint font-koulen">GESTION DES FICHIERS</h1>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <h1 className="text-2xl sm:text-4xl font-bold text-accent-mint font-koulen">GESTION DES FICHIERS</h1>
         <button
           onClick={() => setIsCreateFolderModalOpen(true)}
           className="bg-accent-mint text-darker-bg font-bold py-2 px-4 rounded hover:bg-white transition-colors flex items-center gap-2"
         >
           <FolderPlus size={20} />
-          Nouveau dossier
+          <span className="hidden sm:inline">Nouveau dossier</span><span className="sm:hidden">Dossier</span>
         </button>
       </div>
 

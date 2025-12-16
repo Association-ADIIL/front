@@ -200,6 +200,16 @@ const HomePage: React.FC = () => {
                               Gratuit
                             </span>
                           )}
+                          {event.visibility === 'DRAFT' && (
+                            <span className="px-3 py-1 bg-yellow-500/90 text-yellow-100 text-xs font-bold rounded-full">
+                              Brouillon
+                            </span>
+                          )}
+                          {event.visibility === 'PRIVATE' && (
+                            <span className="px-3 py-1 bg-purple-500/90 text-purple-100 text-xs font-bold rounded-full">
+                              Prive
+                            </span>
+                          )}
                         </div>
                         <h3 className={`font-bold text-white ${index === 0 ? 'text-2xl' : 'text-lg'}`}>{event.title}</h3>
                       </div>

@@ -181,13 +181,13 @@ const CategoryManagementPage: React.FC = () => {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-4xl font-bold text-accent-mint font-koulen">GESTION DES CATEGORIES</h1>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <h1 className="text-2xl sm:text-4xl font-bold text-accent-mint font-koulen">GESTION DES CATEGORIES</h1>
         <button
           onClick={handleOpenCreateCategory}
-          className="bg-accent-mint text-darker-bg font-bold py-2 px-4 rounded hover:bg-white transition-colors flex items-center"
+          className="bg-accent-mint text-darker-bg font-bold py-2 px-4 rounded hover:bg-white transition-colors flex items-center whitespace-nowrap"
         >
-          <Plus size={20} className="mr-2" /> Ajouter une categorie
+          <Plus size={20} className="mr-2" /> <span className="hidden sm:inline">Ajouter une categorie</span><span className="sm:hidden">Ajouter</span>
         </button>
       </div>
 
@@ -206,46 +206,49 @@ const CategoryManagementPage: React.FC = () => {
               >
                 {/* Category header */}
                 <div
-                  className="flex items-center justify-between p-4 cursor-pointer hover:bg-dark-bg transition-colors"
+                  className="flex items-center justify-between p-3 sm:p-4 cursor-pointer hover:bg-dark-bg transition-colors"
                   onClick={() => toggleCategory(category.id)}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                     {isExpanded ? (
-                      <ChevronDown size={20} className="text-gray-400" />
+                      <ChevronDown size={18} className="text-gray-400 flex-shrink-0 sm:w-5 sm:h-5" />
                     ) : (
-                      <ChevronRight size={20} className="text-gray-400" />
+                      <ChevronRight size={18} className="text-gray-400 flex-shrink-0 sm:w-5 sm:h-5" />
                     )}
                     {isExpanded ? (
-                      <FolderOpen size={24} className="text-accent-mint" />
+                      <FolderOpen size={20} className="text-accent-mint flex-shrink-0 sm:w-6 sm:h-6" />
                     ) : (
-                      <Folder size={24} className="text-accent-mint" />
+                      <Folder size={20} className="text-accent-mint flex-shrink-0 sm:w-6 sm:h-6" />
                     )}
-                    <div>
-                      <h3 className="text-xl font-bold text-white">{category.name}</h3>
+                    <div className="min-w-0">
+                      <h3 className="text-base sm:text-xl font-bold text-white truncate">{category.name}</h3>
                       {category.description && (
-                        <p className="text-sm text-gray-400">{category.description}</p>
+                        <p className="text-xs sm:text-sm text-gray-400 truncate">{category.description}</p>
                       )}
+                      <span className="text-xs text-gray-500 sm:hidden">
+                        {category.subcategories?.length || 0} sous-cat.
+                      </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <span className="text-sm text-gray-400">
+                  <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+                    <span className="text-sm text-gray-400 hidden sm:inline">
                       {category.subcategories?.length || 0} sous-categorie(s)
                     </span>
                     <div
-                      className="flex space-x-2"
+                      className="flex space-x-1 sm:space-x-2"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <button
                         onClick={() => handleOpenEditCategory(category)}
-                        className="p-2 text-blue-400 hover:bg-blue-900/20 rounded"
+                        className="p-1.5 sm:p-2 text-blue-400 hover:bg-blue-900/20 rounded"
                       >
-                        <Edit2 size={18} />
+                        <Edit2 size={16} className="sm:w-[18px] sm:h-[18px]" />
                       </button>
                       <button
                         onClick={() => handleOpenDelete('category', category)}
-                        className="p-2 text-red-400 hover:bg-red-900/20 rounded"
+                        className="p-1.5 sm:p-2 text-red-400 hover:bg-red-900/20 rounded"
                       >
-                        <Trash2 size={18} />
+                        <Trash2 size={16} className="sm:w-[18px] sm:h-[18px]" />
                       </button>
                     </div>
                   </div>
@@ -254,38 +257,38 @@ const CategoryManagementPage: React.FC = () => {
                 {/* Subcategories */}
                 {isExpanded && (
                   <div className="border-t border-gray-800 bg-dark-bg">
-                    <div className="p-4 space-y-2">
+                    <div className="p-3 sm:p-4 space-y-2">
                       {category.subcategories && category.subcategories.length > 0 ? (
                         category.subcategories.map((subcategory) => (
                           <div
                             key={subcategory.id}
-                            className="flex items-center justify-between p-3 bg-darker-bg rounded-lg border border-gray-700 hover:border-gray-600 transition-colors"
+                            className="flex items-center justify-between p-2 sm:p-3 bg-darker-bg rounded-lg border border-gray-700 hover:border-gray-600 transition-colors"
                           >
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded bg-accent-mint/20 flex items-center justify-center">
-                                <span className="text-accent-mint font-bold text-sm">
+                            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded bg-accent-mint/20 flex items-center justify-center flex-shrink-0">
+                                <span className="text-accent-mint font-bold text-xs sm:text-sm">
                                   {subcategory.name.charAt(0).toUpperCase()}
                                 </span>
                               </div>
-                              <div>
-                                <p className="font-medium text-white">{subcategory.name}</p>
+                              <div className="min-w-0">
+                                <p className="font-medium text-white text-sm sm:text-base truncate">{subcategory.name}</p>
                                 {subcategory.description && (
-                                  <p className="text-xs text-gray-400">{subcategory.description}</p>
+                                  <p className="text-xs text-gray-400 truncate">{subcategory.description}</p>
                                 )}
                               </div>
                             </div>
-                            <div className="flex space-x-2">
+                            <div className="flex space-x-1 sm:space-x-2 flex-shrink-0">
                               <button
                                 onClick={() => handleOpenEditSubcategory(subcategory)}
-                                className="p-2 text-blue-400 hover:bg-blue-900/20 rounded"
+                                className="p-1.5 sm:p-2 text-blue-400 hover:bg-blue-900/20 rounded"
                               >
-                                <Edit2 size={16} />
+                                <Edit2 size={14} className="sm:w-4 sm:h-4" />
                               </button>
                               <button
                                 onClick={() => handleOpenDelete('subcategory', subcategory)}
-                                className="p-2 text-red-400 hover:bg-red-900/20 rounded"
+                                className="p-1.5 sm:p-2 text-red-400 hover:bg-red-900/20 rounded"
                               >
-                                <Trash2 size={16} />
+                                <Trash2 size={14} className="sm:w-4 sm:h-4" />
                               </button>
                             </div>
                           </div>
@@ -297,9 +300,9 @@ const CategoryManagementPage: React.FC = () => {
                       )}
                       <button
                         onClick={() => handleOpenCreateSubcategory(category.id)}
-                        className="w-full py-2 border border-dashed border-gray-600 rounded-lg text-gray-400 hover:border-accent-mint hover:text-accent-mint transition-colors flex items-center justify-center gap-2"
+                        className="w-full py-2 border border-dashed border-gray-600 rounded-lg text-gray-400 hover:border-accent-mint hover:text-accent-mint transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
                       >
-                        <Plus size={16} /> Ajouter une sous-categorie
+                        <Plus size={16} /> <span className="hidden sm:inline">Ajouter une sous-categorie</span><span className="sm:hidden">Ajouter</span>
                       </button>
                     </div>
                   </div>

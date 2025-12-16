@@ -208,7 +208,7 @@ const ProductManagementPage: React.FC = () => {
   return (
     <div>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <h1 className="text-4xl font-bold text-accent-mint font-koulen">GESTION DES PRODUITS</h1>
+        <h1 className="text-2xl sm:text-4xl font-bold text-accent-mint font-koulen">GESTION DES PRODUITS</h1>
         <button onClick={handleOpenCreate} className="bg-accent-mint text-darker-bg font-bold py-2 px-4 rounded hover:bg-white transition-colors flex items-center">
           <Plus size={20} className="mr-2" /> Ajouter un produit
         </button>
@@ -244,7 +244,7 @@ const ProductManagementPage: React.FC = () => {
                         className="w-full h-full object-cover" 
                      />
                  </div>
-                 <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity bg-darker-bg p-1 rounded absolute top-4 right-4 shadow-lg">
+                 <div className="flex space-x-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity bg-darker-bg p-1 rounded absolute top-4 right-4 shadow-lg">
                     <button onClick={() => handleOpenEdit(product)} className="p-2 text-blue-400 hover:bg-blue-900/20 rounded"><Edit2 size={18} /></button>
                     <button onClick={() => handleOpenDelete(product)} className="p-2 text-red-400 hover:bg-red-900/20 rounded"><Trash2 size={18} /></button>
                  </div>

@@ -150,7 +150,7 @@ const AdminDashboardPage: React.FC = () => {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-4xl font-bold text-accent-mint mb-2 font-koulen">TABLEAU DE BORD</h1>
+        <h1 className="text-2xl sm:text-4xl font-bold text-accent-mint mb-2 font-koulen">TABLEAU DE BORD</h1>
         <p className="text-gray-400">Vue d'ensemble de l'activité du BDE ADIIL</p>
       </div>
 

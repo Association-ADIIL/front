@@ -178,7 +178,7 @@ const AdminAuditLogsPage: React.FC = () => {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-4xl font-bold font-koulen text-accent-mint mb-2">LOGS</h1>
+        <h1 className="text-2xl sm:text-4xl font-bold font-koulen text-accent-mint mb-2">LOGS</h1>
         <p className="text-gray-400">Historique de toutes les actions administratives</p>
       </div>
 
@@ -199,7 +199,7 @@ const AdminAuditLogsPage: React.FC = () => {
             </button>
           )}
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           {/* Search user */}
           <div>
             <label className="block text-sm text-gray-400 mb-2">Utilisateur</label>
@@ -275,36 +275,38 @@ const AdminAuditLogsPage: React.FC = () => {
           <table className="min-w-full">
             <thead className="bg-dark-bg border-b border-gray-800">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Date</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Utilisateur</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Action</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Cible</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Details</th>
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Date</th>
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden md:table-cell">Utilisateur</th>
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Action</th>
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:table-cell">Cible</th>
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800">
               {filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-gray-400">
+                  <td colSpan={5} className="px-3 sm:px-6 py-12 text-center text-gray-400">
                     Aucun log trouve
                   </td>
                 </tr>
               ) : (
                 filteredLogs.map((log) => (
                   <tr key={log.id} className="hover:bg-dark-bg/50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                      <div className="flex items-center gap-2">
-                        <Calendar size={14} className="text-gray-500" />
-                        {new Date(log.createdAt).toLocaleDateString('fr-FR', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-300">
+                      <div className="flex items-center gap-1 sm:gap-2">
+                        <Calendar size={14} className="text-gray-500 hidden sm:block" />
+                        <span className="text-xs sm:text-sm">
+                          {new Date(log.createdAt).toLocaleDateString('fr-FR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-300 hidden md:table-cell">
                       <div className="flex items-center gap-2">
                         <User size={14} className="text-gray-500" />
                         <span className="truncate max-w-[150px]" title={log.userName || 'Systeme'}>
@@ -312,17 +314,17 @@ const AdminAuditLogsPage: React.FC = () => {
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getActionBadgeColor(log.action)}`}>
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${getActionBadgeColor(log.action)}`}>
                         {formatActionLabel(log.action)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getEntityTypeBadgeColor(log.entityType)}`}>
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap hidden sm:table-cell">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${getEntityTypeBadgeColor(log.entityType)}`}>
                         {formatEntityTypeLabel(log.entityType)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
                         onClick={() => setSelectedLog(log)}
                         className="text-accent-mint hover:text-white transition-colors p-2 hover:bg-white/10 rounded-full"

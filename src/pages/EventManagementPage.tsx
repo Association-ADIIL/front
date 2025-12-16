@@ -292,7 +292,7 @@ const EventManagementPage: React.FC = () => {
   return (
     <div>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <h1 className="text-4xl font-bold text-accent-mint font-koulen">GESTION DES EVENEMENTS</h1>
+        <h1 className="text-2xl sm:text-4xl font-bold text-accent-mint font-koulen">GESTION DES EVENEMENTS</h1>
         <button onClick={handleOpenCreate} className="bg-accent-mint text-darker-bg font-bold py-2 px-4 rounded hover:bg-white transition-colors flex items-center">
           <Plus size={20} className="mr-2" /> Creer un evenement
         </button>
@@ -331,7 +331,7 @@ const EventManagementPage: React.FC = () => {
                         className="w-full h-full object-cover" 
                      />
                  </div>
-                 <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity bg-darker-bg p-1 rounded absolute top-4 right-4 shadow-lg">
+                 <div className="flex space-x-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity bg-darker-bg p-1 rounded absolute top-4 right-4 shadow-lg">
                     <button
                       onClick={() => handleExportCsv(event.id, event.title)}
                       className="p-2 text-accent-mint hover:bg-green-900/20 rounded"
@@ -345,7 +345,23 @@ const EventManagementPage: React.FC = () => {
             </div>
 
             <h3 className="text-xl font-bold mb-1 pr-2 line-clamp-1">{event.title}</h3>
-            
+
+            {/* Visibility badges */}
+            {event.visibility !== 'PUBLIC' && (
+              <div className="mb-2">
+                {event.visibility === 'DRAFT' && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-yellow-900/50 text-yellow-300 border border-yellow-700/50">
+                    Brouillon
+                  </span>
+                )}
+                {event.visibility === 'PRIVATE' && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-purple-900/50 text-purple-300 border border-purple-700/50">
+                    Prive
+                  </span>
+                )}
+              </div>
+            )}
+
             <div className="text-sm text-gray-400 mb-1 flex items-center">
                 <Calendar size={14} className="mr-2" />
                 {new Date(event.date).toLocaleDateString()}

@@ -58,7 +58,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   const colors = getVariantColors();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4 pt-16 sm:pt-4">
       <div className={`bg-darker-bg border ${colors.border} rounded-lg shadow-2xl w-full max-w-md relative animate-fadeIn`}>
         <div className="flex justify-between items-center p-6 border-b border-gray-700">
           <h2 className="text-xl font-bold text-white">{title}</h2>
