@@ -4,6 +4,8 @@ export interface BalanceRecharge {
   id: number;
   userId: number;
   amount: number;
+  bonusAmount: number;
+  promotionId: number | null;
   paymentMethod: string;
   paymentStatus: string;
   paymentTransactionId: string | null;
@@ -20,6 +22,8 @@ export const createBalanceRecharge = async (data: {
   paymentMethod: string;
   returnUrl?: string;
   cancelUrl?: string;
+  promotionId?: number;
+  bonusAmount?: number;
 }): Promise<any> => {
   return fetchJson('/balance/recharge', {
     method: 'POST',
@@ -53,6 +57,7 @@ export const getMyRecharges = async (): Promise<BalanceRecharge[]> => {
 
 export const purchaseWithBalance = async (data: {
   items: Array<{ productId: number; quantity: number }>;
+  promotionId?: number;
 }): Promise<any> => {
   return fetchJson('/balance/purchase', {
     method: 'POST',

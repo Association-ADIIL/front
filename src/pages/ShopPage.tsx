@@ -6,6 +6,7 @@ import { useCart } from '../context/CartContext';
 import { useNotification } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
 import BalanceDisplay from '../components/BalanceDisplay';
+import BonusBubble from '../components/BonusBubble';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
@@ -110,6 +111,34 @@ const ShopPage: React.FC = () => {
 
   const cartItemsCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
+  // Group products by subcategory for better organization
+  const groupedProducts = React.useMemo(() => {
+    const groups: { [key: string]: { name: string; categoryName: string; products: Product[] } } = {};
+
+    filteredProducts.forEach(product => {
+      const subcategoryName = product.subcategory?.name || 'Autres';
+      const categoryName = product.subcategory?.category?.name || '';
+      const key = `${categoryName}-${subcategoryName}`;
+
+      if (!groups[key]) {
+        groups[key] = {
+          name: subcategoryName,
+          categoryName: categoryName,
+          products: []
+        };
+      }
+      groups[key].products.push(product);
+    });
+
+    // Sort groups by category then subcategory name
+    return Object.values(groups).sort((a, b) => {
+      if (a.categoryName !== b.categoryName) {
+        return a.categoryName.localeCompare(b.categoryName);
+      }
+      return a.name.localeCompare(b.name);
+    });
+  }, [filteredProducts]);
+
   return (
     <div className="min-h-screen">
       {/* Header Section */}
@@ -126,7 +155,10 @@ const ShopPage: React.FC = () => {
             <div className="flex-shrink-0 flex items-center gap-4">
               {user ? (
                 <>
-                  <BalanceDisplay variant="compact" showRechargeButton={true} />
+                  <div className="relative">
+                    <BalanceDisplay variant="compact" showRechargeButton={true} />
+                    <BonusBubble variant="overlay" />
+                  </div>
                   {cartItemsCount > 0 && (
                     <Link
                       to="/cart"
@@ -272,87 +304,123 @@ const ShopPage: React.FC = () => {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-              {filteredProducts.map((product) => {
-                const quantity = quantities[product.id] || 1;
-                const variant = product.variants?.find(v => v.id === selectedVariants[product.id]);
-                const displayPrice = variant ? product.price + variant.priceModifier : product.price;
+            <div className="space-y-10">
+              {/* Results count */}
+              <div className="flex items-center justify-between">
+                <p className="text-gray-400 text-sm">
+                  <span className="text-white font-bold">{filteredProducts.length}</span> produit{filteredProducts.length > 1 ? 's' : ''} disponible{filteredProducts.length > 1 ? 's' : ''}
+                  {groupedProducts.length > 1 && (
+                    <span className="text-gray-500"> • {groupedProducts.length} catégories</span>
+                  )}
+                </p>
+              </div>
 
-                return (
-                  <div
-                    key={product.id}
-                    className="bg-darker-bg rounded-2xl border border-gray-800 hover:border-accent-mint/30 transition-all duration-300 overflow-hidden group flex flex-col"
-                  >
-                    {/* Image */}
-                    <div className="aspect-square bg-gray-800 relative overflow-hidden">
-                      <img
-                        src={product.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(product.name)}&background=1E1E1E&color=fff&size=200`}
-                        alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    </div>
-
-                    {/* Content */}
-                    <div className="p-3 flex flex-col flex-1">
-                      <h3 className="font-bold text-white text-sm truncate mb-1">{product.name}</h3>
-
-                      {/* Variant selector */}
-                      {product.variants && product.variants.length > 0 && (
-                        <select
-                          value={selectedVariants[product.id] || ''}
-                          onChange={(e) => setSelectedVariants(prev => ({
-                            ...prev,
-                            [product.id]: e.target.value ? parseInt(e.target.value) : undefined
-                          }))}
-                          className="w-full bg-dark-bg border border-gray-700 rounded-lg p-1.5 text-white text-xs focus:border-accent-mint outline-none mb-2"
-                        >
-                          <option value="">Format</option>
-                          {product.variants.map((v) => (
-                            <option key={v.id} value={v.id}>
-                              {v.name}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-
-                      {/* Spacer to push controls to bottom */}
-                      <div className="flex-1" />
-
-                      {/* Price */}
-                      <p className="text-accent-mint font-koulen text-xl mb-2">
-                        {displayPrice.toFixed(2)}€
-                      </p>
-
-                      {/* Quantity selector */}
-                      <div className="flex items-center justify-between bg-dark-bg rounded-lg p-1 mb-2">
-                        <button
-                          onClick={() => updateQuantity(product.id, -1)}
-                          disabled={quantity <= 1}
-                          className="w-7 h-7 flex items-center justify-center text-accent-mint hover:bg-accent-mint/10 rounded disabled:text-gray-600 disabled:hover:bg-transparent transition-colors"
-                        >
-                          <Minus size={14} />
-                        </button>
-                        <span className="text-white font-bold text-sm">{quantity}</span>
-                        <button
-                          onClick={() => updateQuantity(product.id, 1)}
-                          className="w-7 h-7 flex items-center justify-center text-accent-mint hover:bg-accent-mint/10 rounded transition-colors"
-                        >
-                          <Plus size={14} />
-                        </button>
+              {/* Grouped products by subcategory */}
+              {groupedProducts.map((group) => (
+                <div key={`${group.categoryName}-${group.name}`} className="space-y-4">
+                  {/* Section header */}
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-1 h-8 bg-accent-mint rounded-full" />
+                      <div>
+                        {group.categoryName && !selectedCategoryId && (
+                          <p className="text-xs text-gray-500 uppercase tracking-wider">{group.categoryName}</p>
+                        )}
+                        <h2 className="text-xl font-koulen text-white">{group.name}</h2>
                       </div>
-
-                      {/* Add to cart button */}
-                      <button
-                        onClick={() => handleAddToCart(product)}
-                        className="w-full py-2 bg-accent-mint text-darker-bg font-bold text-sm rounded-lg hover:bg-white transition-colors flex items-center justify-center gap-1"
-                      >
-                        <ShoppingCart size={14} />
-                        Ajouter
-                      </button>
                     </div>
+                    <div className="flex-1 h-px bg-gray-800" />
+                    <span className="text-sm text-gray-500 bg-darker-bg px-3 py-1 rounded-full">
+                      {group.products.length} article{group.products.length > 1 ? 's' : ''}
+                    </span>
                   </div>
-                );
-              })}
+
+                  {/* Products grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                    {group.products.map((product) => {
+                      const quantity = quantities[product.id] || 1;
+                      const variant = product.variants?.find(v => v.id === selectedVariants[product.id]);
+                      const displayPrice = variant ? product.price + variant.priceModifier : product.price;
+
+                      return (
+                        <div
+                          key={product.id}
+                          className="bg-darker-bg rounded-2xl border border-gray-800 hover:border-accent-mint/30 transition-all duration-300 overflow-hidden group flex flex-col"
+                        >
+                          {/* Image */}
+                          <div className="aspect-square bg-gray-800 relative overflow-hidden">
+                            <img
+                              src={product.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(product.name)}&background=1E1E1E&color=fff&size=200`}
+                              alt={product.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                            {/* Price tag overlay */}
+                            <div className="absolute top-2 right-2 bg-darker-bg/90 backdrop-blur-sm px-2 py-1 rounded-lg">
+                              <span className="text-accent-mint font-koulen text-lg">{displayPrice.toFixed(2)}€</span>
+                            </div>
+                          </div>
+
+                          {/* Content */}
+                          <div className="p-3 flex flex-col flex-1">
+                            <h3 className="font-bold text-white text-sm leading-tight mb-2 line-clamp-2">{product.name}</h3>
+
+                            {/* Variant selector */}
+                            {product.variants && product.variants.length > 0 && (
+                              <select
+                                value={selectedVariants[product.id] || ''}
+                                onChange={(e) => setSelectedVariants(prev => ({
+                                  ...prev,
+                                  [product.id]: e.target.value ? parseInt(e.target.value) : undefined
+                                }))}
+                                className="w-full bg-dark-bg border border-gray-700 rounded-lg p-1.5 text-white text-xs focus:border-accent-mint outline-none mb-2"
+                              >
+                                <option value="">Format</option>
+                                {product.variants.map((v) => (
+                                  <option key={v.id} value={v.id}>
+                                    {v.name}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+
+                            {/* Spacer to push controls to bottom */}
+                            <div className="flex-1" />
+
+                            {/* Quantity and add button in row */}
+                            <div className="flex items-center gap-2">
+                              <div className="flex items-center bg-dark-bg rounded-lg">
+                                <button
+                                  onClick={() => updateQuantity(product.id, -1)}
+                                  disabled={quantity <= 1}
+                                  className="w-7 h-8 flex items-center justify-center text-accent-mint hover:bg-accent-mint/10 rounded-l-lg disabled:text-gray-600 disabled:hover:bg-transparent transition-colors"
+                                >
+                                  <Minus size={12} />
+                                </button>
+                                <span className="w-6 text-center text-white font-bold text-sm">{quantity}</span>
+                                <button
+                                  onClick={() => updateQuantity(product.id, 1)}
+                                  className="w-7 h-8 flex items-center justify-center text-accent-mint hover:bg-accent-mint/10 rounded-r-lg transition-colors"
+                                >
+                                  <Plus size={12} />
+                                </button>
+                              </div>
+
+                              {/* Add to cart button */}
+                              <button
+                                onClick={() => handleAddToCart(product)}
+                                className="flex-1 py-2 bg-accent-mint text-darker-bg font-bold text-xs rounded-lg hover:bg-white transition-colors flex items-center justify-center gap-1"
+                              >
+                                <ShoppingCart size={12} />
+                                <span className="hidden sm:inline">Ajouter</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

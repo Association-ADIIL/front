@@ -44,3 +44,8 @@ export const register = async (data: RegisterData): Promise<{ message: string; u
     body: JSON.stringify(data),
   });
 };
+
+// Get current user info (for refreshing permissions)
+export const getMe = async (): Promise<{ user: User }> => {
+  return fetchJson('/auth/me');
+};

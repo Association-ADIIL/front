@@ -1,10 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { getMyBalance, createBalanceRecharge, getMyRecharges, type BalanceRecharge } from '../api/balance';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
-import { CreditCard, Plus, History, Wallet, ChevronRight, Euro } from 'lucide-react';
+import { CreditCard, Plus, History, Wallet, ChevronRight, Euro, Gift, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import NumberInput from '../components/NumberInput';
+import BonusBubble from '../components/BonusBubble';
+import { checkBalanceRechargeBonus, type BalanceBonusCheck, type BalanceRechargeTier } from '../api/promotions';
 
 const BalancePage: React.FC = () => {
   useDocumentTitle('Ma Carte ADIIL');
@@ -17,6 +20,8 @@ const BalancePage: React.FC = () => {
   const [recharging, setRecharging] = useState(false);
   const [amount, setAmount] = useState<string>('10');
   const [paymentMethod, setPaymentMethod] = useState<string>('HELLOASSO');
+  const [bonusInfo, setBonusInfo] = useState<BalanceBonusCheck | null>(null);
+  const [checkingBonus, setCheckingBonus] = useState(false);
 
   // Auto-switch to PayPal if HelloAsso is selected and amount is below 0.50
   useEffect(() => {
@@ -24,6 +29,34 @@ const BalancePage: React.FC = () => {
       setPaymentMethod('PAYPAL');
     }
   }, [amount, paymentMethod]);
+
+  // Check for bonus when amount changes
+  const checkBonus = useCallback(async (amountValue: number) => {
+    if (!token || amountValue <= 0) {
+      setBonusInfo(null);
+      return;
+    }
+
+    setCheckingBonus(true);
+    try {
+      const result = await checkBalanceRechargeBonus(amountValue);
+      setBonusInfo(result);
+    } catch (error) {
+      console.error('Error checking bonus:', error);
+      setBonusInfo(null);
+    } finally {
+      setCheckingBonus(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    const amountValue = parseFloat(amount || '0');
+    const timeoutId = setTimeout(() => {
+      checkBonus(amountValue);
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [amount, checkBonus]);
 
   useEffect(() => {
     if (!token) {
@@ -64,6 +97,8 @@ const BalancePage: React.FC = () => {
         paymentMethod,
         returnUrl: `${window.location.origin}/payment/callback`,
         cancelUrl: `${window.location.origin}/balance`,
+        promotionId: bonusInfo?.eligible ? bonusInfo.promotionId : undefined,
+        bonusAmount: bonusInfo?.eligible ? bonusInfo.bonusAmount : undefined,
       });
 
       // Store recharge ID for callback handling
@@ -132,20 +167,78 @@ const BalancePage: React.FC = () => {
 
       <section className="py-8">
         <div className="container mx-auto px-4 max-w-4xl">
+          {/* Detailed Promotion Box */}
+          {bonusInfo?.eligible && (
+            <div className="mb-6 bg-gradient-to-r from-accent-mint/10 via-yellow-500/5 to-accent-mint/10 border border-accent-mint/30 rounded-2xl p-5 overflow-hidden relative">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-accent-mint/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+              <div className="relative">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-accent-mint/20 rounded-xl shrink-0">
+                    <Gift className="text-accent-mint" size={28} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Sparkles className="text-yellow-400" size={16} />
+                      <span className="text-sm font-bold text-accent-mint uppercase tracking-wide">
+                        Offre spéciale
+                      </span>
+                      <Sparkles className="text-yellow-400" size={16} />
+                    </div>
+                    <h3 className="text-xl font-bold text-white mb-2">
+                      {bonusInfo.promotionName || 'Bonus sur votre recharge'}
+                    </h3>
+                    {bonusInfo.message && (
+                      <p className="text-gray-300 text-sm mb-4">
+                        {bonusInfo.message}
+                      </p>
+                    )}
+
+                    {/* Bonus Tiers */}
+                    <div className="flex flex-wrap gap-3">
+                      {bonusInfo.tiers && bonusInfo.tiers.length > 0 ? (
+                        bonusInfo.tiers.map((tier: BalanceRechargeTier, index: number) => (
+                          <div
+                            key={index}
+                            className="bg-darker-bg/50 border border-gray-700 rounded-xl px-4 py-2 text-center"
+                          >
+                            <p className="text-xs text-gray-400 mb-1">
+                              {tier.maxAmount
+                                ? `${tier.minAmount}€ - ${tier.maxAmount}€`
+                                : `${tier.minAmount}€+`}
+                            </p>
+                            <p className="text-lg font-bold text-accent-mint">+{tier.bonusPercent}%</p>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="bg-darker-bg/50 border border-gray-700 rounded-xl px-4 py-2 text-center">
+                          <p className="text-xs text-gray-400 mb-1">Votre bonus</p>
+                          <p className="text-lg font-bold text-accent-mint">+{bonusInfo.bonusPercent}%</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left column */}
             <div className="space-y-6">
               {/* Current Balance Card */}
-              <div className="bg-gradient-to-br from-accent-mint to-emerald-400 p-6 rounded-2xl">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-darker-bg/70 text-sm font-semibold mb-1">SOLDE ACTUEL</p>
-                    <p className="text-4xl font-koulen text-darker-bg">{balance.toFixed(2)} EUR</p>
-                  </div>
-                  <div className="w-16 h-16 bg-darker-bg/10 rounded-2xl flex items-center justify-center">
-                    <CreditCard size={32} className="text-darker-bg/50" />
+              <div className="relative">
+                <div className="bg-gradient-to-br from-accent-mint to-emerald-400 p-6 rounded-2xl">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-darker-bg/70 text-sm font-semibold mb-1">SOLDE ACTUEL</p>
+                      <p className="text-4xl font-koulen text-darker-bg">{balance.toFixed(2)} EUR</p>
+                    </div>
+                    <div className="w-16 h-16 bg-darker-bg/10 rounded-2xl flex items-center justify-center">
+                      <CreditCard size={32} className="text-darker-bg/50" />
+                    </div>
                   </div>
                 </div>
+                <BonusBubble variant="overlay" className="-top-3 -right-3" />
               </div>
 
               {/* Recharge History */}
@@ -165,7 +258,14 @@ const BalancePage: React.FC = () => {
                       {recharges.map((recharge) => (
                         <div key={recharge.id} className="flex items-center justify-between p-4 hover:bg-dark-bg/30 transition-colors">
                           <div>
-                            <p className="text-white font-bold">{recharge.amount.toFixed(2)} EUR</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-white font-bold">{recharge.amount.toFixed(2)} EUR</p>
+                              {recharge.bonusAmount > 0 && (
+                                <span className="text-xs font-bold text-accent-mint bg-accent-mint/10 px-2 py-0.5 rounded-full">
+                                  +{recharge.bonusAmount.toFixed(2)} bonus
+                                </span>
+                              )}
+                            </div>
                             <p className="text-xs text-gray-500">
                               {new Date(recharge.createdAt).toLocaleDateString('fr-FR', {
                                 day: 'numeric',
@@ -174,6 +274,9 @@ const BalancePage: React.FC = () => {
                               })}
                               {' - '}
                               {getPaymentMethodLabel(recharge.paymentMethod)}
+                              {recharge.bonusAmount > 0 && (
+                                <span className="text-accent-mint"> (Total: {(recharge.amount + recharge.bonusAmount).toFixed(2)} EUR)</span>
+                              )}
                             </p>
                           </div>
                           {getStatusBadge(recharge.paymentStatus)}
@@ -220,17 +323,44 @@ const BalancePage: React.FC = () => {
                   <label className="block text-sm font-semibold text-gray-400 mb-3">MONTANT PERSONNALISE</label>
                   <div className="relative">
                     <Euro className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500" size={18} />
-                    <input
-                      type="number"
-                      min="0.01"
-                      step="0.01"
+                    <NumberInput
                       value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
+                      onChange={setAmount}
                       className="w-full bg-dark-bg border border-gray-800 rounded-xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-accent-mint transition-colors"
                       placeholder="Entrez un montant"
                     />
                   </div>
                 </div>
+
+                {/* Bonus Display */}
+                {bonusInfo?.eligible && bonusInfo.bonusAmount > 0 && (
+                  <div className="bg-gradient-to-r from-accent-mint/10 via-yellow-500/10 to-accent-mint/10 border border-accent-mint/40 rounded-xl p-4 animate-pulse-once">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-accent-mint/20 rounded-lg shrink-0">
+                        <Gift className="text-accent-mint" size={20} />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Sparkles className="text-yellow-400" size={14} />
+                          <span className="text-sm font-bold text-accent-mint">Bonus appliqué !</span>
+                        </div>
+                        <p className="text-sm text-white">
+                          +{bonusInfo.bonusAmount.toFixed(2)} EUR offerts ({bonusInfo.bonusPercent}%)
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          Total crédité : <span className="text-accent-mint font-bold">{bonusInfo.finalAmount.toFixed(2)} EUR</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {checkingBonus && (
+                  <div className="flex items-center gap-2 text-gray-400 text-sm">
+                    <div className="w-4 h-4 border-2 border-accent-mint border-t-transparent rounded-full animate-spin" />
+                    Verification du bonus...
+                  </div>
+                )}
 
                 {/* Payment method */}
                 <div>
@@ -304,7 +434,14 @@ const BalancePage: React.FC = () => {
                     <div className="w-6 h-6 border-2 border-darker-bg border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <>
-                      Recharger {amountNum.toFixed(2)} EUR
+                      {bonusInfo?.eligible && bonusInfo.bonusAmount > 0 ? (
+                        <>
+                          Payer {amountNum.toFixed(2)} EUR
+                          <span className="text-sm opacity-75">(+ {bonusInfo.bonusAmount.toFixed(2)} offerts)</span>
+                        </>
+                      ) : (
+                        <>Recharger {amountNum.toFixed(2)} EUR</>
+                      )}
                       <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
                     </>
                   )}

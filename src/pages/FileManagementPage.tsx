@@ -1,18 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, File, Trash2, Copy, Check, Folder, FolderPlus, Home, ChevronRight, Move, Edit, Download } from 'lucide-react';
-import { uploadImage, deleteImage, getFiles } from '../api/upload';
+import { Upload, File, Trash2, Copy, Check, Folder, FolderPlus, Home, ChevronRight, Move, Edit, Download, Loader2 } from 'lucide-react';
+import { uploadPrivateFile, deletePrivateFile, getFiles, getPrivateFileUrl } from '../api/upload';
 import { useNotification } from '../context/NotificationContext';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 interface UploadedFile {
-  url: string;
+  id: number;
+  url: string; // For private files, this is the S3 key
   name: string;
   uploadedAt: Date;
-  folder: string; // folder path like "documents/images" or "documents"
-  size?: number; // File size in bytes
-  uploaderName?: string; // Name of user who uploaded the file
+  folder: string;
+  size?: number;
+  uploaderName?: string;
+  isPrivate: boolean;
 }
 
 interface FolderItem {
@@ -51,6 +53,7 @@ const FileManagementPage: React.FC = () => {
     message: '',
     onConfirm: () => {},
   });
+  const [loadingUrls, setLoadingUrls] = useState<Set<number>>(new Set());
 
   // Load files from API on mount
   useEffect(() => {
@@ -61,6 +64,7 @@ const FileManagementPage: React.FC = () => {
 
         // Convert API response to UploadedFile format
         const convertedFiles: UploadedFile[] = fetchedFiles.map(file => ({
+          id: file.id,
           url: file.url,
           name: file.fileName,
           uploadedAt: new Date(file.createdAt),
@@ -69,6 +73,7 @@ const FileManagementPage: React.FC = () => {
           uploaderName: file.uploader
             ? `${file.uploader.firstName} ${file.uploader.lastName}`
             : undefined,
+          isPrivate: file.isPrivate,
         }));
 
         setFiles(convertedFiles);
@@ -146,20 +151,17 @@ const FileManagementPage: React.FC = () => {
     setIsUploading(true);
     try {
       const uploadPromises = Array.from(fileList).map(async (file) => {
-        const result = await uploadImage(file, currentFolder);
-        return {
-          url: result.imageUrl, // Use imageUrl from response
-          name: file.name,
-          uploadedAt: new Date(),
-          folder: currentFolder,
-        };
+        // Upload to private bucket
+        await uploadPrivateFile(file, currentFolder);
+        return file.name;
       });
 
-      const uploadedFiles = await Promise.all(uploadPromises);
+      const uploadedFileNames = await Promise.all(uploadPromises);
 
       // Fetch the complete file info from the server to get size and other metadata
       const refreshedFiles = await getFiles();
       const convertedFiles: UploadedFile[] = refreshedFiles.map(file => ({
+        id: file.id,
         url: file.url,
         name: file.fileName,
         uploadedAt: new Date(file.createdAt),
@@ -168,10 +170,11 @@ const FileManagementPage: React.FC = () => {
         uploaderName: file.uploader
           ? `${file.uploader.firstName} ${file.uploader.lastName}`
           : undefined,
+        isPrivate: file.isPrivate,
       }));
 
       setFiles(convertedFiles);
-      addNotification('success', `${uploadedFiles.length} fichier(s) uploadé(s) avec succès !`);
+      addNotification('success', `${uploadedFileNames.length} fichier(s) uploadé(s) avec succès !`);
     } catch (error: any) {
       console.error('Upload error:', error);
       addNotification('error', error.message || 'Erreur lors de l\'upload');
@@ -246,11 +249,17 @@ const FileManagementPage: React.FC = () => {
     const folderFiles = files.filter(f => f.folder.startsWith(folderPath));
     const subFolders = folders.filter(f => f.startsWith(folderPath) && f !== folderPath);
 
-    const performDelete = () => {
+    const performDelete = async () => {
       // Delete all files in the folder and subfolders
-      folderFiles.forEach(file => {
-        deleteImage(file.url).catch(console.error);
-      });
+      for (const file of folderFiles) {
+        try {
+          if (file.isPrivate) {
+            await deletePrivateFile(file.id);
+          }
+        } catch (error) {
+          console.error('Failed to delete file:', error);
+        }
+      }
 
       setFiles(prev => prev.filter(f => !f.folder.startsWith(folderPath)));
       setFolders(prev => {
@@ -285,8 +294,10 @@ const FileManagementPage: React.FC = () => {
       message: `Voulez-vous vraiment supprimer "${file.name}" ?`,
       onConfirm: async () => {
         try {
-          await deleteImage(file.url);
-          setFiles(prev => prev.filter(f => f.url !== file.url));
+          if (file.isPrivate) {
+            await deletePrivateFile(file.id);
+          }
+          setFiles(prev => prev.filter(f => f.id !== file.id));
           addNotification('success', 'Fichier supprimé avec succès !');
         } catch (error: any) {
           console.error('Delete error:', error);
@@ -329,11 +340,55 @@ const FileManagementPage: React.FC = () => {
     setNewFileName('');
   };
 
-  const handleCopyUrl = (url: string) => {
-    navigator.clipboard.writeText(url);
-    setCopiedUrl(url);
-    addNotification('success', 'URL copiée dans le presse-papier');
-    setTimeout(() => setCopiedUrl(null), 2000);
+  const handleCopyUrl = async (file: UploadedFile) => {
+    if (file.isPrivate) {
+      // Generate signed URL on demand
+      setLoadingUrls(prev => new Set(prev).add(file.id));
+      try {
+        const result = await getPrivateFileUrl(file.id);
+        navigator.clipboard.writeText(result.url);
+        setCopiedUrl(String(file.id));
+        addNotification('success', 'URL copiée (valide 1h)');
+      } catch (error: any) {
+        addNotification('error', error.message || 'Erreur lors de la génération de l\'URL');
+      } finally {
+        setLoadingUrls(prev => {
+          const next = new Set(prev);
+          next.delete(file.id);
+          return next;
+        });
+        setTimeout(() => setCopiedUrl(null), 2000);
+      }
+    } else {
+      // Public file, use URL directly
+      navigator.clipboard.writeText(file.url);
+      setCopiedUrl(String(file.id));
+      addNotification('success', 'URL copiée dans le presse-papier');
+      setTimeout(() => setCopiedUrl(null), 2000);
+    }
+  };
+
+  const handleDownload = async (file: UploadedFile) => {
+    if (file.isPrivate) {
+      // Generate signed URL on demand
+      setLoadingUrls(prev => new Set(prev).add(file.id));
+      try {
+        const result = await getPrivateFileUrl(file.id);
+        // Open the signed URL in a new tab to trigger download
+        window.open(result.url, '_blank');
+      } catch (error: any) {
+        addNotification('error', error.message || 'Erreur lors du téléchargement');
+      } finally {
+        setLoadingUrls(prev => {
+          const next = new Set(prev);
+          next.delete(file.id);
+          return next;
+        });
+      }
+    } else {
+      // Public file, use URL directly
+      window.open(file.url, '_blank');
+    }
   };
 
   const childFolders = getChildFolders();
@@ -458,12 +513,13 @@ const FileManagementPage: React.FC = () => {
           <h2 className="text-xl font-bold mb-4">Fichiers ({currentFiles.length})</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {currentFiles.map((file) => {
-              const isImage = file.url.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i);
+              const isImage = file.name.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i);
+              const isLoading = loadingUrls.has(file.id);
 
               return (
-                <div key={file.url} className="card p-4 flex flex-col">
-                  {/* Preview */}
-                  {isImage ? (
+                <div key={file.id} className="card p-4 flex flex-col">
+                  {/* Preview - For private files, show icon instead of image */}
+                  {isImage && !file.isPrivate ? (
                     <div className="w-full h-32 bg-dark-bg rounded mb-3 flex items-center justify-center overflow-hidden">
                       <img src={file.url} alt={file.name} className="w-full h-full object-cover" />
                     </div>
@@ -488,20 +544,27 @@ const FileManagementPage: React.FC = () => {
                   {/* Actions */}
                   <div className="grid grid-cols-5 gap-2 mt-auto">
                     <button
-                      onClick={() => handleCopyUrl(file.url)}
-                      className="bg-accent-mint/20 text-accent-mint font-bold py-2 px-2 rounded hover:bg-accent-mint/30 transition-colors flex items-center justify-center"
+                      onClick={() => handleCopyUrl(file)}
+                      disabled={isLoading}
+                      className="bg-accent-mint/20 text-accent-mint font-bold py-2 px-2 rounded hover:bg-accent-mint/30 transition-colors flex items-center justify-center disabled:opacity-50"
                       title="Copier l'URL"
                     >
-                      {copiedUrl === file.url ? <Check size={16} /> : <Copy size={16} />}
+                      {isLoading ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : copiedUrl === String(file.id) ? (
+                        <Check size={16} />
+                      ) : (
+                        <Copy size={16} />
+                      )}
                     </button>
-                    <a
-                      href={file.url}
-                      download={file.name}
-                      className="bg-green-900/20 text-green-400 font-bold py-2 px-2 rounded hover:bg-green-900/30 transition-colors flex items-center justify-center"
+                    <button
+                      onClick={() => handleDownload(file)}
+                      disabled={isLoading}
+                      className="bg-green-900/20 text-green-400 font-bold py-2 px-2 rounded hover:bg-green-900/30 transition-colors flex items-center justify-center disabled:opacity-50"
                       title="Télécharger"
                     >
-                      <Download size={16} />
-                    </a>
+                      {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                    </button>
                     <button
                       onClick={() => {
                         setFileToRename(file);

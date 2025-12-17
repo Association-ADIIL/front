@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { getAllEvents, type Event } from '../api/events';
 import { Calendar, MapPin, Users, ChevronRight, Filter } from 'lucide-react';
 import BalanceDisplay from '../components/BalanceDisplay';
+import BonusBubble from '../components/BonusBubble';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 type FilterType = 'all' | 'upcoming' | 'passed';
@@ -59,8 +60,9 @@ const EventsPage: React.FC = () => {
                 Découvrez les événements organisés par l'ADIIL. Soirées, sorties, tournois... Il y en a pour tous les goûts !
               </p>
             </div>
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 relative">
               <BalanceDisplay variant="compact" showRechargeButton={true} />
+              <BonusBubble variant="overlay" className="-top-3 -right-3" />
             </div>
           </div>
 

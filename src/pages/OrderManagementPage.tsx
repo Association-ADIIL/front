@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { getAllOrders, updateOrderStatus, updatePaymentStatus, refundOrderItems, type Order } from '../api/orders';
 import { getAllInscriptions, updateInscriptionPaymentStatus, refundInscription, type Inscription } from '../api/inscriptions';
 import { getAllEvents, type Event } from '../api/events';
-import { Edit2, ShoppingBag, Calendar, CheckSquare, Square, Eye } from 'lucide-react';
+import { Edit2, ShoppingBag, Calendar, CheckSquare, Square, Eye, Gift } from 'lucide-react';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import MultiSelect from '../components/MultiSelect';
+import NumberInput from '../components/NumberInput';
 import { useNotification } from '../context/NotificationContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
@@ -241,7 +242,7 @@ const OrderManagementPage: React.FC = () => {
   const updateRefundQuantity = (itemId: number, quantity: number, maxQuantity: number) => {
     if (quantity < 0) quantity = 0;
     if (quantity > maxQuantity) quantity = maxQuantity;
-    
+
     setRefundSelection(prev => {
         if (quantity === 0) {
             const { [itemId]: _, ...rest } = prev;
@@ -249,6 +250,27 @@ const OrderManagementPage: React.FC = () => {
         }
         return { ...prev, [itemId]: quantity };
     });
+  };
+
+  // Calculate actual refund amount considering discounts
+  const calculateRefundAmount = (order: Order, selection: { [key: number]: number }): { originalAmount: number; actualAmount: number; hasDiscount: boolean } => {
+    // Calculate original refund amount (without discount)
+    const originalAmount = order.items.reduce((sum, item) => {
+      return sum + (selection[item.id] || 0) * item.price;
+    }, 0);
+
+    // If no discount was applied, return original amount
+    if (!order.discountAmount || order.discountAmount === 0 || !order.originalPrice) {
+      return { originalAmount, actualAmount: originalAmount, hasDiscount: false };
+    }
+
+    // Calculate the discount ratio
+    const discountRatio = order.discountAmount / order.originalPrice;
+
+    // Apply the same discount ratio to the refund
+    const actualAmount = originalAmount * (1 - discountRatio);
+
+    return { originalAmount, actualAmount, hasDiscount: true };
   };
 
   const handleProcessPartialRefund = () => {
@@ -275,14 +297,22 @@ const OrderManagementPage: React.FC = () => {
           return;
       }
 
+      // Calculate refund amount considering discounts
+      const refundCalc = calculateRefundAmount(currentOrder, refundSelection);
+      let confirmMessage = `Vous allez rembourser un montant de ${refundCalc.actualAmount.toFixed(2)} €.`;
+      if (refundCalc.hasDiscount) {
+        confirmMessage += `\n\n(Prix original: ${refundCalc.originalAmount.toFixed(2)} €, après application de la réduction)`;
+      }
+      confirmMessage += '\n\nCette action est irréversible.';
+
       setConfirmDialog({
           isOpen: true,
-          title: 'Confirmer le remboursement', 
-          message: `Vous allez rembourser un montant total de ${(currentOrder.items.reduce((sum, item) => sum + (refundSelection[item.id] || 0) * item.price, 0)).toFixed(2)} €. Cette action est irréversible.`, 
+          title: 'Confirmer le remboursement',
+          message: confirmMessage,
           onConfirm: async () => {
               try {
                   await refundOrderItems(currentOrder.id, itemsToRefund);
-                  addNotification('success', 'Remboursement effectué avec succès'); 
+                  addNotification('success', 'Remboursement effectué avec succès');
                   setIsModalOpen(false);
                   setConfirmDialog(prev => ({ ...prev, isOpen: false }));
                   fetchOrders();
@@ -481,8 +511,19 @@ const OrderManagementPage: React.FC = () => {
                        order.paymentMethod === 'FREE' ? 'Gratuit' :
                        order.paymentMethod === 'BALANCE' ? 'Solde' : order.paymentMethod}
                     </td>
-                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm font-bold text-accent-mint">
-                      {order.totalPrice.toFixed(2)} €
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm">
+                      {order.discountAmount > 0 && order.originalPrice ? (
+                        <div>
+                          <span className="text-gray-500 line-through text-xs block">{order.originalPrice.toFixed(2)} €</span>
+                          <span className="font-bold text-accent-mint">{order.totalPrice.toFixed(2)} €</span>
+                          <span className="text-xs text-accent-mint flex items-center gap-1 mt-0.5">
+                            <Gift size={10} />
+                            -{order.discountAmount.toFixed(2)}€
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="font-bold text-accent-mint">{order.totalPrice.toFixed(2)} €</span>
+                      )}
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
@@ -658,8 +699,31 @@ const OrderManagementPage: React.FC = () => {
                             </li>
                         ))}
                     </ul>
+                    {/* Discount info */}
+                    {currentOrder.discountAmount > 0 && (
+                        <div className="mt-4 p-3 bg-accent-mint/10 border border-accent-mint/20 rounded-lg">
+                            <div className="flex items-center gap-2 mb-2">
+                                <Gift size={16} className="text-accent-mint" />
+                                <span className="text-accent-mint font-bold">Réduction appliquée</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-gray-400">Prix original:</span>
+                                <span className="text-gray-300">{currentOrder.originalPrice?.toFixed(2)} €</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-gray-400">Réduction:</span>
+                                <span className="text-accent-mint">-{currentOrder.discountAmount.toFixed(2)} €</span>
+                            </div>
+                            {currentOrder.promotion && (
+                                <div className="flex justify-between text-sm mt-1">
+                                    <span className="text-gray-400">Promotion:</span>
+                                    <span className="text-gray-300">{currentOrder.promotion.name}</span>
+                                </div>
+                            )}
+                        </div>
+                    )}
                     <div className="mt-4 pt-4 border-t border-gray-700 flex justify-between items-center">
-                        <span className="text-gray-400 font-medium">Total de la commande:</span>
+                        <span className="text-gray-400 font-medium">Total {currentOrder.discountAmount > 0 ? 'après réduction' : 'de la commande'}:</span>
                         <span className="text-accent-mint font-bold text-xl">{currentOrder.totalPrice.toFixed(2)} €</span>
                     </div>
                     {currentOrder.refundedAmount > 0 && (
@@ -710,16 +774,23 @@ const OrderManagementPage: React.FC = () => {
                                                     </span>
                                                 )}
                                             </td>
-                                            <td className="py-2">{item.price} €</td>
+                                            <td className="py-2">
+                                                                {currentOrder.discountAmount > 0 && currentOrder.originalPrice ? (
+                                                                    <div>
+                                                                        <span className="text-gray-500 line-through text-xs">{item.price.toFixed(2)} €</span>
+                                                                        <span className="ml-1 text-accent-mint">{(item.price * (1 - currentOrder.discountAmount / currentOrder.originalPrice)).toFixed(2)} €</span>
+                                                                    </div>
+                                                                ) : (
+                                                                    <span>{item.price.toFixed(2)} €</span>
+                                                                )}
+                                                            </td>
                                             <td className="py-2 text-center">{item.quantity}</td>
                                             <td className="py-2 text-center">{item.refundedQuantity || 0}</td>
                                             <td className="py-2 text-right flex items-center justify-end gap-2">
-                                                <input
-                                                    type="number"
-                                                    min="0"
-                                                    max={availableRefund}
+                                                <NumberInput
                                                     value={refundSelection[item.id] || 0}
-                                                    onChange={(e) => updateRefundQuantity(item.id, parseInt(e.target.value) || 0, availableRefund)}
+                                                    onChange={(val) => updateRefundQuantity(item.id, Math.min(parseInt(val) || 0, availableRefund), availableRefund)}
+                                                    allowDecimals={false}
                                                     className="w-16 bg-dark-bg border border-gray-600 rounded px-2 py-1 text-right text-white"
                                                 />
                                                 <button
@@ -735,8 +806,32 @@ const OrderManagementPage: React.FC = () => {
                             </tbody>
                         </table>
                     </div>
+
+                    {/* Refund summary */}
+                    {Object.keys(refundSelection).length > 0 && (() => {
+                        const refundCalc = calculateRefundAmount(currentOrder, refundSelection);
+                        return (
+                            <div className="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-red-400 font-medium">Montant à rembourser:</span>
+                                    <div className="text-right">
+                                        {refundCalc.hasDiscount && (
+                                            <span className="text-gray-500 line-through text-sm mr-2">{refundCalc.originalAmount.toFixed(2)} €</span>
+                                        )}
+                                        <span className="text-red-400 font-bold text-lg">{refundCalc.actualAmount.toFixed(2)} €</span>
+                                    </div>
+                                </div>
+                                {refundCalc.hasDiscount && (
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Le montant reflète la réduction appliquée à la commande
+                                    </p>
+                                )}
+                            </div>
+                        );
+                    })()}
+
                     <div className="mt-4 flex justify-end">
-                        <button 
+                        <button
                             onClick={handleProcessPartialRefund}
                             disabled={Object.keys(refundSelection).length === 0 || (currentOrder.paymentMethod === 'HELLOASSO' && !isFullRefundAttemptForButton)}
                             className="bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded transition-colors"

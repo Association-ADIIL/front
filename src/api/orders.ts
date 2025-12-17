@@ -9,6 +9,15 @@ export interface Order {
   id: number;
   userId: number;
   totalPrice: number;
+  originalPrice?: number | null; // Price before discount
+  discountAmount: number; // Amount discounted
+  promotionId?: number | null;
+  promotion?: {
+    id: number;
+    name: string;
+    type: string;
+  } | null;
+  hasDiscount?: boolean;
   paymentMethod: 'HELLOASSO' | 'PAYPAL' | 'CASH_CB' | 'FREE';
   paymentStatus: 'PENDING' | 'PAID' | 'REFUNDED';
   orderStatus: 'PENDING' | 'PAID' | 'COLLECTED' | 'CANCELLED';
@@ -52,6 +61,7 @@ export interface CreateOrderPayload {
   paymentMethod: 'HELLOASSO' | 'PAYPAL' | 'CASH_CB' | 'FREE';
   returnUrl?: string;
   cancelUrl?: string;
+  promotionId?: number; // Optional: specify which promotion to apply
 }
 
 export interface CreateOrderResponse {
@@ -118,5 +128,41 @@ export const refundOrderItems = async (id: number, items: { orderItemId: number;
   return fetchJson(`/orders/${id}/refund-items`, {
     method: 'POST',
     body: JSON.stringify({ items }),
+  });
+};
+
+export interface OrderPickupInfo {
+  id: number;
+  customerName: string;
+  paymentMethod: 'HELLOASSO' | 'PAYPAL' | 'CASH_CB' | 'FREE' | 'BALANCE';
+  paymentStatus: 'PENDING' | 'PAID' | 'REFUNDED';
+  orderStatus: 'PENDING' | 'PAID' | 'COLLECTED' | 'CANCELLED';
+  totalPrice: number;
+  originalPrice?: number | null;
+  discountAmount: number;
+  refundedAmount: number;
+  promotion?: {
+    id: number;
+    name: string;
+    type: string;
+  } | null;
+  items: Array<{
+    id: number;
+    productName: string;
+    variantName: string | null;
+    quantity: number;
+    refundedQuantity: number;
+    price: number;
+  }>;
+  createdAt: string;
+}
+
+export const getOrderPickupInfo = async (id: number): Promise<OrderPickupInfo> => {
+  return fetchJson(`/orders/${id}/pickup-info`);
+};
+
+export const confirmOrderPickup = async (id: number): Promise<{ order: Order; message: string }> => {
+  return fetchJson(`/orders/${id}/confirm-pickup`, {
+    method: 'POST',
   });
 };

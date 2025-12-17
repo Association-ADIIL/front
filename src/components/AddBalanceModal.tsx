@@ -3,6 +3,7 @@ import { getAllUsers } from '../api/users';
 import { addBalanceManually } from '../api/balance';
 import { useNotification } from '../context/NotificationContext';
 import Modal from './Modal';
+import NumberInput from './NumberInput';
 import { Loader, Plus } from 'lucide-react';
 
 interface User {
@@ -126,12 +127,9 @@ const AddBalanceModal: React.FC<AddBalanceModalProps> = ({ isOpen, onClose, onSu
 
             <div>
               <label className="block text-gray-400 mb-2 font-bold">Montant à ajouter (€)</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0.01"
+              <NumberInput
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={setAmount}
                 placeholder="10.00"
                 className="w-full bg-dark-bg border border-gray-600 rounded px-4 py-2 text-white focus:border-accent-mint outline-none"
                 required

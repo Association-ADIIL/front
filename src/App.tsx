@@ -13,6 +13,7 @@ import CartPage from './pages/CartPage';
 import BalancePage from './pages/BalancePage';
 import MyAccountPage from './pages/MyAccountPage';
 import PaymentCallbackPage from './pages/PaymentCallbackPage';
+import OrderPickupPage from './pages/OrderPickupPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import UserManagementPage from './pages/UserManagementPage';
 import AdminLayout from './components/AdminLayout';
@@ -23,6 +24,7 @@ import AdminSalesStatisticsPage from './pages/AdminSalesStatisticsPage';
 import AdminAuditLogsPage from './pages/AdminAuditLogsPage';
 import FileManagementPage from './pages/FileManagementPage';
 import CategoryManagementPage from './pages/CategoryManagementPage';
+import PromotionManagementPage from './pages/PromotionManagementPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider, useNotification } from './context/NotificationContext';
 import { CartProvider } from './context/CartContext';
@@ -68,6 +70,7 @@ function App() {
               <Route path="/admin/statistics" element={<AdminLayout><AdminSalesStatisticsPage /></AdminLayout>} />
               <Route path="/admin/files" element={<AdminLayout><FileManagementPage /></AdminLayout>} />
               <Route path="/admin/logs" element={<AdminLayout><AdminAuditLogsPage /></AdminLayout>} />
+              <Route path="/admin/promotions" element={<AdminLayout><PromotionManagementPage /></AdminLayout>} />
 
               {/* Public Routes (with Header/Footer) */}
               <Route
@@ -89,6 +92,7 @@ function App() {
                         <Route path="/balance" element={<BalancePage />} />
                         <Route path="/my-account" element={<MyAccountPage />} />
                         <Route path="/payment/callback" element={<PaymentCallbackPage />} />
+                        <Route path="/order-pickup/:id" element={<OrderPickupPage />} />
                         <Route path="*" element={<div className="min-h-screen flex items-center justify-center"><div className="text-center"><h1 className="text-4xl font-bold mb-4">404 - Page non trouvée</h1><p className="text-gray-400">La page que vous recherchez n'existe pas.</p></div></div>} />
                       </Routes>
                     </main>

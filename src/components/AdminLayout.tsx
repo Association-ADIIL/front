@@ -13,7 +13,8 @@ import {
   ArrowLeft,
   Menu,
   X,
-  Tags
+  Tags,
+  Gift
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -26,6 +27,7 @@ const navItems = [
   { path: '/admin/products', label: 'Produits', icon: ShoppingBag },
   { path: '/admin/categories', label: 'Categories', icon: Tags },
   { path: '/admin/orders', label: 'Commandes', icon: ClipboardList },
+  { path: '/admin/promotions', label: 'Promotions', icon: Gift },
   { path: '/admin/statistics', label: 'Statistiques', icon: BarChart3 },
   { path: '/admin/files', label: 'Fichiers', icon: FolderOpen },
   { path: '/admin/users', label: 'Utilisateurs', icon: Users },

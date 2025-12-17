@@ -4,6 +4,7 @@ import { getAllCategories, type Category } from '../api/categories';
 import { Edit2, Trash2, Plus, X, Search } from 'lucide-react';
 import Modal from '../components/Modal';
 import ImageUpload from '../components/ImageUpload';
+import NumberInput from '../components/NumberInput';
 import { deleteImage } from '../api/upload';
 import { useNotification } from '../context/NotificationContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
@@ -293,7 +294,7 @@ const ProductManagementPage: React.FC = () => {
             </div>
             <div>
                 <label className="block text-gray-400 mb-1">Prix (€)</label>
-                <input type="number" step="0.01" name="price" value={formData.price} onChange={handleChange} required className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
+                <NumberInput value={formData.price} onChange={(val) => setFormData(prev => ({ ...prev, price: parseFloat(val) || 0 }))} required className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
             </div>
             <div>
                 <label className="block text-gray-400 mb-1">Disponibilité</label>
@@ -384,11 +385,9 @@ const ProductManagementPage: React.FC = () => {
                       Modificateur de prix (€)
                       <span className="text-[10px] block text-gray-500">Difference par rapport au prix de base</span>
                     </label>
-                    <input
-                      type="number"
-                      step="0.01"
+                    <NumberInput
                       value={newVariant.priceModifier}
-                      onChange={(e) => setNewVariant(prev => ({ ...prev, priceModifier: parseFloat(e.target.value) || 0 }))}
+                      onChange={(val) => setNewVariant(prev => ({ ...prev, priceModifier: parseFloat(val) || 0 }))}
                       placeholder="0.00"
                       className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white text-sm"
                     />
@@ -398,10 +397,10 @@ const ProductManagementPage: React.FC = () => {
                       Stock (optionnel)
                       <span className="text-[10px] block text-gray-500">Laissez vide si illimite</span>
                     </label>
-                    <input
-                      type="number"
+                    <NumberInput
                       value={newVariant.stock || ''}
-                      onChange={(e) => setNewVariant(prev => ({ ...prev, stock: e.target.value ? parseInt(e.target.value) : undefined }))}
+                      onChange={(val) => setNewVariant(prev => ({ ...prev, stock: val ? parseInt(val) : undefined }))}
+                      allowDecimals={false}
                       placeholder="Illimite"
                       className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white text-sm"
                     />

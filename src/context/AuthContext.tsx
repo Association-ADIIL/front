@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { type User, type LoginCredentials, login as apiLogin, register as apiRegister, type RegisterData } from '../api/auth';
+import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { type User, type LoginCredentials, login as apiLogin, register as apiRegister, getMe, type RegisterData } from '../api/auth';
 import { useNavigate } from 'react-router-dom';
 
 interface AuthContextType {
@@ -9,6 +9,7 @@ interface AuthContextType {
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
   isAdmin: boolean;
 }
 
@@ -66,10 +67,39 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     navigate('/login');
   };
 
+  // Refresh user data from server (for permission updates)
+  const refreshUser = useCallback(async () => {
+    if (!token) return;
+
+    try {
+      const response = await getMe();
+      setUser(response.user);
+      localStorage.setItem('user', JSON.stringify(response.user));
+    } catch (error) {
+      console.error('Failed to refresh user:', error);
+      // If token is invalid, log out
+      if ((error as any)?.message?.includes('401') || (error as any)?.message?.includes('Unauthorized')) {
+        logout();
+      }
+    }
+  }, [token]);
+
+  // Refresh user permissions when window gains focus
+  useEffect(() => {
+    const handleFocus = () => {
+      if (token) {
+        refreshUser();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [token, refreshUser]);
+
   const isAdmin = user?.type === 'ADMIN_BDE' || user?.type === 'ADMIN_PROF';
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, isAdmin }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, logout, refreshUser, isAdmin }}>
       {children}
     </AuthContext.Provider>
   );

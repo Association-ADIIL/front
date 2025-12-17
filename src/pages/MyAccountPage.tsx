@@ -15,9 +15,14 @@ import {
   MapPin,
   CreditCard,
   Package,
-  Ticket
+  Ticket,
+  QrCode,
+  X,
+  Gift
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import BalanceDisplay from '../components/BalanceDisplay';
+import BonusBubble from '../components/BonusBubble';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const MyAccountPage: React.FC = () => {
@@ -29,6 +34,7 @@ const MyAccountPage: React.FC = () => {
   const [loadingInscriptions, setLoadingInscriptions] = useState(true);
   const [isOrdersExpanded, setIsOrdersExpanded] = useState(false);
   const [isInscriptionsExpanded, setIsInscriptionsExpanded] = useState(false);
+  const [qrCodeOrder, setQrCodeOrder] = useState<Order | null>(null);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -166,7 +172,10 @@ const MyAccountPage: React.FC = () => {
               </div>
 
               {/* Balance Card */}
-              <BalanceDisplay variant="card" showRechargeButton={true} />
+              <div className="relative">
+                <BalanceDisplay variant="card" showRechargeButton={true} />
+                <BonusBubble variant="overlay" className="-top-3 -right-3" />
+              </div>
             </div>
 
             {/* Right column - Orders & Inscriptions */}
@@ -218,12 +227,30 @@ const MyAccountPage: React.FC = () => {
                               </div>
                               <div className="text-right">
                                 {getStatusBadge(order.orderStatus, 'order')}
-                                <p className="text-accent-mint font-koulen text-lg mt-1">{order.totalPrice.toFixed(2)}€</p>
+                                {order.discountAmount > 0 && order.originalPrice ? (
+                                  <>
+                                    <p className="text-gray-500 line-through text-sm mt-1">{order.originalPrice.toFixed(2)}€</p>
+                                    <p className="text-accent-mint font-koulen text-lg">{order.totalPrice.toFixed(2)}€</p>
+                                  </>
+                                ) : (
+                                  <p className="text-accent-mint font-koulen text-lg mt-1">{order.totalPrice.toFixed(2)}€</p>
+                                )}
                                 {order.refundedAmount > 0 && (
                                   <p className="text-xs text-red-400">-{order.refundedAmount.toFixed(2)}€ rembourse</p>
                                 )}
                               </div>
                             </div>
+
+                            {/* Discount info */}
+                            {order.discountAmount > 0 && (
+                              <div className="flex items-center gap-2 mb-3 p-2 bg-accent-mint/10 border border-accent-mint/20 rounded-lg">
+                                <Gift size={14} className="text-accent-mint" />
+                                <span className="text-xs text-accent-mint">
+                                  Réduction de {order.discountAmount.toFixed(2)}€
+                                  {order.promotion && ` (${order.promotion.name})`}
+                                </span>
+                              </div>
+                            )}
 
                             <div className="bg-dark-bg rounded-xl p-3">
                               <div className="space-y-1">
@@ -242,6 +269,23 @@ const MyAccountPage: React.FC = () => {
                                 ))}
                               </div>
                             </div>
+
+                            {/* QR Code Button - only for orders that can be picked up */}
+                            {/* Show QR if: PAID (for HA/PayPal/Balance) OR PENDING+CASH_CB */}
+                            {/* Hide QR if: COLLECTED, CANCELLED, or REFUNDED */}
+                            {order.orderStatus !== 'CANCELLED' &&
+                             order.orderStatus !== 'COLLECTED' &&
+                             order.paymentStatus !== 'REFUNDED' &&
+                             (order.paymentStatus === 'PAID' ||
+                              (order.paymentStatus === 'PENDING' && order.paymentMethod === 'CASH_CB')) && (
+                              <button
+                                onClick={() => setQrCodeOrder(order)}
+                                className="mt-3 w-full flex items-center justify-center gap-2 py-2 bg-accent-mint/10 border border-accent-mint/30 text-accent-mint text-sm font-medium rounded-xl hover:bg-accent-mint/20 transition-colors"
+                              >
+                                <QrCode size={16} />
+                                Afficher le QR Code
+                              </button>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -334,6 +378,57 @@ const MyAccountPage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* QR Code Modal */}
+      {qrCodeOrder && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-darker-bg rounded-2xl border border-gray-800 p-6 max-w-sm w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-white">QR Code de retrait</h3>
+              <button
+                onClick={() => setQrCodeOrder(null)}
+                className="text-gray-500 hover:text-white transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="bg-white rounded-xl p-4 mb-4">
+              <QRCodeSVG
+                value={`${window.location.origin}/order-pickup/${qrCodeOrder.id}`}
+                size={250}
+                level="H"
+                className="w-full h-auto"
+              />
+            </div>
+
+            <div className="text-center">
+              <p className="text-gray-400 text-sm mb-2">
+                Commande #{qrCodeOrder.id.toString().padStart(6, '0')}
+              </p>
+              {qrCodeOrder.discountAmount > 0 && qrCodeOrder.originalPrice ? (
+                <>
+                  <p className="text-gray-500 line-through text-sm">{qrCodeOrder.originalPrice.toFixed(2)}€</p>
+                  <p className="text-accent-mint font-koulen text-xl">
+                    {qrCodeOrder.totalPrice.toFixed(2)}€
+                  </p>
+                  <div className="flex items-center justify-center gap-1 mt-1 text-xs text-accent-mint">
+                    <Gift size={12} />
+                    <span>-{qrCodeOrder.discountAmount.toFixed(2)}€</span>
+                  </div>
+                </>
+              ) : (
+                <p className="text-accent-mint font-koulen text-xl">
+                  {qrCodeOrder.totalPrice.toFixed(2)}€
+                </p>
+              )}
+              <p className="text-gray-500 text-xs mt-3">
+                Presentez ce QR Code lors du retrait de votre commande
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -4,6 +4,7 @@ import { Edit2, Trash2, Plus, Calendar, MapPin, Download, X, Search } from 'luci
 import Modal from '../components/Modal';
 import { exportEventInscriptionsCsv } from '../api/inscriptions';
 import ImageUpload from '../components/ImageUpload';
+import NumberInput from '../components/NumberInput';
 import { deleteImage } from '../api/upload';
 import { useNotification } from '../context/NotificationContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
@@ -429,16 +430,16 @@ const EventManagementPage: React.FC = () => {
             </div>
             <div>
                 <label className="block text-gray-400 mb-1">Prix (€)</label>
-                <input type="number" step="0.01" name="price" value={formData.price} onChange={handleChange} required className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
+                <NumberInput value={formData.price} onChange={(val) => setFormData(prev => ({ ...prev, price: parseFloat(val) || 0 }))} required className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
             </div>
             <div>
                 <label className="block text-gray-400 mb-1">Places Totales</label>
-                <input type="number" name="totalPlaces" value={formData.totalPlaces} onChange={handleChange} required min="0" className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
+                <NumberInput value={formData.totalPlaces} onChange={(val) => setFormData(prev => ({ ...prev, totalPlaces: parseInt(val) || 0 }))} allowDecimals={false} required className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
                 <p className="text-gray-500 text-xs mt-1">0 = places illimitees</p>
             </div>
             <div>
                 <label className="block text-gray-400 mb-1">Max places / pers</label>
-                <input type="number" name="maxPlacesPerPerson" value={formData.maxPlacesPerPerson} onChange={handleChange} required min="0" className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
+                <NumberInput value={formData.maxPlacesPerPerson} onChange={(val) => setFormData(prev => ({ ...prev, maxPlacesPerPerson: parseInt(val) || 0 }))} allowDecimals={false} required className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
                 <p className="text-gray-500 text-xs mt-1">0 = illimite</p>
             </div>
             <div>
