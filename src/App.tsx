@@ -25,6 +25,7 @@ import AdminAuditLogsPage from './pages/AdminAuditLogsPage';
 import FileManagementPage from './pages/FileManagementPage';
 import CategoryManagementPage from './pages/CategoryManagementPage';
 import PromotionManagementPage from './pages/PromotionManagementPage';
+import TransactionManagementPage from './pages/TransactionManagementPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider, useNotification } from './context/NotificationContext';
 import { CartProvider } from './context/CartContext';
@@ -71,6 +72,7 @@ function App() {
               <Route path="/admin/files" element={<AdminLayout><FileManagementPage /></AdminLayout>} />
               <Route path="/admin/logs" element={<AdminLayout><AdminAuditLogsPage /></AdminLayout>} />
               <Route path="/admin/promotions" element={<AdminLayout><PromotionManagementPage /></AdminLayout>} />
+              <Route path="/admin/transactions" element={<AdminLayout><TransactionManagementPage /></AdminLayout>} />
 
               {/* Public Routes (with Header/Footer) */}
               <Route

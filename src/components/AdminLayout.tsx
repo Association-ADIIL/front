@@ -14,7 +14,8 @@ import {
   Menu,
   X,
   Tags,
-  Gift
+  Gift,
+  CreditCard
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -28,6 +29,7 @@ const navItems = [
   { path: '/admin/categories', label: 'Categories', icon: Tags },
   { path: '/admin/orders', label: 'Commandes', icon: ClipboardList },
   { path: '/admin/promotions', label: 'Promotions', icon: Gift },
+  { path: '/admin/transactions', label: 'Transactions', icon: CreditCard },
   { path: '/admin/statistics', label: 'Statistiques', icon: BarChart3 },
   { path: '/admin/files', label: 'Fichiers', icon: FolderOpen },
   { path: '/admin/users', label: 'Utilisateurs', icon: Users },
