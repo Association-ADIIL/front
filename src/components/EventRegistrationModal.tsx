@@ -4,6 +4,7 @@ import { createInscription, type PaymentMethod, getMyInscriptions } from '../api
 import { getMyBalance } from '../api/balance';
 import { useNotification } from '../context/NotificationContext';
 import { X, CreditCard, Wallet, Banknote, Users, Minus, Plus, ChevronRight, AlertCircle, Check } from 'lucide-react';
+import LegalAcceptance from './LegalAcceptance';
 
 interface EventRegistrationModalProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
   const [remainingQuota, setRemainingQuota] = useState<number>(event.maxPlacesPerPerson);
   const [checkingQuota, setCheckingQuota] = useState(false);
   const [userBalance, setUserBalance] = useState<number>(0);
+  const [legalAccepted, setLegalAccepted] = useState(false);
   const { addNotification } = useNotification();
 
   // Reset state when modal opens/closes
@@ -30,6 +32,7 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
       setFormResponses({});
       setPaymentMethod('HELLOASSO');
       setLoading(false);
+      setLegalAccepted(false);
       fetchUserQuota();
       fetchUserBalance();
       // Prevent body scroll
@@ -373,7 +376,7 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
                 <div>
                   <p className="text-sm font-semibold text-gray-400 mb-3">MODE DE PAIEMENT</p>
                   <div className="space-y-2">
-                    {/* BALANCE - Carte ADIIL */}
+                    {/* BALANCE - Solde ADIIL */}
                     <label className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all ${
                       !hasEnoughBalance ? 'opacity-50 cursor-not-allowed' :
                       paymentMethod === 'BALANCE' ? 'bg-accent-mint/10 border-accent-mint' : 'bg-dark-bg border-gray-800 hover:border-gray-700'
@@ -395,7 +398,7 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
                         />
                         <CreditCard size={20} className="text-accent-mint" />
                         <div>
-                          <span className="font-medium text-white">Carte ADIIL</span>
+                          <span className="font-medium text-white">Solde ADIIL</span>
                           <p className="text-xs text-gray-400">Solde: {userBalance.toFixed(2)}EUR</p>
                           {!hasEnoughBalance && (
                             <p className="text-xs text-red-400">Solde insuffisant</p>
@@ -498,10 +501,15 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
                 {totalPrice === 0 ? 'Gratuit' : `${totalPrice.toFixed(2)}EUR`}
               </span>
             </div>
+            <LegalAcceptance
+              accepted={legalAccepted}
+              onChange={setLegalAccepted}
+              className="mb-4"
+            />
             <button
               type="submit"
               onClick={handleSubmit}
-              disabled={loading}
+              disabled={loading || !legalAccepted}
               className="w-full py-4 bg-accent-mint text-darker-bg font-bold rounded-xl hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group"
             >
               {loading ? (

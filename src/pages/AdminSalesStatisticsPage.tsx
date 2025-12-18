@@ -142,7 +142,7 @@ const AdminSalesStatisticsPage: React.FC = () => {
           HELLOASSO: 'HelloAsso',
           CASH_CB: 'Especes/CB',
           FREE: 'Gratuit',
-          BALANCE: 'Solde',
+          BALANCE: 'Solde ADIIL',
         };
 
         setPaymentMethodData(

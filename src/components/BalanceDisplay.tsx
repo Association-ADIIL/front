@@ -47,7 +47,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
               <CreditCard size={24} className="text-accent-mint" />
             </div>
             <div>
-              <p className="text-sm text-gray-400">Carte prépayée ADIIL</p>
+              <p className="text-sm text-gray-400">Solde ADIIL</p>
               <p className="text-3xl font-bold text-accent-mint">
                 {balance !== null ? `${balance.toFixed(2)} €` : '---'}
               </p>
@@ -81,7 +81,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
           <button
             onClick={() => navigate('/balance')}
             className="bg-accent-mint/90 text-darker-bg font-bold py-1.5 px-2.5 rounded hover:bg-accent-mint transition-colors text-sm flex items-center gap-1"
-            title="Recharger la carte"
+            title="Recharger le solde"
           >
             <Plus size={16} />
           </button>
@@ -94,7 +94,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     <div className="flex items-center gap-3 bg-darker-bg border border-accent-mint/30 rounded-lg p-3">
       <CreditCard size={20} className="text-accent-mint" />
       <div className="flex-grow">
-        <p className="text-xs text-gray-400">Solde carte prépayée</p>
+        <p className="text-xs text-gray-400">Solde ADIIL</p>
         <p className="text-lg font-bold text-accent-mint">
           {balance !== null ? `${balance.toFixed(2)} €` : '---'}
         </p>

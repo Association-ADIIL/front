@@ -362,7 +362,8 @@ const MyAccountPage: React.FC = () => {
                                   <CreditCard size={12} />
                                   {inscription.paymentMethod === 'HELLOASSO' ? 'HelloAsso' :
                                    inscription.paymentMethod === 'PAYPAL' ? 'PayPal' :
-                                   inscription.paymentMethod === 'CASH_CB' ? 'Sur place' : 'Gratuit'}
+                                   inscription.paymentMethod === 'CASH_CB' ? 'Sur place' :
+                                   inscription.paymentMethod === 'BALANCE' ? 'Solde ADIIL' : 'Gratuit'}
                                 </span>
                               </div>
                               <span>Inscrit le {new Date(inscription.createdAt).toLocaleDateString('fr-FR')}</span>

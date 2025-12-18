@@ -284,7 +284,7 @@ const AdminDashboardPage: React.FC = () => {
               </div>
             </div>
             <h3 className="text-2xl font-bold text-purple-400 mb-1">{balanceStats.totalBalance.toFixed(2)} €</h3>
-            <p className="text-sm text-gray-400">Solde total des cartes</p>
+            <p className="text-sm text-gray-400">Solde total ADIIL</p>
           </div>
 
           {/* Total Recharged */}

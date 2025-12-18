@@ -8,6 +8,7 @@ import { createOrder, type OrderItem as ApiOrderItem } from '../api/orders';
 import { getMyBalance, purchaseWithBalance } from '../api/balance';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { checkBalanceRechargeBonus, checkCartDiscount, type CartDiscountCheck } from '../api/promotions';
+import LegalAcceptance from '../components/LegalAcceptance';
 
 const PayPalLogo: React.FC<{ className?: string }> = ({ className = '' }) => (
   <svg viewBox="0 0 24 24" className={className} fill="currentColor">
@@ -36,6 +37,7 @@ const CartPage: React.FC = () => {
   const [balance, setBalance] = useState<number>(0);
   const [maxBonusPercent, setMaxBonusPercent] = useState<number | null>(null);
   const [discountInfo, setDiscountInfo] = useState<CartDiscountCheck | null>(null);
+  const [legalAccepted, setLegalAccepted] = useState(false);
 
   // Calculate final price with discount
   const finalPrice = discountInfo?.eligible ? discountInfo.finalAmount : totalPrice;
@@ -120,7 +122,7 @@ const CartPage: React.FC = () => {
             promotionId: discountInfo?.eligible ? discountInfo.promotionId : undefined,
           });
 
-          addNotification('success', 'Commande confirmee via Carte ADIIL !');
+          addNotification('success', 'Commande confirmee via Solde ADIIL !');
           clearCart();
           navigate('/my-account');
         } catch (error: any) {
@@ -170,7 +172,7 @@ const CartPage: React.FC = () => {
     if (selectedPaymentMethod === 'BALANCE') {
       // Use finalPrice (after discount) for balance check
       if (balance < finalPrice) {
-        addNotification('error', 'Solde insuffisant. Rechargez votre carte.');
+        addNotification('error', 'Solde insuffisant. Rechargez votre solde ADIIL.');
         navigate('/balance');
         return;
       }
@@ -403,7 +405,7 @@ const CartPage: React.FC = () => {
                     <h3 className="text-sm font-bold text-white mb-3 uppercase tracking-wider">Paiement</h3>
                   )}
                   <div className="space-y-2 mb-6">
-                    {/* Carte ADIIL - always show for logged in users */}
+                    {/* Solde ADIIL - always show for logged in users */}
                     {user && (
                       <>
                         {balance >= finalPrice ? (
@@ -423,7 +425,7 @@ const CartPage: React.FC = () => {
                             />
                             <CreditCard size={18} className={selectedPaymentMethod === 'BALANCE' ? 'text-accent-mint' : 'text-gray-500'} />
                             <div className="ml-3 flex-1">
-                              <span className="text-white text-sm font-medium">Carte ADIIL</span>
+                              <span className="text-white text-sm font-medium">Solde ADIIL</span>
                               <span className="text-xs ml-2 text-green-400">
                                 ({balance.toFixed(2)}EUR)
                               </span>
@@ -438,7 +440,7 @@ const CartPage: React.FC = () => {
                             <div className="flex items-center opacity-50">
                               <CreditCard size={18} className="text-gray-500" />
                               <div className="ml-3 flex-1">
-                                <span className="text-gray-400 text-sm font-medium">Carte ADIIL</span>
+                                <span className="text-gray-400 text-sm font-medium">Solde ADIIL</span>
                                 <span className="text-xs ml-2 text-red-400">
                                   ({balance.toFixed(2)}EUR)
                                 </span>
@@ -544,10 +546,17 @@ const CartPage: React.FC = () => {
                     )}
                   </div>
 
+                  {/* Legal acceptance */}
+                  <LegalAcceptance
+                    accepted={legalAccepted}
+                    onChange={setLegalAccepted}
+                    className="mb-4"
+                  />
+
                   {/* Checkout button */}
                   <button
                     onClick={handleCheckout}
-                    disabled={isProcessingOrder || items.length === 0 || (totalPrice > 0 && !selectedPaymentMethod)}
+                    disabled={isProcessingOrder || items.length === 0 || (totalPrice > 0 && !selectedPaymentMethod) || !legalAccepted}
                     className="w-full py-4 bg-accent-mint text-darker-bg font-bold rounded-xl hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-accent-mint flex items-center justify-center gap-2 group"
                   >
                     {isProcessingOrder ? (

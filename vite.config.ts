@@ -9,5 +9,19 @@ export default defineConfig({
         plugins: [['babel-plugin-react-compiler']],
       },
     }),
-  ]
+  ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // React core
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          // UI/Chart libraries (heavy)
+          'vendor-charts': ['recharts'],
+          // Icons
+          'vendor-icons': ['lucide-react'],
+        },
+      },
+    },
+  },
 })

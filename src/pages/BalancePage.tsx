@@ -8,9 +8,10 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import NumberInput from '../components/NumberInput';
 import BonusBubble from '../components/BonusBubble';
 import { checkBalanceRechargeBonus, type BalanceBonusCheck, type BalanceRechargeTier } from '../api/promotions';
+import LegalAcceptance from '../components/LegalAcceptance';
 
 const BalancePage: React.FC = () => {
-  useDocumentTitle('Ma Carte ADIIL');
+  useDocumentTitle('Mon Solde ADIIL');
   const { token } = useAuth();
   const { addNotification } = useNotification();
   const navigate = useNavigate();
@@ -22,6 +23,7 @@ const BalancePage: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState<string>('HELLOASSO');
   const [bonusInfo, setBonusInfo] = useState<BalanceBonusCheck | null>(null);
   const [checkingBonus, setCheckingBonus] = useState(false);
+  const [legalAccepted, setLegalAccepted] = useState(false);
 
   // Auto-switch to PayPal if HelloAsso is selected and amount is below 0.50
   useEffect(() => {
@@ -161,7 +163,7 @@ const BalancePage: React.FC = () => {
       <section className="bg-darker-bg py-8 border-b border-gray-800">
         <div className="container mx-auto px-4">
           <span className="text-accent-mint text-sm font-bold uppercase tracking-wider">Espace personnel</span>
-          <h1 className="text-5xl md:text-6xl font-koulen text-white mt-2">MA CARTE ADIIL</h1>
+          <h1 className="text-5xl md:text-6xl font-koulen text-white mt-2">MON SOLDE ADIIL</h1>
         </div>
       </section>
 
@@ -424,10 +426,17 @@ const BalancePage: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Legal acceptance */}
+                <LegalAcceptance
+                  accepted={legalAccepted}
+                  onChange={setLegalAccepted}
+                  className="mb-4"
+                />
+
                 {/* Recharge button */}
                 <button
                   onClick={handleRecharge}
-                  disabled={recharging || !amount || amountNum <= 0}
+                  disabled={recharging || !amount || amountNum <= 0 || !legalAccepted}
                   className="w-full bg-accent-mint text-darker-bg font-bold py-4 rounded-xl hover:bg-white transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group"
                 >
                   {recharging ? (

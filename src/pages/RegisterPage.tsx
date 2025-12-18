@@ -245,10 +245,26 @@ const RegisterPage: React.FC = () => {
               </div>
             )}
 
+            {/* Legal notice */}
+            <p className="text-xs text-gray-500 text-center mt-4">
+              En vous inscrivant, vous acceptez les{' '}
+              <Link to="/cgu" target="_blank" className="text-accent-mint hover:underline">
+                CGU
+              </Link>,{' '}
+              les{' '}
+              <Link to="/cgv" target="_blank" className="text-accent-mint hover:underline">
+                CGV
+              </Link>{' '}
+              et la{' '}
+              <Link to="/confidentialite" target="_blank" className="text-accent-mint hover:underline">
+                Politique de Confidentialité
+              </Link>.
+            </p>
+
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-accent-mint text-darker-bg font-bold py-4 rounded-xl hover:bg-white transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group mt-6"
+              className="w-full bg-accent-mint text-darker-bg font-bold py-4 rounded-xl hover:bg-white transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group mt-4"
             >
               {isLoading ? (
                 <div className="w-5 h-5 border-2 border-darker-bg border-t-transparent rounded-full animate-spin" />

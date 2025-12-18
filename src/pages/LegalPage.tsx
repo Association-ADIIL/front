@@ -1,8 +1,10 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const LegalPage: React.FC = () => {
-  useDocumentTitle('Mentions Legales');
+  useDocumentTitle('Mentions Légales');
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <h1 className="text-4xl font-bold text-accent-mint mb-8">Mentions Légales</h1>
@@ -10,182 +12,113 @@ const LegalPage: React.FC = () => {
       {/* Éditeur du site */}
       <section className="mb-8">
         <h2 className="text-2xl font-bold text-accent-mint mb-4">1. Éditeur du site</h2>
-        <p className="text-gray-300 mb-2">
-          Le site <span className="text-accent-mint font-semibold">adiil.fr</span> est édité par :
-        </p>
-        <div className="bg-dark-card p-4 rounded-lg">
-          <p className="mb-2"><strong>Association :</strong> ADIIL (Association du Département Informatique de l'IUT de Laval)</p>
-          <p className="mb-2"><strong>Adresse :</strong> IUT de Laval, 52 Rue des Docteurs Calmette et Guérin, 53000 Laval</p>
+        <div className="bg-dark-card p-4 rounded-lg text-gray-300">
+          <p className="mb-2"><strong>Raison sociale :</strong> ADIIL (Association du Département Informatique de l'IUT de Laval)</p>
+          <p className="mb-2"><strong>Forme juridique :</strong> Association loi 1901</p>
+          <p className="mb-2"><strong>Siège social :</strong> IUT de Laval, 52 Rue des Docteurs Calmette et Guérin, 53000 Laval</p>
           <p className="mb-2"><strong>Email :</strong> <a href="mailto:association.adiil@gmail.com" className="text-accent-mint hover:underline">association.adiil@gmail.com</a></p>
-          <p className="mb-2"><strong>Type :</strong> Association loi 1901</p>
+          <p><strong>Directeur de la publication :</strong> Le Président de l'ADIIL</p>
         </div>
       </section>
 
       {/* Hébergement */}
       <section className="mb-8">
         <h2 className="text-2xl font-bold text-accent-mint mb-4">2. Hébergement</h2>
-        <p className="text-gray-300 mb-2">
-          Le site est hébergé par : Contabo GmbH.
-        </p>
-        <div className="bg-dark-card p-4 rounded-lg">
-          <p className="mb-2"><strong>Hébergeur :</strong> Contabo GmbH </p>
-          <p className="mb-2"><strong>Adresse :</strong> Landshuter Allee 8, 80637 Munich, Allemagne</p>
-        </div>
-      </section>
-
-      {/* Protection des données personnelles */}
-      <section className="mb-8">
-        <h2 className="text-2xl font-bold text-accent-mint mb-4">3. Protection des données personnelles (RGPD)</h2>
-        <div className="text-gray-300 space-y-4">
-          <div>
-            <h3 className="text-xl font-semibold text-white mb-2">3.1 Responsable du traitement</h3>
-            <p>
-              L'ADIIL est responsable du traitement des données personnelles collectées sur ce site.
-            </p>
-          </div>
-
-          <div>
-            <h3 className="text-xl font-semibold text-white mb-2">3.2 Données collectées</h3>
-            <p className="mb-2">Les données personnelles collectées sont :</p>
-            <ul className="list-disc list-inside space-y-1 ml-4">
-              <li>Nom et prénom</li>
-              <li>Adresse email</li>
-              <li>Groupe (pour les étudiants)</li>
-              <li>Informations de connexion (mot de passe chiffré)</li>
-              <li>Historique des inscriptions et commandes</li>
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="text-xl font-semibold text-white mb-2">3.3 Finalité du traitement</h3>
-            <p className="mb-2">Les données sont collectées pour :</p>
-            <ul className="list-disc list-inside space-y-1 ml-4">
-              <li>La gestion des comptes utilisateurs</li>
-              <li>La gestion des inscriptions aux événements</li>
-              <li>La gestion des commandes sur la boutique</li>
-              <li>Le traitement des paiements</li>
-              <li>L'envoi d'informations relatives aux événements</li>
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="text-xl font-semibold text-white mb-2">3.4 Durée de conservation</h3>
-            <p>
-              Les données personnelles sont conservées pendant la durée nécessaire aux finalités pour lesquelles elles ont été collectées,
-              et conformément aux obligations légales (durée maximale de 3 ans après la fin de la relation).
-            </p>
-          </div>
-
-          <div>
-            <h3 className="text-xl font-semibold text-white mb-2">3.5 Vos droits</h3>
-            <p className="mb-2">Conformément au RGPD, vous disposez des droits suivants :</p>
-            <ul className="list-disc list-inside space-y-1 ml-4">
-              <li>Droit d'accès à vos données personnelles</li>
-              <li>Droit de rectification de vos données</li>
-              <li>Droit à l'effacement de vos données</li>
-              <li>Droit à la limitation du traitement</li>
-              <li>Droit d'opposition au traitement</li>
-              <li>Droit à la portabilité de vos données</li>
-            </ul>
-            <p className="mt-2">
-              Pour exercer ces droits, contactez-nous à : <a href="mailto:association.adiil@gmail.com" className="text-accent-mint hover:underline">association.adiil@gmail.com</a>
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Cookies */}
-      <section className="mb-8">
-        <h2 className="text-2xl font-bold text-accent-mint mb-4">4. Cookies</h2>
-        <div className="text-gray-300 space-y-4">
-          <p>
-            Le site utilise des cookies pour améliorer l'expérience utilisateur et assurer le bon fonctionnement des services.
-          </p>
-          <div>
-            <h3 className="text-xl font-semibold text-white mb-2">4.1 Cookies utilisés</h3>
-            <ul className="list-disc list-inside space-y-1 ml-4">
-              <li><strong>Cookies de session :</strong> Nécessaires au fonctionnement du site (authentification, panier)</li>
-              <li><strong>Cookies de préférence :</strong> Pour mémoriser vos préférences</li>
-            </ul>
-          </div>
-          <p>
-            Vous pouvez configurer votre navigateur pour refuser les cookies, mais cela peut affecter le fonctionnement du site.
-          </p>
+        <div className="bg-dark-card p-4 rounded-lg text-gray-300">
+          <p className="mb-2"><strong>Hébergeur :</strong> Contabo GmbH</p>
+          <p className="mb-2"><strong>Adresse :</strong> Aschauer Straße 32a, 81549 Munich, Allemagne</p>
+          <p><strong>Site web :</strong> <a href="https://contabo.com" target="_blank" rel="noopener noreferrer" className="text-accent-mint hover:underline">contabo.com</a></p>
         </div>
       </section>
 
       {/* Propriété intellectuelle */}
       <section className="mb-8">
-        <h2 className="text-2xl font-bold text-accent-mint mb-4">5. Propriété intellectuelle</h2>
+        <h2 className="text-2xl font-bold text-accent-mint mb-4">3. Propriété intellectuelle</h2>
         <div className="text-gray-300 space-y-4">
           <p>
-            L'ensemble du contenu de ce site (textes, images, logos, structure) est la propriété exclusive de l'ADIIL,
-            sauf mention contraire.
+            L'ensemble du contenu de ce site (textes, images, logos, graphismes, icônes, structure générale)
+            est la propriété exclusive de l'ADIIL, sauf mention contraire.
           </p>
           <p>
-            Toute reproduction, distribution ou utilisation sans autorisation préalable est interdite et constitue une contrefaçon.
+            Toute reproduction, représentation, modification, distribution ou exploitation, totale ou partielle,
+            du contenu de ce site, par quelque procédé que ce soit, sans autorisation écrite préalable de l'ADIIL,
+            est strictement interdite et constitue une contrefaçon sanctionnée par les articles L.335-2 et suivants
+            du Code de la Propriété Intellectuelle.
           </p>
-        </div>
-      </section>
-
-      {/* Conditions d'utilisation */}
-      <section className="mb-8">
-        <h2 className="text-2xl font-bold text-accent-mint mb-4">6. Conditions d'utilisation</h2>
-        <div className="text-gray-300 space-y-4">
-          <div>
-            <h3 className="text-xl font-semibold text-white mb-2">6.1 Paiements</h3>
-            <p>
-              Les paiements sont sécurisés et traités via PayPal et HelloAsso. Aucune donnée bancaire n'est stockée sur nos serveurs.
-            </p>
-          </div>
-
-          <div>
-            <h3 className="text-xl font-semibold text-white mb-2">6.2 Inscriptions aux événements</h3>
-            <p>
-              Les inscriptions aux événements sont soumises aux conditions spécifiques de chaque événement.
-              En cas d'annulation, les remboursements sont traités au cas par cas.
-            </p>
-          </div>
-
-          <div>
-            <h3 className="text-xl font-semibold text-white mb-2">6.3 Commandes</h3>
-            <p>
-              Les commandes passées sur la boutique sont à récupérer auprès de l'ADIIL selon les modalités communiquées.
-              Le paiement en ligne confirme la commande.
-            </p>
-          </div>
         </div>
       </section>
 
       {/* Responsabilité */}
       <section className="mb-8">
-        <h2 className="text-2xl font-bold text-accent-mint mb-4">7. Limitation de responsabilité</h2>
+        <h2 className="text-2xl font-bold text-accent-mint mb-4">4. Limitation de responsabilité</h2>
         <div className="text-gray-300 space-y-4">
           <p>
-            L'ADIIL s'efforce de maintenir le site accessible et à jour, mais ne peut être tenue responsable :
+            L'ADIIL s'efforce de maintenir le site accessible et de fournir des informations exactes et à jour.
+            Cependant, l'ADIIL ne peut être tenue responsable :
           </p>
-          <ul className="list-disc list-inside space-y-1 ml-4">
-            <li>Des interruptions de service ou des problèmes techniques</li>
-            <li>Des erreurs ou omissions dans le contenu</li>
+          <ul className="list-disc list-inside space-y-2 ml-4">
+            <li>Des interruptions temporaires ou permanentes du site, quelles qu'en soient les causes</li>
+            <li>Des erreurs ou omissions présentes sur le site</li>
             <li>Des dommages directs ou indirects résultant de l'utilisation du site</li>
+            <li>Du contenu des sites externes vers lesquels des liens hypertextes renvoient</li>
           </ul>
+        </div>
+      </section>
+
+      {/* Liens hypertextes */}
+      <section className="mb-8">
+        <h2 className="text-2xl font-bold text-accent-mint mb-4">5. Liens hypertextes</h2>
+        <div className="text-gray-300 space-y-4">
+          <p>
+            Le site peut contenir des liens vers des sites tiers. L'ADIIL n'exerce aucun contrôle sur ces sites
+            et décline toute responsabilité quant à leur contenu.
+          </p>
+          <p>
+            La création de liens hypertextes vers le site adiil.fr est soumise à l'autorisation préalable
+            de l'ADIIL.
+          </p>
         </div>
       </section>
 
       {/* Droit applicable */}
       <section className="mb-8">
-        <h2 className="text-2xl font-bold text-accent-mint mb-4">8. Droit applicable</h2>
+        <h2 className="text-2xl font-bold text-accent-mint mb-4">6. Droit applicable et juridiction</h2>
         <p className="text-gray-300">
-          Les présentes mentions légales sont soumises au droit français. En cas de litige, les tribunaux français seront seuls compétents.
+          Les présentes mentions légales sont régies par le droit français. En cas de litige relatif à
+          l'interprétation ou l'exécution des présentes, les tribunaux français seront seuls compétents.
         </p>
+      </section>
+
+      {/* Documents associés */}
+      <section className="mb-8">
+        <h2 className="text-2xl font-bold text-accent-mint mb-4">Documents juridiques associés</h2>
+        <p className="text-gray-300 mb-4">
+          Pour plus d'informations sur vos droits et nos conditions, consultez les documents suivants :
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <Link to="/cgu" className="block p-4 bg-dark-card rounded-lg hover:bg-gray-800 transition-colors">
+            <h3 className="font-semibold text-accent-mint mb-2">Conditions Générales d'Utilisation</h3>
+            <p className="text-sm text-gray-400">Règles d'utilisation du site et des services</p>
+          </Link>
+          <Link to="/cgv" className="block p-4 bg-dark-card rounded-lg hover:bg-gray-800 transition-colors">
+            <h3 className="font-semibold text-accent-mint mb-2">Conditions Générales de Vente</h3>
+            <p className="text-sm text-gray-400">Conditions des achats et transactions</p>
+          </Link>
+          <Link to="/confidentialite" className="block p-4 bg-dark-card rounded-lg hover:bg-gray-800 transition-colors">
+            <h3 className="font-semibold text-accent-mint mb-2">Politique de Confidentialité</h3>
+            <p className="text-sm text-gray-400">Protection de vos données personnelles (RGPD)</p>
+          </Link>
+        </div>
       </section>
 
       {/* Contact */}
       <section className="mb-8">
-        <h2 className="text-2xl font-bold text-accent-mint mb-4">9. Contact</h2>
+        <h2 className="text-2xl font-bold text-accent-mint mb-4">Contact</h2>
         <p className="text-gray-300">
-          Pour toute question concernant ces mentions légales ou l'utilisation de vos données personnelles,
-          vous pouvez nous contacter à : <a href="mailto:association.adiil@gmail.com" className="text-accent-mint hover:underline">association.adiil@gmail.com</a>
+          Pour toute question concernant ces mentions légales :{' '}
+          <a href="mailto:association.adiil@gmail.com" className="text-accent-mint hover:underline">
+            association.adiil@gmail.com
+          </a>
         </p>
       </section>
 

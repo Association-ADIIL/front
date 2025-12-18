@@ -149,7 +149,7 @@ const OrderPickupPage: React.FC = () => {
       case 'CASH_CB': return 'Paiement sur place';
       case 'PAYPAL': return 'PayPal';
       case 'HELLOASSO': return 'HelloAsso';
-      case 'BALANCE': return 'Carte ADIIL';
+      case 'BALANCE': return 'Solde ADIIL';
       case 'FREE': return 'Gratuit';
       default: return method;
     }
@@ -274,8 +274,8 @@ const OrderPickupPage: React.FC = () => {
       {/* Content */}
       <section className="py-8">
         <div className="container mx-auto px-4 max-w-2xl">
-          {/* Cash Payment Banner */}
-          {orderInfo.paymentMethod === 'CASH_CB' && orderInfo.paymentStatus === 'PENDING' && (
+          {/* Cash Payment Banner - only show if not yet collected */}
+          {orderInfo.paymentMethod === 'CASH_CB' && orderInfo.paymentStatus === 'PENDING' && orderInfo.orderStatus !== 'COLLECTED' && (
             <div className="bg-orange-500/20 border-2 border-orange-500 rounded-2xl p-5 mb-6">
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 bg-orange-500 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -408,19 +408,17 @@ const OrderPickupPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Admin Action Buttons */}
-          {isAdmin && orderInfo.orderStatus !== 'CANCELLED' && orderInfo.paymentStatus !== 'REFUNDED' && (
+          {/* Admin Action Buttons - Only show when NOT collected */}
+          {isAdmin && orderInfo.orderStatus !== 'CANCELLED' && orderInfo.orderStatus !== 'COLLECTED' && orderInfo.paymentStatus !== 'REFUNDED' && (
             <div className="space-y-3">
               {/* Confirm Pickup Button */}
-              {orderInfo.orderStatus !== 'COLLECTED' && (
-                <button
-                  onClick={() => setShowConfirmModal(true)}
-                  className="w-full py-4 bg-accent-mint text-dark-bg font-bold rounded-xl hover:bg-accent-mint/90 transition-colors flex items-center justify-center gap-2"
-                >
-                  <CheckCircle size={20} />
-                  Confirmer la recuperation
-                </button>
-              )}
+              <button
+                onClick={() => setShowConfirmModal(true)}
+                className="w-full py-4 bg-accent-mint text-dark-bg font-bold rounded-xl hover:bg-accent-mint/90 transition-colors flex items-center justify-center gap-2"
+              >
+                <CheckCircle size={20} />
+                Confirmer la recuperation
+              </button>
 
               {/* Refund Button - only if there are items to refund */}
               {orderInfo.items.some(item => item.quantity > item.refundedQuantity) && (
@@ -437,9 +435,15 @@ const OrderPickupPage: React.FC = () => {
 
           {orderInfo.orderStatus === 'COLLECTED' && (
             <div className="space-y-3">
-              <div className="bg-accent-mint/10 border border-accent-mint/30 rounded-xl p-4 text-center">
-                <CheckCircle size={32} className="mx-auto text-accent-mint mb-2" />
-                <p className="text-accent-mint font-bold">Commande recuperee</p>
+              <div className="bg-yellow-500/20 border-2 border-yellow-500 rounded-xl p-6 text-center">
+                <AlertCircle size={48} className="mx-auto text-yellow-400 mb-3" />
+                <p className="text-yellow-400 font-bold text-xl mb-2">COMMANDE DEJA RECUPEREE</p>
+                <p className="text-yellow-300/80 text-sm">
+                  Cette commande a deja ete remise au client.
+                </p>
+                <p className="text-yellow-300/60 text-xs mt-2">
+                  Si le client presente ce QR code a nouveau, ne pas remettre les articles.
+                </p>
               </div>
               {/* Refund button even after collection */}
               {isAdmin && orderInfo.paymentStatus !== 'REFUNDED' && orderInfo.items.some(item => item.quantity > item.refundedQuantity) && (

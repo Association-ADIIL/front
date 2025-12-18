@@ -6,9 +6,10 @@ import Modal from '../components/Modal';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { useNotification } from '../context/NotificationContext';
 
-const TYPE_LABELS: Record<TransactionType, string> = {
+const TYPE_LABELS: Record<TransactionType | 'BALANCE_CREDIT', string> = {
   ORDER: 'Commande',
   BALANCE_RECHARGE: 'Recharge',
+  BALANCE_CREDIT: 'Crédit ADIIL',
   INSCRIPTION: 'Inscription',
 };
 
@@ -23,7 +24,7 @@ const METHOD_LABELS: Record<PaymentMethod, string> = {
   PAYPAL: 'PayPal',
   CASH_CB: 'Espèces/CB',
   FREE: 'Gratuit',
-  BALANCE: 'Solde',
+  BALANCE: 'Solde ADIIL',
 };
 
 const TransactionManagementPage: React.FC = () => {
@@ -137,11 +138,21 @@ const TransactionManagementPage: React.FC = () => {
     return `${safeAmount.toFixed(2)}€`;
   };
 
-  const getTypeIcon = (type: TransactionType) => {
+  // Helper to determine display type (detect admin credits)
+  const getDisplayType = (tx: Transaction): TransactionType | 'BALANCE_CREDIT' => {
+    if (tx.type === 'BALANCE_RECHARGE' && tx.paymentTransactionId?.startsWith('ADMIN_')) {
+      return 'BALANCE_CREDIT';
+    }
+    return tx.type;
+  };
+
+  const getTypeIcon = (type: TransactionType | 'BALANCE_CREDIT') => {
     switch (type) {
       case 'ORDER':
         return <ShoppingCart size={16} />;
       case 'BALANCE_RECHARGE':
+        return <CreditCard size={16} />;
+      case 'BALANCE_CREDIT':
         return <CreditCard size={16} />;
       case 'INSCRIPTION':
         return <Calendar size={16} />;
@@ -159,12 +170,14 @@ const TransactionManagementPage: React.FC = () => {
     }
   };
 
-  const getTypeBadgeClass = (type: TransactionType) => {
+  const getTypeBadgeClass = (type: TransactionType | 'BALANCE_CREDIT') => {
     switch (type) {
       case 'ORDER':
         return 'bg-blue-900/50 text-blue-200';
       case 'BALANCE_RECHARGE':
         return 'bg-purple-900/50 text-purple-200';
+      case 'BALANCE_CREDIT':
+        return 'bg-green-900/50 text-green-200';
       case 'INSCRIPTION':
         return 'bg-cyan-900/50 text-cyan-200';
     }
@@ -300,14 +313,16 @@ const TransactionManagementPage: React.FC = () => {
                 </td>
               </tr>
             ) : (
-              filteredTransactions.map(tx => (
+              filteredTransactions.map(tx => {
+                const displayType = getDisplayType(tx);
+                return (
                 <tr key={tx.id} className="hover:bg-gray-800/50 transition-colors">
                   <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                     <span
-                      className={`px-2 py-1 inline-flex items-center gap-1 text-xs leading-5 font-semibold rounded-full ${getTypeBadgeClass(tx.type)}`}
+                      className={`px-2 py-1 inline-flex items-center gap-1 text-xs leading-5 font-semibold rounded-full ${getTypeBadgeClass(displayType)}`}
                     >
-                      {getTypeIcon(tx.type)}
-                      <span className="hidden sm:inline">{TYPE_LABELS[tx.type]}</span>
+                      {getTypeIcon(displayType)}
+                      <span className="hidden sm:inline">{TYPE_LABELS[displayType]}</span>
                     </span>
                   </td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
@@ -357,7 +372,7 @@ const TransactionManagementPage: React.FC = () => {
                     )}
                   </td>
                 </tr>
-              ))
+              );})
             )}
           </tbody>
         </table>
@@ -374,7 +389,7 @@ const TransactionManagementPage: React.FC = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-gray-400 text-sm">Type</p>
-                <p className="text-white font-medium">{TYPE_LABELS[selectedTransaction.type]}</p>
+                <p className="text-white font-medium">{TYPE_LABELS[getDisplayType(selectedTransaction)]}</p>
               </div>
               <div>
                 <p className="text-gray-400 text-sm">ID Entité</p>

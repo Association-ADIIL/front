@@ -20,6 +20,7 @@ const HomePage: React.FC = () => {
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [nextEvent, setNextEvent] = useState<Event | null>(null);
+  const [totalProductsCount, setTotalProductsCount] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -38,10 +39,9 @@ const HomePage: React.FC = () => {
         }
         setEvents(upcomingEvents.slice(0, 4));
 
-        const availableProducts = productsData
-            .filter(p => p.active)
-            .slice(0, 3);
-        setProducts(availableProducts);
+        const activeProducts = productsData.filter(p => p.active);
+        setTotalProductsCount(activeProducts.length);
+        setProducts(activeProducts.slice(0, 12));
       } catch (err) {
         console.error("Failed to fetch data:", err);
       } finally {
@@ -96,7 +96,7 @@ const HomePage: React.FC = () => {
             </div>
             <div className="w-px h-12 bg-gray-800 hidden sm:block"></div>
             <div className="text-center">
-              <div className="text-3xl font-koulen text-accent-mint">{products.length}</div>
+              <div className="text-3xl font-koulen text-accent-mint">{totalProductsCount}</div>
               <div className="text-xs text-gray-500 uppercase tracking-wider">Produits dispo</div>
             </div>
             <div className="w-px h-12 bg-gray-800 hidden sm:block"></div>

@@ -144,8 +144,8 @@ const AdminAuditLogsPage: React.FC = () => {
       CANCEL: 'Annulation',
       MANUAL_INSCRIPTION: 'Inscription manuelle',
       MARK_COLLECTED: 'Marque recupere',
-      BALANCE_RECHARGE: 'Recharge solde',
-      BALANCE_PURCHASE: 'Achat avec solde',
+      BALANCE_RECHARGE: 'Recharge Solde ADIIL',
+      BALANCE_PURCHASE: 'Achat Solde ADIIL',
     };
     return labels[action] || action;
   };

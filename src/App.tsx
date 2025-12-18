@@ -1,9 +1,13 @@
 import { Routes, Route } from 'react-router-dom';
+import { lazy, Suspense, useEffect } from 'react';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import HomePage from './pages/HomePage';
 import AboutPage from './pages/AboutPage';
 import LegalPage from './pages/LegalPage';
+import CGVPage from './pages/CGVPage';
+import CGUPage from './pages/CGUPage';
+import ConfidentialitePage from './pages/ConfidentialitePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import EventsPage from './pages/EventsPage';
@@ -14,24 +18,32 @@ import BalancePage from './pages/BalancePage';
 import MyAccountPage from './pages/MyAccountPage';
 import PaymentCallbackPage from './pages/PaymentCallbackPage';
 import OrderPickupPage from './pages/OrderPickupPage';
-import AdminDashboardPage from './pages/AdminDashboardPage';
-import UserManagementPage from './pages/UserManagementPage';
 import AdminLayout from './components/AdminLayout';
-import EventManagementPage from './pages/EventManagementPage';
-import ProductManagementPage from './pages/ProductManagementPage';
-import OrderManagementPage from './pages/OrderManagementPage';
-import AdminSalesStatisticsPage from './pages/AdminSalesStatisticsPage';
-import AdminAuditLogsPage from './pages/AdminAuditLogsPage';
-import FileManagementPage from './pages/FileManagementPage';
-import CategoryManagementPage from './pages/CategoryManagementPage';
-import PromotionManagementPage from './pages/PromotionManagementPage';
-import TransactionManagementPage from './pages/TransactionManagementPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider, useNotification } from './context/NotificationContext';
 import { CartProvider } from './context/CartContext';
 import { ToastContainer } from './components/Toast';
 import { setUnauthorizedCallback, setErrorCallback } from './api/client';
-import { useEffect } from 'react';
+
+// Lazy load admin pages for code splitting
+const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
+const UserManagementPage = lazy(() => import('./pages/UserManagementPage'));
+const EventManagementPage = lazy(() => import('./pages/EventManagementPage'));
+const ProductManagementPage = lazy(() => import('./pages/ProductManagementPage'));
+const OrderManagementPage = lazy(() => import('./pages/OrderManagementPage'));
+const AdminSalesStatisticsPage = lazy(() => import('./pages/AdminSalesStatisticsPage'));
+const AdminAuditLogsPage = lazy(() => import('./pages/AdminAuditLogsPage'));
+const FileManagementPage = lazy(() => import('./pages/FileManagementPage'));
+const CategoryManagementPage = lazy(() => import('./pages/CategoryManagementPage'));
+const PromotionManagementPage = lazy(() => import('./pages/PromotionManagementPage'));
+const TransactionManagementPage = lazy(() => import('./pages/TransactionManagementPage'));
+
+// Loading component for lazy loaded pages
+const PageLoader = () => (
+  <div className="min-h-screen bg-darker-bg flex items-center justify-center">
+    <div className="w-10 h-10 border-2 border-accent-mint border-t-transparent rounded-full animate-spin"></div>
+  </div>
+);
 
 const ApiInterceptor = () => {
   const { logout } = useAuth();
@@ -60,19 +72,19 @@ function App() {
             <ApiInterceptor />
             <ToastContainer />
             <Routes>
-              {/* Admin Routes (no Header/Footer) */}
-              <Route path="/admin" element={<AdminLayout><AdminDashboardPage /></AdminLayout>} />
-              <Route path="/admin/dashboard" element={<AdminLayout><AdminDashboardPage /></AdminLayout>} />
-              <Route path="/admin/users" element={<AdminLayout><UserManagementPage /></AdminLayout>} />
-              <Route path="/admin/events" element={<AdminLayout><EventManagementPage /></AdminLayout>} />
-              <Route path="/admin/products" element={<AdminLayout><ProductManagementPage /></AdminLayout>} />
-              <Route path="/admin/categories" element={<AdminLayout><CategoryManagementPage /></AdminLayout>} />
-              <Route path="/admin/orders" element={<AdminLayout><OrderManagementPage /></AdminLayout>} />
-              <Route path="/admin/statistics" element={<AdminLayout><AdminSalesStatisticsPage /></AdminLayout>} />
-              <Route path="/admin/files" element={<AdminLayout><FileManagementPage /></AdminLayout>} />
-              <Route path="/admin/logs" element={<AdminLayout><AdminAuditLogsPage /></AdminLayout>} />
-              <Route path="/admin/promotions" element={<AdminLayout><PromotionManagementPage /></AdminLayout>} />
-              <Route path="/admin/transactions" element={<AdminLayout><TransactionManagementPage /></AdminLayout>} />
+              {/* Admin Routes (no Header/Footer) - Lazy loaded */}
+              <Route path="/admin" element={<Suspense fallback={<PageLoader />}><AdminLayout><AdminDashboardPage /></AdminLayout></Suspense>} />
+              <Route path="/admin/dashboard" element={<Suspense fallback={<PageLoader />}><AdminLayout><AdminDashboardPage /></AdminLayout></Suspense>} />
+              <Route path="/admin/users" element={<Suspense fallback={<PageLoader />}><AdminLayout><UserManagementPage /></AdminLayout></Suspense>} />
+              <Route path="/admin/events" element={<Suspense fallback={<PageLoader />}><AdminLayout><EventManagementPage /></AdminLayout></Suspense>} />
+              <Route path="/admin/products" element={<Suspense fallback={<PageLoader />}><AdminLayout><ProductManagementPage /></AdminLayout></Suspense>} />
+              <Route path="/admin/categories" element={<Suspense fallback={<PageLoader />}><AdminLayout><CategoryManagementPage /></AdminLayout></Suspense>} />
+              <Route path="/admin/orders" element={<Suspense fallback={<PageLoader />}><AdminLayout><OrderManagementPage /></AdminLayout></Suspense>} />
+              <Route path="/admin/statistics" element={<Suspense fallback={<PageLoader />}><AdminLayout><AdminSalesStatisticsPage /></AdminLayout></Suspense>} />
+              <Route path="/admin/files" element={<Suspense fallback={<PageLoader />}><AdminLayout><FileManagementPage /></AdminLayout></Suspense>} />
+              <Route path="/admin/logs" element={<Suspense fallback={<PageLoader />}><AdminLayout><AdminAuditLogsPage /></AdminLayout></Suspense>} />
+              <Route path="/admin/promotions" element={<Suspense fallback={<PageLoader />}><AdminLayout><PromotionManagementPage /></AdminLayout></Suspense>} />
+              <Route path="/admin/transactions" element={<Suspense fallback={<PageLoader />}><AdminLayout><TransactionManagementPage /></AdminLayout></Suspense>} />
 
               {/* Public Routes (with Header/Footer) */}
               <Route
@@ -85,6 +97,9 @@ function App() {
                         <Route path="/" element={<HomePage />} />
                         <Route path="/about" element={<AboutPage />} />
                         <Route path="/legal" element={<LegalPage />} />
+                        <Route path="/cgv" element={<CGVPage />} />
+                        <Route path="/cgu" element={<CGUPage />} />
+                        <Route path="/confidentialite" element={<ConfidentialitePage />} />
                         <Route path="/login" element={<LoginPage />} />
                         <Route path="/register" element={<RegisterPage />} />
                         <Route path="/events" element={<EventsPage />} />

@@ -509,7 +509,7 @@ const OrderManagementPage: React.FC = () => {
                        order.paymentMethod === 'PAYPAL' ? 'PayPal' :
                        order.paymentMethod === 'CASH_CB' ? 'Espèces/CB' :
                        order.paymentMethod === 'FREE' ? 'Gratuit' :
-                       order.paymentMethod === 'BALANCE' ? 'Solde' : order.paymentMethod}
+                       order.paymentMethod === 'BALANCE' ? 'Solde ADIIL' : order.paymentMethod}
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm">
                       {order.discountAmount > 0 && order.originalPrice ? (
