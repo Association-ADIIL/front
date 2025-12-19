@@ -38,6 +38,8 @@ const ProductManagementPage: React.FC = () => {
     stock: undefined
   });
 
+  const [editingVariantId, setEditingVariantId] = useState<number | null>(null);
+
   const fetchProducts = async () => {
     try {
       const data = await getAllProducts();
@@ -80,6 +82,7 @@ const ProductManagementPage: React.FC = () => {
       priceModifier: 0,
       stock: undefined
     });
+    setEditingVariantId(null);
     setIsModalOpen(true);
   };
 
@@ -100,6 +103,7 @@ const ProductManagementPage: React.FC = () => {
       priceModifier: 0,
       stock: undefined
     });
+    setEditingVariantId(null);
     setIsModalOpen(true);
   };
 
@@ -196,6 +200,15 @@ const ProductManagementPage: React.FC = () => {
     setFormData(prev => ({
       ...prev,
       variants: (prev.variants || []).filter(v => v.id !== variantId)
+    }));
+  };
+
+  const handleUpdateVariant = (variantId: number, field: keyof Omit<ProductVariant, 'id'>, value: string | number | undefined) => {
+    setFormData(prev => ({
+      ...prev,
+      variants: (prev.variants || []).map(v =>
+        v.id === variantId ? { ...v, [field]: value } : v
+      )
     }));
   };
 
@@ -343,23 +356,81 @@ const ProductManagementPage: React.FC = () => {
                 <div className="space-y-2 mb-4">
                   {formData.variants.map((variant) => {
                     const finalPrice = formData.price + variant.priceModifier;
+                    const isEditing = editingVariantId === variant.id;
                     return (
-                      <div key={variant.id} className="flex items-center justify-between bg-dark-bg p-3 rounded border border-gray-700">
-                        <div className="flex-grow">
-                          <p className="text-white font-medium">{variant.name}</p>
-                          <p className="text-xs text-gray-400">
-                            Prix: {finalPrice.toFixed(2)} €
-                            {variant.priceModifier !== 0 && ` (${variant.priceModifier > 0 ? '+' : ''}${variant.priceModifier.toFixed(2)} €)`}
-                            {variant.stock !== undefined && ` • Stock: ${variant.stock}`}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveVariant(variant.id)}
-                          className="text-red-400 hover:text-red-300 ml-2"
-                        >
-                          <X size={18} />
-                        </button>
+                      <div key={variant.id} className="bg-dark-bg p-3 rounded border border-gray-700">
+                        {isEditing ? (
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                              <div>
+                                <label className="block text-xs text-gray-400 mb-1">Nom</label>
+                                <input
+                                  type="text"
+                                  value={variant.name}
+                                  onChange={(e) => handleUpdateVariant(variant.id, 'name', e.target.value)}
+                                  className="w-full bg-darker-bg border border-gray-600 rounded p-2 text-white text-sm"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-400 mb-1">Modificateur (€)</label>
+                                <NumberInput
+                                  value={variant.priceModifier}
+                                  onChange={(val) => handleUpdateVariant(variant.id, 'priceModifier', parseFloat(val) || 0)}
+                                  className="w-full bg-darker-bg border border-gray-600 rounded p-2 text-white text-sm"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-400 mb-1">Stock</label>
+                                <NumberInput
+                                  value={variant.stock ?? ''}
+                                  onChange={(val) => handleUpdateVariant(variant.id, 'stock', val ? parseInt(val) : undefined)}
+                                  allowDecimals={false}
+                                  placeholder="Illimite"
+                                  className="w-full bg-darker-bg border border-gray-600 rounded p-2 text-white text-sm"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-gray-400">
+                                Prix final: {finalPrice.toFixed(2)} €
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setEditingVariantId(null)}
+                                className="text-accent-mint hover:text-white text-sm font-medium"
+                              >
+                                Terminer
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between">
+                            <div className="flex-grow">
+                              <p className="text-white font-medium">{variant.name}</p>
+                              <p className="text-xs text-gray-400">
+                                Prix: {finalPrice.toFixed(2)} €
+                                {variant.priceModifier !== 0 && ` (${variant.priceModifier > 0 ? '+' : ''}${variant.priceModifier.toFixed(2)} €)`}
+                                {variant.stock !== undefined && ` • Stock: ${variant.stock}`}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setEditingVariantId(variant.id)}
+                                className="text-blue-400 hover:text-blue-300"
+                              >
+                                <Edit2 size={16} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveVariant(variant.id)}
+                                className="text-red-400 hover:text-red-300"
+                              >
+                                <X size={18} />
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
