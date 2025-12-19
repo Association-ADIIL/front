@@ -275,7 +275,7 @@ const TransactionManagementPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-darker-bg border border-gray-700 rounded-lg overflow-hidden overflow-x-auto">
+      <div className="bg-darker-bg border border-gray-700 rounded-lg overflow-hidden overflow-x-auto custom-scrollbar-x">
         <table className="min-w-full divide-y divide-gray-700">
           <thead className="bg-dark-bg">
             <tr>
