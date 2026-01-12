@@ -1,8 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { getRecentAuditLogs } from '../api/auditLogs';
 import { FileText, User, Calendar, Filter, Eye, Search, X } from 'lucide-react';
 import Modal from '../components/Modal';
+import Pagination from '../components/Pagination';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+
+const ITEMS_PER_PAGE = 50;
 
 interface AuditLog {
   id: number;
@@ -26,6 +29,7 @@ const AdminAuditLogsPage: React.FC = () => {
   const [filterDateFrom, setFilterDateFrom] = useState<string>('');
   const [filterDateTo, setFilterDateTo] = useState<string>('');
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     const fetchLogs = async () => {
@@ -72,7 +76,14 @@ const AdminAuditLogsPage: React.FC = () => {
     }
 
     setFilteredLogs(filtered);
+    setCurrentPage(1);
   }, [filterAction, filterEntityType, filterUser, filterDateFrom, filterDateTo, logs]);
+
+  const totalPages = Math.ceil(filteredLogs.length / ITEMS_PER_PAGE);
+  const paginatedLogs = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredLogs.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredLogs, currentPage]);
 
   const clearFilters = () => {
     setFilterAction('');
@@ -283,14 +294,14 @@ const AdminAuditLogsPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800">
-              {filteredLogs.length === 0 ? (
+              {paginatedLogs.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-3 sm:px-6 py-12 text-center text-gray-400">
                     Aucun log trouve
                   </td>
                 </tr>
               ) : (
-                filteredLogs.map((log) => (
+                paginatedLogs.map((log) => (
                   <tr key={log.id} className="hover:bg-dark-bg/50 transition-colors">
                     <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-300">
                       <div className="flex items-center gap-1 sm:gap-2">
@@ -341,12 +352,13 @@ const AdminAuditLogsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Stats Footer */}
-      <div className="mt-4 flex items-center justify-between text-sm text-gray-400">
-        <div>
-          Affichage de {filteredLogs.length} log(s) sur {logs.length}
-        </div>
-      </div>
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={filteredLogs.length}
+        itemsPerPage={ITEMS_PER_PAGE}
+        onPageChange={setCurrentPage}
+      />
 
       {/* Detail Modal */}
       <Modal

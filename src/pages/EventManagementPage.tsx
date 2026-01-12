@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { getAllEvents, deleteEvent, createEvent, updateEvent, type Event, type EventFormData, type EventFormField } from '../api/events';
-import { Edit2, Trash2, Plus, Calendar, MapPin, Download, X, Search } from 'lucide-react';
+import { Edit2, Trash2, Plus, Calendar, MapPin, Download, X, Search, Users, ChevronDown, ChevronUp } from 'lucide-react';
 import Modal from '../components/Modal';
-import { exportEventInscriptionsCsv } from '../api/inscriptions';
+import { exportEventInscriptionsCsv, getAllInscriptions, type Inscription } from '../api/inscriptions';
 import ImageUpload from '../components/ImageUpload';
 import NumberInput from '../components/NumberInput';
 import { deleteImage } from '../api/upload';
@@ -20,6 +20,13 @@ const EventManagementPage: React.FC = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
   const uploadedImagesRef = useRef<string[]>([]);
+
+  // Inscriptions modal state
+  const [isInscriptionsModalOpen, setIsInscriptionsModalOpen] = useState(false);
+  const [selectedEventForInscriptions, setSelectedEventForInscriptions] = useState<Event | null>(null);
+  const [inscriptions, setInscriptions] = useState<Inscription[]>([]);
+  const [loadingInscriptions, setLoadingInscriptions] = useState(false);
+  const [expandedInscriptions, setExpandedInscriptions] = useState<Set<number>>(new Set());
 
   const [formData, setFormData] = useState<EventFormData>({
     title: '',
@@ -117,6 +124,54 @@ const EventManagementPage: React.FC = () => {
   const handleOpenDelete = (event: Event) => {
     setEventToDelete(event);
     setIsDeleteModalOpen(true);
+  };
+
+  const handleOpenInscriptions = async (event: Event) => {
+    setSelectedEventForInscriptions(event);
+    setIsInscriptionsModalOpen(true);
+    setLoadingInscriptions(true);
+    setExpandedInscriptions(new Set());
+    try {
+      const data = await getAllInscriptions({ eventId: event.id });
+      setInscriptions(data);
+    } catch (error) {
+      console.error('Failed to fetch inscriptions:', error);
+      addNotification('error', 'Erreur lors du chargement des inscriptions');
+    } finally {
+      setLoadingInscriptions(false);
+    }
+  };
+
+  const toggleInscriptionExpanded = (inscriptionId: number) => {
+    setExpandedInscriptions(prev => {
+      const next = new Set(prev);
+      if (next.has(inscriptionId)) {
+        next.delete(inscriptionId);
+      } else {
+        next.add(inscriptionId);
+      }
+      return next;
+    });
+  };
+
+  const getFormFieldLabel = (fieldId: number): string => {
+    if (!selectedEventForInscriptions?.formFields) return `Champ #${fieldId}`;
+    const fields = selectedEventForInscriptions.formFields as EventFormField[];
+    const field = fields.find(f => f.id === fieldId);
+    return field?.label || `Champ #${fieldId}`;
+  };
+
+  const getPaymentStatusBadge = (status: string) => {
+    switch (status) {
+      case 'PAID':
+        return <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-900/50 text-green-300">Paye</span>;
+      case 'PENDING':
+        return <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-yellow-900/50 text-yellow-300">En attente</span>;
+      case 'REFUNDED':
+        return <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-red-900/50 text-red-300">Rembourse</span>;
+      default:
+        return <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-gray-700 text-gray-300">{status}</span>;
+    }
   };
 
   const handleCloseModal = async () => {
@@ -333,6 +388,13 @@ const EventManagementPage: React.FC = () => {
                      />
                  </div>
                  <div className="flex space-x-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity bg-darker-bg p-1 rounded absolute top-4 right-4 shadow-lg">
+                    <button
+                      onClick={() => handleOpenInscriptions(event)}
+                      className="p-2 text-purple-400 hover:bg-purple-900/20 rounded"
+                      title="Voir les inscrits"
+                    >
+                      <Users size={18} />
+                    </button>
                     <button
                       onClick={() => handleExportCsv(event.id, event.title)}
                       className="p-2 text-accent-mint hover:bg-green-900/20 rounded"
@@ -594,6 +656,120 @@ const EventManagementPage: React.FC = () => {
                 <button onClick={() => setIsDeleteModalOpen(false)} className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500">Annuler</button>
                 <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-500">Supprimer</button>
             </div>
+        </div>
+      </Modal>
+
+      {/* Inscriptions Modal */}
+      <Modal
+        isOpen={isInscriptionsModalOpen}
+        onClose={() => setIsInscriptionsModalOpen(false)}
+        title={`Inscrits - ${selectedEventForInscriptions?.title || ''}`}
+      >
+        <div>
+          {loadingInscriptions ? (
+            <div className="text-center py-8 text-gray-400">Chargement...</div>
+          ) : inscriptions.length === 0 ? (
+            <div className="text-center py-8 text-gray-400">Aucune inscription pour cet evenement</div>
+          ) : (
+            <div className="space-y-3">
+              {/* Stats summary */}
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                <div className="bg-dark-bg rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-white">{inscriptions.length}</p>
+                  <p className="text-xs text-gray-400">Inscriptions</p>
+                </div>
+                <div className="bg-dark-bg rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-green-400">
+                    {inscriptions.filter(i => i.paymentStatus === 'PAID').length}
+                  </p>
+                  <p className="text-xs text-gray-400">Payees</p>
+                </div>
+                <div className="bg-dark-bg rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-accent-mint">
+                    {inscriptions.reduce((sum, i) => sum + i.quantity, 0)}
+                  </p>
+                  <p className="text-xs text-gray-400">Places</p>
+                </div>
+              </div>
+
+              {/* Inscriptions list */}
+              {inscriptions.map((inscription) => {
+                const isExpanded = expandedInscriptions.has(inscription.id);
+                const hasDetails = (inscription.formResponses && inscription.formResponses.length > 0) ||
+                                   (inscription.options && inscription.options.length > 0);
+
+                return (
+                  <div key={inscription.id} className="bg-dark-bg rounded-lg border border-gray-700 overflow-hidden">
+                    <div
+                      className={`p-4 ${hasDetails ? 'cursor-pointer hover:bg-gray-800/50' : ''}`}
+                      onClick={() => hasDetails && toggleInscriptionExpanded(inscription.id)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-grow">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-white capitalize">
+                              {inscription.user?.firstName} {inscription.user?.lastName}
+                            </p>
+                            {getPaymentStatusBadge(inscription.paymentStatus)}
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">{inscription.user?.email}</p>
+                          <div className="flex items-center gap-4 mt-2 text-sm text-gray-400">
+                            <span>{inscription.quantity} place{inscription.quantity > 1 ? 's' : ''}</span>
+                            <span>{inscription.totalPrice.toFixed(2)}€</span>
+                            <span>{new Date(inscription.createdAt).toLocaleDateString('fr-FR')}</span>
+                          </div>
+                        </div>
+                        {hasDetails && (
+                          <div className="text-gray-400 ml-2">
+                            {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Expanded details */}
+                    {isExpanded && hasDetails && (
+                      <div className="border-t border-gray-700 p-4 bg-darker-bg space-y-3">
+                        {/* Options */}
+                        {inscription.options && inscription.options.length > 0 && (
+                          <div>
+                            <p className="text-xs font-bold text-gray-400 uppercase mb-2">Options choisies</p>
+                            <div className="space-y-1">
+                              {inscription.options.map((opt, idx) => (
+                                <div key={idx} className="flex items-center justify-between text-sm">
+                                  <span className="text-white">{opt.eventOption?.name || `Option #${opt.eventOptionId}`}</span>
+                                  <span className="text-gray-400">x{opt.quantity}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Form responses */}
+                        {inscription.formResponses && inscription.formResponses.length > 0 && (
+                          <div>
+                            <p className="text-xs font-bold text-gray-400 uppercase mb-2">Reponses au formulaire</p>
+                            <div className="space-y-2">
+                              {inscription.formResponses.map((response, idx) => (
+                                <div key={idx} className="bg-dark-bg rounded p-2">
+                                  <p className="text-xs text-gray-500">{getFormFieldLabel(response.fieldId)}</p>
+                                  <p className="text-sm text-white mt-0.5">
+                                    {response.value === 'true' ? 'Oui' :
+                                     response.value === 'false' ? 'Non' :
+                                     response.value || <span className="text-gray-500 italic">Non renseigne</span>}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </Modal>
     </div>

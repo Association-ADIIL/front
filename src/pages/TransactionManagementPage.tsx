@@ -1,10 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { getAllTransactions, refreshTransactionStatus } from '../api/transactions';
 import type { Transaction, TransactionType, PaymentStatus, PaymentMethod } from '../api/transactions';
 import { Search, RefreshCw, CreditCard, ShoppingCart, Calendar, ExternalLink } from 'lucide-react';
 import Modal from '../components/Modal';
+import Pagination from '../components/Pagination';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { useNotification } from '../context/NotificationContext';
+
+const ITEMS_PER_PAGE = 50;
 
 const TYPE_LABELS: Record<TransactionType | 'BALANCE_CREDIT', string> = {
   ORDER: 'Commande',
@@ -42,6 +45,7 @@ const TransactionManagementPage: React.FC = () => {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const fetchTransactions = async () => {
     try {
@@ -79,7 +83,14 @@ const TransactionManagementPage: React.FC = () => {
       return matchesSearch && matchesType && matchesStatus && matchesMethod;
     });
     setFilteredTransactions(filtered);
+    setCurrentPage(1);
   }, [searchTerm, typeFilter, statusFilter, methodFilter, transactions]);
+
+  const totalPages = Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE);
+  const paginatedTransactions = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredTransactions.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredTransactions, currentPage]);
 
   const handleRefreshStatus = async (tx: Transaction) => {
     if (tx.paymentStatus === 'PAID') {
@@ -306,14 +317,14 @@ const TransactionManagementPage: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-700">
-            {filteredTransactions.length === 0 ? (
+            {paginatedTransactions.length === 0 ? (
               <tr>
                 <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
                   Aucune transaction trouvée
                 </td>
               </tr>
             ) : (
-              filteredTransactions.map(tx => {
+              paginatedTransactions.map(tx => {
                 const displayType = getDisplayType(tx);
                 return (
                 <tr key={tx.id} className="hover:bg-gray-800/50 transition-colors">
@@ -377,6 +388,14 @@ const TransactionManagementPage: React.FC = () => {
           </tbody>
         </table>
       </div>
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={filteredTransactions.length}
+        itemsPerPage={ITEMS_PER_PAGE}
+        onPageChange={setCurrentPage}
+      />
 
       {/* Detail Modal */}
       <Modal

@@ -1,9 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { getAllUsers, deleteUser, createUser, updateUser } from '../api/users';
 import { type User } from '../api/auth';
 import { Edit2, Trash2, Plus, User as UserIcon, Search } from 'lucide-react';
 import Modal from '../components/Modal';
+import Pagination from '../components/Pagination';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+
+const ITEMS_PER_PAGE = 50;
 
 const UserManagementPage: React.FC = () => {
   useDocumentTitle('Admin - Utilisateurs');
@@ -15,6 +18,7 @@ const UserManagementPage: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -43,13 +47,20 @@ const UserManagementPage: React.FC = () => {
 
   useEffect(() => {
     const lowerTerm = searchTerm.toLowerCase();
-    const filtered = users.filter(user => 
+    const filtered = users.filter(user =>
         user.firstName.toLowerCase().includes(lowerTerm) ||
         user.lastName.toLowerCase().includes(lowerTerm) ||
         user.email.toLowerCase().includes(lowerTerm)
     );
     setFilteredUsers(filtered);
+    setCurrentPage(1);
   }, [searchTerm, users]);
+
+  const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
+  const paginatedUsers = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredUsers.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredUsers, currentPage]);
 
   const handleOpenCreate = () => {
     setCurrentUser(null);
@@ -159,44 +170,68 @@ const UserManagementPage: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-700">
-            {filteredUsers.map((user) => (
-              <tr key={user.id} className="hover:bg-gray-800/50 transition-colors">
+            {paginatedUsers.map((user) => (
+              <tr key={user.id} className={`transition-colors ${user.deletedAt ? 'opacity-50 bg-red-900/10' : 'hover:bg-gray-800/50'}`}>
                 <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                   <div className="flex items-center">
-                    <div className="flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10 bg-gray-700 rounded-full flex items-center justify-center text-gray-400">
+                    <div className={`flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10 rounded-full flex items-center justify-center ${user.deletedAt ? 'bg-red-900/50 text-red-400' : 'bg-gray-700 text-gray-400'}`}>
                         <UserIcon size={18} className="sm:hidden" />
                         <UserIcon size={20} className="hidden sm:block" />
                     </div>
                     <div className="ml-3 sm:ml-4">
-                      <div className="text-sm font-medium text-white capitalize">{user.firstName} {user.lastName}</div>
-                      <div className="text-xs text-gray-500 md:hidden">{user.email}</div>
+                      <div className={`text-sm font-medium capitalize ${user.deletedAt ? 'text-gray-400 line-through' : 'text-white'}`}>
+                        {user.firstName} {user.lastName}
+                        {user.deletedAt && (
+                          <span className="ml-2 px-2 py-0.5 text-xs font-semibold rounded-full bg-red-900/50 text-red-300 no-underline inline-block">
+                            Supprimé
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-500 md:hidden">{user.deletedAt ? 'Compte supprimé' : user.email}</div>
                     </div>
                   </div>
                 </td>
                 <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap hidden md:table-cell">
-                  <div className="text-sm text-gray-300">{user.email}</div>
+                  <div className={`text-sm ${user.deletedAt ? 'text-gray-500' : 'text-gray-300'}`}>
+                    {user.deletedAt ? 'Compte supprimé' : user.email}
+                  </div>
                 </td>
                 <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    user.deletedAt ? 'bg-red-900/50 text-red-300' :
                     user.type.includes('ADMIN') ? 'bg-purple-900/50 text-purple-200' :
                     user.type === 'PROFESSOR' ? 'bg-blue-900/50 text-blue-200' :
                     'bg-green-900/50 text-green-200'
                   }`}>
-                    {user.type}
+                    {user.deletedAt ? 'SUPPRIMÉ' : user.type}
                   </span>
                 </td>
                 <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-400 hidden sm:table-cell">
                   {user.studentGroup || '-'}
                 </td>
                 <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button onClick={() => handleOpenEdit(user)} className="text-accent-mint hover:text-white mr-3 sm:mr-4"><Edit2 size={18} /></button>
-                  <button onClick={() => handleOpenDelete(user)} className="text-red-400 hover:text-red-300"><Trash2 size={18} /></button>
+                  {user.deletedAt ? (
+                    <span className="text-gray-500 text-xs">Aucune action</span>
+                  ) : (
+                    <>
+                      <button onClick={() => handleOpenEdit(user)} className="text-accent-mint hover:text-white mr-3 sm:mr-4"><Edit2 size={18} /></button>
+                      <button onClick={() => handleOpenDelete(user)} className="text-red-400 hover:text-red-300"><Trash2 size={18} /></button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={filteredUsers.length}
+        itemsPerPage={ITEMS_PER_PAGE}
+        onPageChange={setCurrentPage}
+      />
 
       {/* Create/Edit Modal */}
       <Modal 

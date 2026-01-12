@@ -1,13 +1,16 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { getAllProducts, deleteProduct, createProduct, updateProduct, type Product, type ProductFormData, type ProductVariant } from '../api/products';
 import { getAllCategories, type Category } from '../api/categories';
 import { Edit2, Trash2, Plus, X, Search } from 'lucide-react';
 import Modal from '../components/Modal';
+import Pagination from '../components/Pagination';
 import ImageUpload from '../components/ImageUpload';
 import NumberInput from '../components/NumberInput';
 import { deleteImage } from '../api/upload';
 import { useNotification } from '../context/NotificationContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+
+const ITEMS_PER_PAGE = 50;
 
 const ProductManagementPage: React.FC = () => {
   useDocumentTitle('Admin - Produits');
@@ -179,7 +182,7 @@ const ProductManagementPage: React.FC = () => {
     }
 
     const variant: ProductVariant = {
-      id: Date.now(), // Temporary ID for frontend
+      id: Date.now(),
       ...newVariant
     };
 
@@ -212,11 +215,24 @@ const ProductManagementPage: React.FC = () => {
     }));
   };
 
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset pagination when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
   if (loading) return <div className="text-center p-8">Chargement...</div>;
 
   const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     product.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
+  const paginatedProducts = filteredProducts.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
   );
 
   return (
@@ -248,7 +264,7 @@ const ProductManagementPage: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredProducts.map((product) => (
+        {paginatedProducts.map((product) => (
           <div key={product.id} className={`bg-darker-bg border border-gray-800 rounded-2xl p-6 flex flex-col relative group hover:border-gray-700 transition-colors ${!product.active ? 'opacity-60' : ''}`}>
             <div className="flex items-start justify-between mb-4">
                  <div className="w-16 h-16 rounded bg-dark-bg flex items-center justify-center overflow-hidden">
@@ -288,6 +304,14 @@ const ProductManagementPage: React.FC = () => {
           </div>
         ))}
       </div>
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={filteredProducts.length}
+        itemsPerPage={ITEMS_PER_PAGE}
+        onPageChange={setCurrentPage}
+      />
 
       {/* Create/Edit Modal */}
       <Modal

@@ -1,14 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { getAllOrders, updateOrderStatus, updatePaymentStatus, refundOrderItems, type Order } from '../api/orders';
 import { getAllInscriptions, updateInscriptionPaymentStatus, refundInscription, type Inscription } from '../api/inscriptions';
 import { getAllEvents, type Event } from '../api/events';
 import { Edit2, ShoppingBag, Calendar, CheckSquare, Square, Eye, Gift } from 'lucide-react';
 import Modal from '../components/Modal';
+import Pagination from '../components/Pagination';
 import ConfirmDialog from '../components/ConfirmDialog';
 import MultiSelect from '../components/MultiSelect';
 import NumberInput from '../components/NumberInput';
 import { useNotification } from '../context/NotificationContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+
+const ITEMS_PER_PAGE = 50;
 
 type ViewMode = 'orders' | 'inscriptions';
 
@@ -55,6 +58,10 @@ const OrderManagementPage: React.FC = () => {
   // Order specific filters
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState<string[]>([]);
+
+  // Pagination
+  const [ordersPage, setOrdersPage] = useState(1);
+  const [inscriptionsPage, setInscriptionsPage] = useState(1);
 
   // Confirm dialog
   const [confirmDialog, setConfirmDialog] = useState({
@@ -116,41 +123,67 @@ const OrderManagementPage: React.FC = () => {
   }, []); // Removed deps
 
   // Filtered Orders Logic
-  const filteredOrders = orders.filter(order => {
-      const matchesSearch = orderSearchQuery === '' || 
+  const filteredOrders = useMemo(() => {
+    return orders.filter(order => {
+      const matchesSearch = orderSearchQuery === '' ||
           order.id.toString().includes(orderSearchQuery) ||
           (order.user && (
               order.user.firstName.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
               order.user.lastName.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
               order.user.email.toLowerCase().includes(orderSearchQuery.toLowerCase())
           ));
-      
+
       const matchesStatus = orderStatusFilter.length === 0 || orderStatusFilter.includes(order.orderStatus);
       const matchesPayment = paymentFilter.length === 0 || paymentFilter.includes(order.paymentStatus);
 
       return matchesSearch && matchesStatus && matchesPayment;
-  });
+    });
+  }, [orders, orderSearchQuery, orderStatusFilter, paymentFilter]);
 
   // Filter inscriptions logic
-  const filteredInscriptions = inscriptions.filter(inscription => {
-    if (paymentFilter.length > 0 && !paymentFilter.includes(inscription.paymentStatus)) return false;
-    if (paymentMethodFilter.length > 0 && !paymentMethodFilter.includes(inscription.paymentMethod)) return false;
-    
-    if (inscriptionSearchQuery !== '') {
-        const query = inscriptionSearchQuery.toLowerCase();
-        const matchesId = inscription.id.toString().includes(query);
-        const matchesUser = inscription.user && (
-            inscription.user.firstName.toLowerCase().includes(query) ||
-            inscription.user.lastName.toLowerCase().includes(query) ||
-            inscription.user.email.toLowerCase().includes(query)
-        );
-        const matchesEvent = inscription.event && inscription.event.title.toLowerCase().includes(query);
-        
-        if (!matchesId && !matchesUser && !matchesEvent) return false;
-    }
-    
-    return true;
-  });
+  const filteredInscriptions = useMemo(() => {
+    return inscriptions.filter(inscription => {
+      if (paymentFilter.length > 0 && !paymentFilter.includes(inscription.paymentStatus)) return false;
+      if (paymentMethodFilter.length > 0 && !paymentMethodFilter.includes(inscription.paymentMethod)) return false;
+
+      if (inscriptionSearchQuery !== '') {
+          const query = inscriptionSearchQuery.toLowerCase();
+          const matchesId = inscription.id.toString().includes(query);
+          const matchesUser = inscription.user && (
+              inscription.user.firstName.toLowerCase().includes(query) ||
+              inscription.user.lastName.toLowerCase().includes(query) ||
+              inscription.user.email.toLowerCase().includes(query)
+          );
+          const matchesEvent = inscription.event && inscription.event.title.toLowerCase().includes(query);
+
+          if (!matchesId && !matchesUser && !matchesEvent) return false;
+      }
+
+      return true;
+    });
+  }, [inscriptions, paymentFilter, paymentMethodFilter, inscriptionSearchQuery]);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setOrdersPage(1);
+  }, [orderSearchQuery, orderStatusFilter, paymentFilter]);
+
+  useEffect(() => {
+    setInscriptionsPage(1);
+  }, [inscriptionSearchQuery, paymentFilter, paymentMethodFilter]);
+
+  // Pagination
+  const ordersTotalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
+  const paginatedOrders = useMemo(() => {
+    const start = (ordersPage - 1) * ITEMS_PER_PAGE;
+    return filteredOrders.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredOrders, ordersPage]);
+
+  const inscriptionsTotalPages = Math.ceil(filteredInscriptions.length / ITEMS_PER_PAGE);
+  const paginatedInscriptions = useMemo(() => {
+    const start = (inscriptionsPage - 1) * ITEMS_PER_PAGE;
+    return filteredInscriptions.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredInscriptions, inscriptionsPage]);
 
   const handleOpenEditOrder = (order: Order) => {
     setCurrentOrder(order);
@@ -253,24 +286,28 @@ const OrderManagementPage: React.FC = () => {
   };
 
   // Calculate actual refund amount considering discounts
-  const calculateRefundAmount = (order: Order, selection: { [key: number]: number }): { originalAmount: number; actualAmount: number; hasDiscount: boolean } => {
-    // Calculate original refund amount (without discount)
-    const originalAmount = order.items.reduce((sum, item) => {
+  const calculateRefundAmount = (order: Order, selection: { [key: number]: number }): { itemPricesTotal: number; actualAmount: number; hasCartDiscount: boolean } => {
+    // Calculate the total price after product discounts (sum of all item prices)
+    const totalPriceAfterProductDiscounts = order.items.reduce(
+      (sum, item) => sum + (item.price * item.quantity),
+      0
+    );
+
+    // Calculate cart discount ratio
+    const hasCartDiscount = (order.cartDiscountAmount || 0) > 0 && totalPriceAfterProductDiscounts > 0;
+    const cartDiscountRatio = hasCartDiscount
+      ? (order.cartDiscountAmount || 0) / totalPriceAfterProductDiscounts
+      : 0;
+
+    // Calculate refund amount based on item prices (already after product discount)
+    const itemPricesTotal = order.items.reduce((sum, item) => {
       return sum + (selection[item.id] || 0) * item.price;
     }, 0);
 
-    // If no discount was applied, return original amount
-    if (!order.discountAmount || order.discountAmount === 0 || !order.originalPrice) {
-      return { originalAmount, actualAmount: originalAmount, hasDiscount: false };
-    }
+    // Apply cart discount ratio to get actual refund amount
+    const actualAmount = itemPricesTotal * (1 - cartDiscountRatio);
 
-    // Calculate the discount ratio
-    const discountRatio = order.discountAmount / order.originalPrice;
-
-    // Apply the same discount ratio to the refund
-    const actualAmount = originalAmount * (1 - discountRatio);
-
-    return { originalAmount, actualAmount, hasDiscount: true };
+    return { itemPricesTotal, actualAmount, hasCartDiscount };
   };
 
   const handleProcessPartialRefund = () => {
@@ -300,8 +337,8 @@ const OrderManagementPage: React.FC = () => {
       // Calculate refund amount considering discounts
       const refundCalc = calculateRefundAmount(currentOrder, refundSelection);
       let confirmMessage = `Vous allez rembourser un montant de ${refundCalc.actualAmount.toFixed(2)} €.`;
-      if (refundCalc.hasDiscount) {
-        confirmMessage += `\n\n(Prix original: ${refundCalc.originalAmount.toFixed(2)} €, après application de la réduction)`;
+      if (refundCalc.hasCartDiscount) {
+        confirmMessage += `\n\n(Avant réduction panier: ${refundCalc.itemPricesTotal.toFixed(2)} €)`;
       }
       confirmMessage += '\n\nCette action est irréversible.';
 
@@ -447,6 +484,7 @@ const OrderManagementPage: React.FC = () => {
       )}
 
       {viewMode === 'orders' ? (
+        <>
         <div className="bg-darker-bg border border-gray-700 rounded-lg overflow-hidden overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-700">
             <thead className="bg-dark-bg">
@@ -462,14 +500,14 @@ const OrderManagementPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-700">
-              {filteredOrders.length === 0 ? (
+              {paginatedOrders.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-3 sm:px-6 py-8 text-center text-gray-500">
                     Aucune commande trouvée
                   </td>
                 </tr>
               ) : (
-                filteredOrders.map((order) => (
+                paginatedOrders.map((order) => (
                   <tr key={order.id} className="hover:bg-darker-bg/50">
                     <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm font-bold text-white">
                       #{order.id.toString().padStart(6, '0')}
@@ -516,10 +554,27 @@ const OrderManagementPage: React.FC = () => {
                         <div>
                           <span className="text-gray-500 line-through text-xs block">{order.originalPrice.toFixed(2)} €</span>
                           <span className="font-bold text-accent-mint">{order.totalPrice.toFixed(2)} €</span>
-                          <span className="text-xs text-accent-mint flex items-center gap-1 mt-0.5">
-                            <Gift size={10} />
-                            -{order.discountAmount.toFixed(2)}€
-                          </span>
+                          <div className="text-xs mt-0.5 space-y-0.5">
+                            {order.productDiscountAmount && order.productDiscountAmount > 0 && (
+                              <span className="text-red-400 flex items-center gap-1">
+                                <Gift size={10} />
+                                Articles: -{order.productDiscountAmount.toFixed(2)}€
+                              </span>
+                            )}
+                            {order.cartDiscountAmount && order.cartDiscountAmount > 0 && (
+                              <span className="text-accent-mint flex items-center gap-1">
+                                <Gift size={10} />
+                                Panier: -{order.cartDiscountAmount.toFixed(2)}€
+                              </span>
+                            )}
+                            {(!order.productDiscountAmount || order.productDiscountAmount === 0) &&
+                             (!order.cartDiscountAmount || order.cartDiscountAmount === 0) && (
+                              <span className="text-accent-mint flex items-center gap-1">
+                                <Gift size={10} />
+                                -{order.discountAmount.toFixed(2)}€
+                              </span>
+                            )}
+                          </div>
                         </div>
                       ) : (
                         <span className="font-bold text-accent-mint">{order.totalPrice.toFixed(2)} €</span>
@@ -540,7 +595,17 @@ const OrderManagementPage: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        <Pagination
+          currentPage={ordersPage}
+          totalPages={ordersTotalPages}
+          totalItems={filteredOrders.length}
+          itemsPerPage={ITEMS_PER_PAGE}
+          onPageChange={setOrdersPage}
+        />
+        </>
       ) : (
+        <>
         <div className="bg-darker-bg border border-gray-700 rounded-lg overflow-hidden overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-700">
           <thead className="bg-dark-bg">
@@ -557,14 +622,14 @@ const OrderManagementPage: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-700">
-            {filteredInscriptions.length === 0 ? (
+            {paginatedInscriptions.length === 0 ? (
               <tr>
                 <td colSpan={9} className="px-3 sm:px-6 py-8 text-center text-gray-500">
                   Aucune inscription trouvée
                 </td>
               </tr>
             ) : (
-              filteredInscriptions.map((inscription) => (
+              paginatedInscriptions.map((inscription) => (
                 <tr key={inscription.id} className="hover:bg-gray-800/50 transition-colors">
                   <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-300">
                     #{inscription.id}
@@ -618,6 +683,15 @@ const OrderManagementPage: React.FC = () => {
           </tbody>
         </table>
         </div>
+
+        <Pagination
+          currentPage={inscriptionsPage}
+          totalPages={inscriptionsTotalPages}
+          totalItems={filteredInscriptions.length}
+          itemsPerPage={ITEMS_PER_PAGE}
+          onPageChange={setInscriptionsPage}
+        />
+        </>
       )}
 
       {/* Edit Modal */}
@@ -668,56 +742,95 @@ const OrderManagementPage: React.FC = () => {
                 <h3 className="text-lg font-bold mb-3 text-gray-300">Détails de la commande</h3>
                 <div className="bg-darker-bg p-4 rounded border border-gray-700">
                     <ul className="space-y-3">
-                        {currentOrder.items.map((item) => (
-                            <li key={item.id} className="flex justify-between items-start pb-3 border-b border-gray-700 last:border-0 last:pb-0">
-                                <div className="flex-1">
-                                    <div className="text-white font-medium">
-                                        {item.product.name}
-                                    </div>
-                                    {item.variantId && item.product.variants && (
-                                        <div className="text-accent-mint text-sm mt-1">
-                                            {(item.product.variants as any[]).find((v: any) => v.id === item.variantId)?.name}
+                        {currentOrder.items.map((item) => {
+                            // Calculate cart discount ratio
+                            const totalAfterProductDiscount = currentOrder.items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+                            const hasCartDiscount = (currentOrder.cartDiscountAmount || 0) > 0 && totalAfterProductDiscount > 0;
+                            const cartDiscountRatio = hasCartDiscount ? (currentOrder.cartDiscountAmount || 0) / totalAfterProductDiscount : 0;
+                            const effectivePrice = item.price * (1 - cartDiscountRatio);
+                            const hasProductDiscount = item.originalPrice && item.originalPrice > item.price;
+                            const originalTotal = hasProductDiscount ? item.originalPrice! * item.quantity : item.price * item.quantity;
+                            const effectiveTotal = effectivePrice * item.quantity;
+
+                            return (
+                                <li key={item.id} className="flex justify-between items-start pb-3 border-b border-gray-700 last:border-0 last:pb-0">
+                                    <div className="flex-1">
+                                        <div className="text-white font-medium">
+                                            {item.product.name}
                                         </div>
-                                    )}
-                                    <div className="text-gray-400 text-sm mt-1">
-                                        Quantité: {item.quantity}
-                                        {item.refundedQuantity > 0 && (
-                                            <span className="text-red-400 ml-2">
-                                                (dont {item.refundedQuantity} remboursé{item.refundedQuantity > 1 ? 's' : ''})
-                                            </span>
+                                        {item.variantId && item.product.variants && (
+                                            <div className="text-accent-mint text-sm mt-1">
+                                                {(item.product.variants as any[]).find((v: any) => v.id === item.variantId)?.name}
+                                            </div>
+                                        )}
+                                        <div className="text-gray-400 text-sm mt-1">
+                                            Quantité: {item.quantity}
+                                            {item.refundedQuantity > 0 && (
+                                                <span className="text-red-400 ml-2">
+                                                    (dont {item.refundedQuantity} remboursé{item.refundedQuantity > 1 ? 's' : ''})
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="text-gray-400 text-sm">
+                                            Prix unitaire: {hasProductDiscount && (
+                                                <span className="line-through text-gray-500 mr-1">{item.originalPrice!.toFixed(2)} €</span>
+                                            )}
+                                            {hasProductDiscount ? (
+                                                <span className="text-red-400">{item.price.toFixed(2)} €</span>
+                                            ) : (
+                                                <span>{item.price.toFixed(2)} €</span>
+                                            )}
+                                            {hasProductDiscount && <span className="text-red-400 text-xs ml-1">(promo article)</span>}
+                                        </div>
+                                    </div>
+                                    <div className="text-right ml-4">
+                                        {(hasProductDiscount || hasCartDiscount) ? (
+                                            <div>
+                                                <div className="text-gray-500 line-through text-sm">
+                                                    {originalTotal.toFixed(2)} €
+                                                </div>
+                                                <div className="text-accent-mint font-bold">
+                                                    {effectiveTotal.toFixed(2)} €
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="text-white font-bold">
+                                                {effectiveTotal.toFixed(2)} €
+                                            </div>
                                         )}
                                     </div>
-                                    <div className="text-gray-400 text-sm">
-                                        Prix unitaire: {item.price.toFixed(2)} €
-                                    </div>
-                                </div>
-                                <div className="text-right ml-4">
-                                    <div className="text-white font-bold">
-                                        {(item.price * item.quantity).toFixed(2)} €
-                                    </div>
-                                </div>
-                            </li>
-                        ))}
+                                </li>
+                            );
+                        })}
                     </ul>
                     {/* Discount info */}
                     {currentOrder.discountAmount > 0 && (
                         <div className="mt-4 p-3 bg-accent-mint/10 border border-accent-mint/20 rounded-lg">
                             <div className="flex items-center gap-2 mb-2">
                                 <Gift size={16} className="text-accent-mint" />
-                                <span className="text-accent-mint font-bold">Réduction appliquée</span>
+                                <span className="text-accent-mint font-bold">Réductions appliquées</span>
                             </div>
                             <div className="flex justify-between text-sm">
                                 <span className="text-gray-400">Prix original:</span>
                                 <span className="text-gray-300">{currentOrder.originalPrice?.toFixed(2)} €</span>
                             </div>
-                            <div className="flex justify-between text-sm">
-                                <span className="text-gray-400">Réduction:</span>
-                                <span className="text-accent-mint">-{currentOrder.discountAmount.toFixed(2)} €</span>
-                            </div>
-                            {currentOrder.promotion && (
-                                <div className="flex justify-between text-sm mt-1">
-                                    <span className="text-gray-400">Promotion:</span>
-                                    <span className="text-gray-300">{currentOrder.promotion.name}</span>
+                            {currentOrder.productDiscountAmount && currentOrder.productDiscountAmount > 0 && (
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-gray-400">Réductions articles:</span>
+                                    <span className="text-red-400">-{currentOrder.productDiscountAmount.toFixed(2)} €</span>
+                                </div>
+                            )}
+                            {currentOrder.cartDiscountAmount && currentOrder.cartDiscountAmount > 0 && (
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-gray-400">Réduction panier{currentOrder.promotion ? ` (${currentOrder.promotion.name})` : ''}:</span>
+                                    <span className="text-accent-mint">-{currentOrder.cartDiscountAmount.toFixed(2)} €</span>
+                                </div>
+                            )}
+                            {currentOrder.productDiscountAmount && currentOrder.productDiscountAmount > 0 &&
+                             currentOrder.cartDiscountAmount && currentOrder.cartDiscountAmount > 0 && (
+                                <div className="flex justify-between text-sm mt-1 pt-1 border-t border-accent-mint/20">
+                                    <span className="text-gray-400">Total réductions:</span>
+                                    <span className="text-accent-mint font-bold">-{currentOrder.discountAmount.toFixed(2)} €</span>
                                 </div>
                             )}
                         </div>
@@ -775,15 +888,35 @@ const OrderManagementPage: React.FC = () => {
                                                 )}
                                             </td>
                                             <td className="py-2">
-                                                                {currentOrder.discountAmount > 0 && currentOrder.originalPrice ? (
-                                                                    <div>
-                                                                        <span className="text-gray-500 line-through text-xs">{item.price.toFixed(2)} €</span>
-                                                                        <span className="ml-1 text-accent-mint">{(item.price * (1 - currentOrder.discountAmount / currentOrder.originalPrice)).toFixed(2)} €</span>
-                                                                    </div>
-                                                                ) : (
-                                                                    <span>{item.price.toFixed(2)} €</span>
+                                                {(() => {
+                                                    // Calculate cart discount ratio
+                                                    const totalAfterProductDiscount = currentOrder.items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+                                                    const hasCartDiscount = (currentOrder.cartDiscountAmount || 0) > 0 && totalAfterProductDiscount > 0;
+                                                    const cartDiscountRatio = hasCartDiscount ? (currentOrder.cartDiscountAmount || 0) / totalAfterProductDiscount : 0;
+                                                    const effectivePrice = item.price * (1 - cartDiscountRatio);
+                                                    const hasProductDiscount = item.originalPrice && item.originalPrice > item.price;
+
+                                                    if (hasProductDiscount || hasCartDiscount) {
+                                                        return (
+                                                            <div>
+                                                                {hasProductDiscount && (
+                                                                    <span className="text-gray-500 line-through text-xs mr-1">{item.originalPrice!.toFixed(2)} €</span>
                                                                 )}
-                                                            </td>
+                                                                {hasCartDiscount ? (
+                                                                    <>
+                                                                        {hasProductDiscount && <span className="text-red-400 line-through text-xs mr-1">{item.price.toFixed(2)} €</span>}
+                                                                        {!hasProductDiscount && <span className="text-gray-500 line-through text-xs mr-1">{item.price.toFixed(2)} €</span>}
+                                                                        <span className="text-accent-mint">{effectivePrice.toFixed(2)} €</span>
+                                                                    </>
+                                                                ) : (
+                                                                    <span className="text-red-400">{item.price.toFixed(2)} €</span>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return <span>{item.price.toFixed(2)} €</span>;
+                                                })()}
+                                            </td>
                                             <td className="py-2 text-center">{item.quantity}</td>
                                             <td className="py-2 text-center">{item.refundedQuantity || 0}</td>
                                             <td className="py-2 text-right flex items-center justify-end gap-2">
@@ -815,15 +948,15 @@ const OrderManagementPage: React.FC = () => {
                                 <div className="flex justify-between items-center">
                                     <span className="text-red-400 font-medium">Montant à rembourser:</span>
                                     <div className="text-right">
-                                        {refundCalc.hasDiscount && (
-                                            <span className="text-gray-500 line-through text-sm mr-2">{refundCalc.originalAmount.toFixed(2)} €</span>
+                                        {refundCalc.hasCartDiscount && (
+                                            <span className="text-gray-500 line-through text-sm mr-2">{refundCalc.itemPricesTotal.toFixed(2)} €</span>
                                         )}
                                         <span className="text-red-400 font-bold text-lg">{refundCalc.actualAmount.toFixed(2)} €</span>
                                     </div>
                                 </div>
-                                {refundCalc.hasDiscount && (
+                                {refundCalc.hasCartDiscount && (
                                     <p className="text-xs text-gray-500 mt-1">
-                                        Le montant reflète la réduction appliquée à la commande
+                                        Le montant reflète la réduction panier appliquée à la commande
                                     </p>
                                 )}
                             </div>
