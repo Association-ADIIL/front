@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+  <!-- Page d'accueil - ADIIL Association Etudiante IUT de Laval -->
+  <url>
+    <loc>https://adiil.fr/</loc>
+    <lastmod>2025-12-21</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- A propos - Association Etudiante Departement Informatique IUT Laval -->
+  <url>
+    <loc>https://adiil.fr/about</loc>
+    <lastmod>2025-12-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Evenements ADIIL - IUT de Laval Informatique -->
+  <url>
+    <loc>https://adiil.fr/events</loc>
+    <lastmod>2025-12-21</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Boutique ADIIL - Goodies Association Etudiante -->
+  <url>
+    <loc>https://adiil.fr/shop</loc>
+    <lastmod>2025-12-21</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Connexion -->
+  <url>
+    <loc>https://adiil.fr/login</loc>
+    <lastmod>2025-12-21</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+
+  <!-- Inscription - Rejoindre ADIIL IUT Laval -->
+  <url>
+    <loc>https://adiil.fr/register</loc>
+    <lastmod>2025-12-21</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <!-- Mentions legales -->
+  <url>
+    <loc>https://adiil.fr/legal</loc>
+    <lastmod>2025-12-21</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+
+  <!-- Conditions Generales de Vente -->
+  <url>
+    <loc>https://adiil.fr/cgv</loc>
+    <lastmod>2025-12-21</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+
+  <!-- Conditions Generales d'Utilisation -->
+  <url>
+    <loc>https://adiil.fr/cgu</loc>
+    <lastmod>2025-12-21</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+
+  <!-- Politique de Confidentialite -->
+  <url>
+    <loc>https://adiil.fr/confidentialite</loc>
+    <lastmod>2025-12-21</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+
+</urlset>

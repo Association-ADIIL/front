@@ -4,7 +4,7 @@ import { getAllEvents, type Event } from '../api/events';
 import { Calendar, MapPin, Users, ChevronRight, Filter } from 'lucide-react';
 import BalanceDisplay from '../components/BalanceDisplay';
 import BonusBubble from '../components/BonusBubble';
-import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import SEO from '../components/SEO';
 
 type FilterType = 'all' | 'upcoming' | 'passed';
 
@@ -14,7 +14,6 @@ const removeAccents = (str: string): string => {
 };
 
 const EventsPage: React.FC = () => {
-  useDocumentTitle('Events');
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +48,11 @@ const EventsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen">
+      <SEO
+        title="Evenements"
+        description="Decouvrez les evenements organises par l'ADIIL a l'IUT de Laval. Soirees, sorties, tournois et activites pour les etudiants du Departement Informatique."
+        url="/events"
+      />
       {/* Header Section */}
       <section className="bg-darker-bg py-16 border-b border-gray-800">
         <div className="container mx-auto px-4">

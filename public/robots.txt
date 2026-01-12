@@ -1,0 +1,38 @@
+# Robots.txt pour ADIIL - Bureau des Etudiants IUT de Laval
+# Association Etudiante du Departement Informatique
+
+User-agent: *
+Allow: /
+
+# Pages publiques principales
+Allow: /
+Allow: /about
+Allow: /events
+Allow: /shop
+Allow: /legal
+Allow: /cgv
+Allow: /cgu
+Allow: /confidentialite
+Allow: /login
+Allow: /register
+
+# Bloquer les pages privees et admin
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /my-account
+Disallow: /balance
+Disallow: /cart
+Disallow: /payment
+Disallow: /payment/*
+Disallow: /order-pickup
+Disallow: /order-pickup/*
+
+# Bloquer les fichiers techniques
+Disallow: /assets/*.js$
+Disallow: /assets/*.css$
+
+# Sitemap
+Sitemap: https://adiil.fr/sitemap.xml
+
+# Crawl-delay pour eviter la surcharge (optionnel)
+Crawl-delay: 1

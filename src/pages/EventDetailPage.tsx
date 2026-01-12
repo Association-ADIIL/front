@@ -5,7 +5,7 @@ import { Calendar, MapPin, ArrowLeft, Users, Clock, Share2, ChevronRight, LogIn 
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import EventRegistrationModal from '../components/EventRegistrationModal';
-import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import SEO from '../components/SEO';
 
 // Fonction pour retirer les accents (pour la police Koulen qui ne les supporte pas)
 const removeAccents = (str: string): string => {
@@ -21,8 +21,6 @@ const EventDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  useDocumentTitle(event?.title);
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -88,6 +86,12 @@ const EventDetailPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-dark-bg">
+      <SEO
+        title={event.title}
+        description={`${event.description.slice(0, 150)}... Evenement ADIIL a l'IUT de Laval.`}
+        url={`/events/${event.id}`}
+        type="article"
+      />
       {/* Hero Image */}
       <div className="relative h-[50vh] md:h-[60vh] overflow-hidden">
         <img

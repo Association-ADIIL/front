@@ -1,19 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { getAllProducts, type Product } from '../api/products';
 import { getAllCategories, type Category } from '../api/categories';
-import { ShoppingBag, Minus, Plus, ShoppingCart, Search, LogIn, X } from 'lucide-react';
+import { getActiveProductPromotions, type ProductPromotionsMap } from '../api/promotions';
+import { ShoppingBag, Minus, Plus, ShoppingCart, Search, LogIn, X, Tag } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useNotification } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
 import BalanceDisplay from '../components/BalanceDisplay';
 import BonusBubble from '../components/BonusBubble';
 import { Link, useNavigate } from 'react-router-dom';
-import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import SEO from '../components/SEO';
 
 const ShopPage: React.FC = () => {
-  useDocumentTitle('Boutique');
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [productPromotions, setProductPromotions] = useState<ProductPromotionsMap>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [quantities, setQuantities] = useState<{ [key: string]: number }>({});
@@ -29,13 +30,15 @@ const ShopPage: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [productsData, categoriesData] = await Promise.all([
+        const [productsData, categoriesData, promotionsData] = await Promise.all([
           getAllProducts(),
-          getAllCategories()
+          getAllCategories(),
+          getActiveProductPromotions()
         ]);
         const activeProducts = productsData.filter(p => p.active);
         setProducts(activeProducts);
         setCategories(categoriesData);
+        setProductPromotions(promotionsData);
 
         const initialQuantities: { [key: string]: number } = {};
         activeProducts.forEach(product => {
@@ -141,6 +144,11 @@ const ShopPage: React.FC = () => {
 
   return (
     <div className="min-h-screen">
+      <SEO
+        title="Boutique"
+        description="Boutique ADIIL - Snacks, boissons et goodies pour les etudiants de l'IUT de Laval. Departement Informatique."
+        url="/shop"
+      />
       {/* Header Section */}
       <section className="bg-darker-bg py-16 border-b border-gray-800">
         <div className="container mx-auto px-4">
@@ -340,12 +348,19 @@ const ShopPage: React.FC = () => {
                     {group.products.map((product) => {
                       const quantity = quantities[product.id] || 1;
                       const variant = product.variants?.find(v => v.id === selectedVariants[product.id]);
-                      const displayPrice = variant ? product.price + variant.priceModifier : product.price;
+                      const basePrice = variant ? product.price + variant.priceModifier : product.price;
+                      const promotion = productPromotions[parseInt(product.id)];
+                      const discountedPrice = promotion
+                        ? Math.round(basePrice * (1 - promotion.discountPercent / 100) * 100) / 100
+                        : basePrice;
+                      const hasPromotion = !!promotion;
 
                       return (
                         <div
                           key={product.id}
-                          className="bg-darker-bg rounded-2xl border border-gray-800 hover:border-accent-mint/30 transition-all duration-300 overflow-hidden group flex flex-col"
+                          className={`bg-darker-bg rounded-2xl border transition-all duration-300 overflow-hidden group flex flex-col ${
+                            hasPromotion ? 'border-red-500/50 hover:border-red-400' : 'border-gray-800 hover:border-accent-mint/30'
+                          }`}
                         >
                           {/* Image */}
                           <div className="aspect-square bg-gray-800 relative overflow-hidden">
@@ -354,9 +369,23 @@ const ShopPage: React.FC = () => {
                               alt={product.name}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             />
+                            {/* Promotion badge */}
+                            {hasPromotion && (
+                              <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded-lg flex items-center gap-1">
+                                <Tag size={12} />
+                                <span className="font-bold text-xs">-{promotion.discountPercent}%</span>
+                              </div>
+                            )}
                             {/* Price tag overlay */}
                             <div className="absolute top-2 right-2 bg-darker-bg/90 backdrop-blur-sm px-2 py-1 rounded-lg">
-                              <span className="text-accent-mint font-koulen text-lg">{displayPrice.toFixed(2)}€</span>
+                              {hasPromotion ? (
+                                <div className="flex flex-col items-end">
+                                  <span className="text-gray-500 line-through text-xs">{basePrice.toFixed(2)}€</span>
+                                  <span className="text-red-400 font-koulen text-lg">{discountedPrice.toFixed(2)}€</span>
+                                </div>
+                              ) : (
+                                <span className="text-accent-mint font-koulen text-lg">{basePrice.toFixed(2)}€</span>
+                              )}
                             </div>
                           </div>
 

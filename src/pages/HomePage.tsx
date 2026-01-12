@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getAllEvents, type Event } from '../api/events';
 import { getAllProducts, type Product } from '../api/products';
-import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import SEO from '../components/SEO';
 import {
   Calendar,
   MapPin,
@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 
 const HomePage: React.FC = () => {
-  useDocumentTitle('Accueil');
   const [events, setEvents] = useState<Event[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
@@ -60,6 +59,7 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="flex flex-col min-h-screen text-white">
+      <SEO url="/" />
       {/* Hero Section - Full viewport with gradient */}
       <section className="min-h-[90vh] relative flex items-center justify-center overflow-hidden">
         {/* Animated gradient background */}

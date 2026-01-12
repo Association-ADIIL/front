@@ -1,12 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import SEO from '../components/SEO';
 
 const CGVPage: React.FC = () => {
-  useDocumentTitle('Conditions Générales de Vente');
-
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <SEO title="Conditions Generales de Vente" url="/cgv" />
       <h1 className="text-4xl font-bold text-accent-mint mb-8">Conditions Générales de Vente</h1>
 
       {/* Article 1 - Objet */}

@@ -1,12 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import SEO from '../components/SEO';
 
 const ConfidentialitePage: React.FC = () => {
-  useDocumentTitle('Politique de Confidentialité');
-
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <SEO title="Politique de Confidentialite" url="/confidentialite" />
       <h1 className="text-4xl font-bold text-accent-mint mb-8">Politique de Confidentialité</h1>
 
       {/* Introduction */}

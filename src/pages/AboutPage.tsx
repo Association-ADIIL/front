@@ -1,6 +1,6 @@
 import React from 'react';
 import { Users, Mail, MapPin, Heart, Target, Sparkles } from 'lucide-react';
-import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import SEO from '../components/SEO';
 
 // TODO: Remplacer par les vraies données des membres
 const teamMembers = [
@@ -79,10 +79,13 @@ const teamMembers = [
 ];
 
 const AboutPage: React.FC = () => {
-  useDocumentTitle('A propos');
-
   return (
     <div className="min-h-screen">
+      <SEO
+        title="A propos - L'equipe ADIIL"
+        description="Decouvrez l'equipe de l'ADIIL, l'Association des Etudiants en Informatique de l'IUT de Laval. Bureau des Etudiants du Departement Informatique."
+        url="/about"
+      />
       {/* Hero Section */}
       <section className="bg-darker-bg py-20 border-b border-gray-800 relative overflow-hidden">
         {/* Background decoration */}
