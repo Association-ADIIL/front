@@ -29,9 +29,6 @@ const PaymentCallbackPage: React.FC = () => {
       const checkoutIntentId = searchParams.get('checkoutIntentId');
       const code = searchParams.get('code');
 
-      console.log('Payment callback params:', { paypalToken, checkoutIntentId, code });
-
-
       // Handle PayPal payment
       if (paypalToken) {
         try {

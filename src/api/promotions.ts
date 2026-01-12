@@ -5,7 +5,8 @@ export type PromotionType =
   | 'PERCENTAGE_DISCOUNT'
   | 'FIXED_DISCOUNT'
   | 'FREE_SHIPPING'
-  | 'BUY_X_GET_Y';
+  | 'BUY_X_GET_Y'
+  | 'PRODUCT_DISCOUNT';
 
 export interface BalanceRechargeTier {
   minAmount: number;
@@ -159,4 +160,76 @@ export const checkCartDiscount = async (cartTotal: number): Promise<CartDiscount
     method: 'POST',
     body: JSON.stringify({ cartTotal }),
   });
+};
+
+// Product promotions
+export interface ProductPromotion {
+  promotionId: number;
+  name: string;
+  displayTitle: string;
+  discountPercent: number;
+}
+
+export type ProductPromotionsMap = Record<number, ProductPromotion>;
+
+// Get active product promotions (public endpoint)
+export const getActiveProductPromotions = async (): Promise<ProductPromotionsMap> => {
+  return fetchJson('/promotions/products/active');
+};
+
+// Admin endpoints for product promotions
+export interface ProductPromotionWithProducts extends Promotion {
+  productPromotions: Array<{
+    id: number;
+    productId: number;
+    product: {
+      id: number;
+      name: string;
+      price: number;
+      image?: string;
+    };
+  }>;
+}
+
+export const createProductPromotion = async (data: {
+  name: string;
+  description?: string;
+  displayTitle: string;
+  displayMessage: string;
+  discountPercent: number;
+  productIds: number[];
+  isActive?: boolean;
+  startDate?: string;
+  endDate?: string;
+  maxUsage?: number;
+}): Promise<ProductPromotionWithProducts> => {
+  return fetchJson('/promotions/products', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
+export const updateProductPromotion = async (
+  id: number,
+  data: Partial<{
+    name: string;
+    description: string;
+    displayTitle: string;
+    displayMessage: string;
+    discountPercent: number;
+    productIds: number[];
+    isActive: boolean;
+    startDate: string | null;
+    endDate: string | null;
+    maxUsage: number | null;
+  }>
+): Promise<ProductPromotionWithProducts> => {
+  return fetchJson(`/promotions/products/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+};
+
+export const getProductPromotionById = async (id: number): Promise<ProductPromotionWithProducts> => {
+  return fetchJson(`/promotions/products/${id}`);
 };

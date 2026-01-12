@@ -5,12 +5,16 @@ import {
   updatePromotion,
   deletePromotion,
   getPromotionStats,
+  createProductPromotion,
+  updateProductPromotion,
+  getProductPromotionById,
   type Promotion,
   type PromotionType,
   type PromotionStats,
   type BalanceRechargeTier,
   type DiscountTier,
 } from '../api/promotions';
+import { getAllProducts, type Product } from '../api/products';
 import {
   Plus,
   Edit2,
@@ -22,6 +26,9 @@ import {
   BarChart3,
   X,
   Gift,
+  Package,
+  Search,
+  Check,
 } from 'lucide-react';
 import Modal from '../components/Modal';
 import { useNotification } from '../context/NotificationContext';
@@ -31,6 +38,7 @@ const PROMOTION_TYPES: { value: PromotionType; label: string; description: strin
   { value: 'BALANCE_RECHARGE_BONUS', label: 'Bonus recharge', description: 'Bonus sur les recharges de solde' },
   { value: 'PERCENTAGE_DISCOUNT', label: 'Reduction %', description: 'Reduction en pourcentage sur commandes' },
   { value: 'FIXED_DISCOUNT', label: 'Reduction fixe', description: 'Reduction fixe sur commandes' },
+  { value: 'PRODUCT_DISCOUNT', label: 'Promo produit', description: 'Reduction sur des produits specifiques' },
 ];
 
 interface PromotionFormData {
@@ -50,6 +58,9 @@ interface PromotionFormData {
   // For PERCENTAGE_DISCOUNT and FIXED_DISCOUNT
   discountTiers: DiscountTier[];
   firstOrderOnly: boolean;
+  // For PRODUCT_DISCOUNT
+  discountPercent: string;
+  selectedProductIds: number[];
 }
 
 const defaultFormData: PromotionFormData = {
@@ -67,6 +78,8 @@ const defaultFormData: PromotionFormData = {
   firstRechargeOnly: true,
   discountTiers: [{ minOrderAmount: 10, maxOrderAmount: null, discountValue: 10 }],
   firstOrderOnly: false,
+  discountPercent: '10',
+  selectedProductIds: [],
 };
 
 const PromotionManagementPage: React.FC = () => {
@@ -90,6 +103,10 @@ const PromotionManagementPage: React.FC = () => {
   const [stats, setStats] = useState<PromotionStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
 
+  // Products for PRODUCT_DISCOUNT
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productSearch, setProductSearch] = useState('');
+
   const fetchPromotions = async () => {
     try {
       const data = await getAllPromotions();
@@ -104,17 +121,40 @@ const PromotionManagementPage: React.FC = () => {
 
   useEffect(() => {
     fetchPromotions();
+    fetchProducts();
   }, []);
+
+  const fetchProducts = async () => {
+    try {
+      const data = await getAllProducts();
+      setProducts(data.filter(p => p.active));
+    } catch (error) {
+      console.error('Failed to fetch products:', error);
+    }
+  };
 
   const handleOpenCreate = () => {
     setCurrentPromotion(null);
     setFormData(defaultFormData);
+    setProductSearch('');
     setIsModalOpen(true);
   };
 
-  const handleOpenEdit = (promotion: Promotion) => {
+  const handleOpenEdit = async (promotion: Promotion) => {
     setCurrentPromotion(promotion);
     const rules = promotion.rules as any;
+
+    let selectedProductIds: number[] = [];
+
+    // For PRODUCT_DISCOUNT, fetch the associated products
+    if (promotion.type === 'PRODUCT_DISCOUNT') {
+      try {
+        const promoWithProducts = await getProductPromotionById(promotion.id);
+        selectedProductIds = promoWithProducts.productPromotions?.map((pp: any) => pp.productId) || [];
+      } catch (error) {
+        console.error('Failed to fetch promotion products:', error);
+      }
+    }
 
     setFormData({
       name: promotion.name,
@@ -131,51 +171,84 @@ const PromotionManagementPage: React.FC = () => {
       firstRechargeOnly: rules?.firstRechargeOnly ?? true,
       discountTiers: rules?.tiers || [{ minOrderAmount: 10, maxOrderAmount: null, discountValue: 10 }],
       firstOrderOnly: rules?.firstOrderOnly ?? false,
+      discountPercent: rules?.discountPercent?.toString() || '10',
+      selectedProductIds,
     });
+    setProductSearch('');
     setIsModalOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Build rules based on type
-    const maxUsagePerUser = formData.maxUsagePerUser ? parseInt(formData.maxUsagePerUser) : undefined;
-    let rules: any = {};
-    if (formData.type === 'BALANCE_RECHARGE_BONUS') {
-      rules = {
-        tiers: formData.tiers,
-        firstRechargeOnly: maxUsagePerUser ? false : formData.firstRechargeOnly,
-        maxUsagePerUser,
-      };
-    } else if (formData.type === 'PERCENTAGE_DISCOUNT' || formData.type === 'FIXED_DISCOUNT') {
-      rules = {
-        tiers: formData.discountTiers,
-        firstOrderOnly: maxUsagePerUser ? false : formData.firstOrderOnly,
-        maxUsagePerUser,
-      };
-    }
-
-    const payload = {
-      name: formData.name,
-      description: formData.description || undefined,
-      type: formData.type,
-      displayTitle: formData.displayTitle,
-      displayMessage: formData.displayMessage,
-      rules,
-      isActive: formData.isActive,
-      startDate: formData.startDate || undefined,
-      endDate: formData.endDate || undefined,
-      maxUsage: formData.maxUsage ? parseInt(formData.maxUsage) : undefined,
-    };
-
     try {
-      if (currentPromotion) {
-        await updatePromotion(currentPromotion.id, payload);
-        addNotification('success', 'Promotion modifiee avec succes !');
+      // Handle PRODUCT_DISCOUNT separately
+      if (formData.type === 'PRODUCT_DISCOUNT') {
+        if (formData.selectedProductIds.length === 0) {
+          addNotification('error', 'Veuillez selectionner au moins un produit.');
+          return;
+        }
+
+        const productPayload = {
+          name: formData.name,
+          description: formData.description || undefined,
+          displayTitle: formData.displayTitle,
+          displayMessage: formData.displayMessage,
+          discountPercent: parseFloat(formData.discountPercent) || 10,
+          productIds: formData.selectedProductIds,
+          isActive: formData.isActive,
+          startDate: formData.startDate || undefined,
+          endDate: formData.endDate || undefined,
+          maxUsage: formData.maxUsage ? parseInt(formData.maxUsage) : undefined,
+        };
+
+        if (currentPromotion) {
+          await updateProductPromotion(currentPromotion.id, productPayload);
+          addNotification('success', 'Promotion modifiee avec succes !');
+        } else {
+          await createProductPromotion(productPayload);
+          addNotification('success', 'Promotion creee avec succes !');
+        }
       } else {
-        await createPromotion(payload);
-        addNotification('success', 'Promotion creee avec succes !');
+        // Handle other promotion types
+        const maxUsagePerUser = formData.maxUsagePerUser ? parseInt(formData.maxUsagePerUser) : undefined;
+        let rules: any = {};
+        if (formData.type === 'BALANCE_RECHARGE_BONUS') {
+          rules = {
+            tiers: formData.tiers,
+            firstRechargeOnly: maxUsagePerUser ? false : formData.firstRechargeOnly,
+            maxUsagePerUser,
+          };
+        } else if (formData.type === 'PERCENTAGE_DISCOUNT' || formData.type === 'FIXED_DISCOUNT') {
+          rules = {
+            tiers: formData.discountTiers,
+            firstOrderOnly: maxUsagePerUser ? false : formData.firstOrderOnly,
+            maxUsagePerUser,
+          };
+        }
+
+        const payload = {
+          name: formData.name,
+          description: formData.description || undefined,
+          type: formData.type,
+          displayTitle: formData.displayTitle,
+          displayMessage: formData.displayMessage,
+          rules,
+          isActive: formData.isActive,
+          startDate: formData.startDate || undefined,
+          endDate: formData.endDate || undefined,
+          maxUsage: formData.maxUsage ? parseInt(formData.maxUsage) : undefined,
+        };
+
+        if (currentPromotion) {
+          await updatePromotion(currentPromotion.id, payload);
+          addNotification('success', 'Promotion modifiee avec succes !');
+        } else {
+          await createPromotion(payload);
+          addNotification('success', 'Promotion creee avec succes !');
+        }
       }
+
       setIsModalOpen(false);
       fetchPromotions();
     } catch (error: any) {
@@ -285,6 +358,37 @@ const PromotionManagementPage: React.FC = () => {
   const getTypeLabel = (type: PromotionType) => {
     return PROMOTION_TYPES.find((t) => t.value === type)?.label || type;
   };
+
+  // Product selection helpers
+  const toggleProductSelection = (productId: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      selectedProductIds: prev.selectedProductIds.includes(productId)
+        ? prev.selectedProductIds.filter((id) => id !== productId)
+        : [...prev.selectedProductIds, productId],
+    }));
+  };
+
+  const selectAllProducts = () => {
+    const filteredProducts = products.filter(
+      (p) => p.name.toLowerCase().includes(productSearch.toLowerCase())
+    );
+    setFormData((prev) => ({
+      ...prev,
+      selectedProductIds: [...new Set([...prev.selectedProductIds, ...filteredProducts.map((p) => parseInt(p.id))])],
+    }));
+  };
+
+  const deselectAllProducts = () => {
+    setFormData((prev) => ({
+      ...prev,
+      selectedProductIds: [],
+    }));
+  };
+
+  const filteredProducts = products.filter(
+    (p) => p.name.toLowerCase().includes(productSearch.toLowerCase())
+  );
 
   if (loading) {
     return (
@@ -673,6 +777,109 @@ const PromotionManagementPage: React.FC = () => {
                     )}
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Rules - Product Discount */}
+          {formData.type === 'PRODUCT_DISCOUNT' && (
+            <div className="border-t border-gray-700 pt-4">
+              <h3 className="text-white font-bold mb-3">Regles de la promotion produit</h3>
+
+              <div className="mb-4">
+                <label className="block text-gray-400 text-sm mb-1">Reduction (%)</label>
+                <input
+                  type="number"
+                  value={formData.discountPercent}
+                  onChange={(e) => setFormData({ ...formData, discountPercent: e.target.value })}
+                  min="1"
+                  max="100"
+                  className="w-32 px-3 py-2 bg-dark-bg border border-gray-700 rounded-lg text-white focus:border-accent-mint focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-gray-400 text-sm">
+                    Produits concernes ({formData.selectedProductIds.length} selectionne{formData.selectedProductIds.length > 1 ? 's' : ''})
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={selectAllProducts}
+                      className="text-accent-mint text-xs hover:underline"
+                    >
+                      Tout selectionner
+                    </button>
+                    <button
+                      type="button"
+                      onClick={deselectAllProducts}
+                      className="text-red-400 text-xs hover:underline"
+                    >
+                      Tout deselectionner
+                    </button>
+                  </div>
+                </div>
+
+                {/* Search */}
+                <div className="relative mb-3">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                  <input
+                    type="text"
+                    value={productSearch}
+                    onChange={(e) => setProductSearch(e.target.value)}
+                    placeholder="Rechercher un produit..."
+                    className="w-full pl-9 pr-3 py-2 bg-dark-bg border border-gray-700 rounded-lg text-white text-sm focus:border-accent-mint focus:outline-none"
+                  />
+                </div>
+
+                {/* Product list */}
+                <div className="max-h-60 overflow-y-auto bg-dark-bg rounded-lg border border-gray-700 divide-y divide-gray-800">
+                  {filteredProducts.length === 0 ? (
+                    <div className="p-4 text-center text-gray-500 text-sm">
+                      Aucun produit trouve
+                    </div>
+                  ) : (
+                    filteredProducts.map((product) => {
+                      const isSelected = formData.selectedProductIds.includes(parseInt(product.id));
+                      return (
+                        <div
+                          key={product.id}
+                          onClick={() => toggleProductSelection(parseInt(product.id))}
+                          className={`flex items-center gap-3 p-3 cursor-pointer transition-colors ${
+                            isSelected ? 'bg-accent-mint/10' : 'hover:bg-darker-bg'
+                          }`}
+                        >
+                          <div className={`w-5 h-5 rounded border flex items-center justify-center ${
+                            isSelected ? 'bg-accent-mint border-accent-mint' : 'border-gray-600'
+                          }`}>
+                            {isSelected && <Check size={14} className="text-dark-bg" />}
+                          </div>
+                          <div className="w-10 h-10 bg-gray-800 rounded overflow-hidden flex-shrink-0">
+                            {product.imageUrl ? (
+                              <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Package size={16} className="text-gray-600" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-medium truncate ${isSelected ? 'text-accent-mint' : 'text-white'}`}>
+                              {product.name}
+                            </p>
+                            <p className="text-xs text-gray-500">{product.price.toFixed(2)}€</p>
+                          </div>
+                          {isSelected && (
+                            <span className="text-xs text-red-400">
+                              -{formData.discountPercent}% = {(product.price * (1 - parseFloat(formData.discountPercent || '0') / 100)).toFixed(2)}€
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
               </div>
             </div>
           )}

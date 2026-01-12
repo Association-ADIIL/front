@@ -93,24 +93,34 @@ const OrderPickupPage: React.FC = () => {
     setRefundQuantities(prev => ({ ...prev, [itemId]: newQuantity }));
   };
 
-  const calculateRefundTotal = (): { originalAmount: number; actualAmount: number; hasDiscount: boolean } => {
-    if (!orderInfo) return { originalAmount: 0, actualAmount: 0, hasDiscount: false };
+  const calculateRefundTotal = (): {
+    itemPricesTotal: number; // Sum of item prices (after product discount)
+    actualAmount: number; // Amount to refund (after cart discount)
+    hasCartDiscount: boolean;
+  } => {
+    if (!orderInfo) return { itemPricesTotal: 0, actualAmount: 0, hasCartDiscount: false };
 
-    // Calculate original refund amount (without discount)
-    const originalAmount = orderInfo.items.reduce((total, item) => {
+    // Calculate the total price after product discounts (sum of all item prices)
+    const totalPriceAfterProductDiscounts = orderInfo.items.reduce(
+      (sum, item) => sum + (item.price * item.quantity),
+      0
+    );
+
+    // Calculate cart discount ratio
+    const hasCartDiscount = orderInfo.cartDiscountAmount > 0 && totalPriceAfterProductDiscounts > 0;
+    const cartDiscountRatio = hasCartDiscount
+      ? orderInfo.cartDiscountAmount / totalPriceAfterProductDiscounts
+      : 0;
+
+    // Calculate refund amount based on item prices (already after product discount)
+    const itemPricesTotal = orderInfo.items.reduce((total, item) => {
       return total + (refundQuantities[item.id] || 0) * item.price;
     }, 0);
 
-    // If no discount was applied, return original amount
-    if (!orderInfo.discountAmount || orderInfo.discountAmount === 0 || !orderInfo.originalPrice) {
-      return { originalAmount, actualAmount: originalAmount, hasDiscount: false };
-    }
+    // Apply cart discount ratio to get actual refund amount
+    const actualAmount = itemPricesTotal * (1 - cartDiscountRatio);
 
-    // Calculate the discount ratio and apply it to the refund
-    const discountRatio = orderInfo.discountAmount / orderInfo.originalPrice;
-    const actualAmount = originalAmount * (1 - discountRatio);
-
-    return { originalAmount, actualAmount, hasDiscount: true };
+    return { itemPricesTotal, actualAmount, hasCartDiscount };
   };
 
   const hasItemsToRefund = () => {
@@ -350,25 +360,44 @@ const OrderPickupPage: React.FC = () => {
             </div>
 
             <div className="space-y-3">
-              {orderInfo.items.map((item, index) => (
-                <div key={index} className="bg-dark-bg rounded-xl p-4 flex justify-between items-center">
-                  <div>
-                    <p className="text-white font-medium">{item.productName}</p>
-                    {item.variantName && (
-                      <p className="text-gray-500 text-sm">{item.variantName}</p>
-                    )}
-                    <p className="text-gray-400 text-sm">
-                      Quantite: {item.quantity}
-                      {item.refundedQuantity > 0 && (
-                        <span className="text-red-400 ml-1">({item.refundedQuantity} remb.)</span>
+              {orderInfo.items.map((item, index) => {
+                // Check if item had a product discount
+                const hasProductDiscount = item.originalPrice && item.originalPrice > item.price;
+                const originalTotal = hasProductDiscount ? item.originalPrice! * item.quantity : null;
+                const itemTotal = item.price * item.quantity;
+
+                return (
+                  <div key={index} className="bg-dark-bg rounded-xl p-4 flex justify-between items-center">
+                    <div>
+                      <p className="text-white font-medium">{item.productName}</p>
+                      {item.variantName && (
+                        <p className="text-gray-500 text-sm">{item.variantName}</p>
                       )}
-                    </p>
+                      <p className="text-gray-400 text-sm">
+                        Quantite: {item.quantity}
+                        {item.refundedQuantity > 0 && (
+                          <span className="text-red-400 ml-1">({item.refundedQuantity} remb.)</span>
+                        )}
+                      </p>
+                      {hasProductDiscount && (
+                        <p className="text-red-400 text-xs mt-1">
+                          Prix unitaire: <span className="line-through text-gray-500">{item.originalPrice!.toFixed(2)}€</span> → {item.price.toFixed(2)}€
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      {hasProductDiscount && (
+                        <p className="text-gray-500 line-through text-sm">
+                          {originalTotal!.toFixed(2)}€
+                        </p>
+                      )}
+                      <p className={`font-koulen text-lg ${hasProductDiscount ? 'text-red-400' : 'text-accent-mint'}`}>
+                        {itemTotal.toFixed(2)}€
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-accent-mint font-koulen text-lg">
-                    {(item.price * item.quantity).toFixed(2)}€
-                  </p>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="mt-4 pt-4 border-t border-gray-700 space-y-2">
@@ -377,20 +406,28 @@ const OrderPickupPage: React.FC = () => {
                 <div className="bg-accent-mint/10 border border-accent-mint/20 rounded-lg p-3 mb-3">
                   <div className="flex items-center gap-2 mb-2">
                     <Gift size={16} className="text-accent-mint" />
-                    <span className="text-accent-mint font-bold text-sm">Réduction appliquée</span>
+                    <span className="text-accent-mint font-bold text-sm">Réductions appliquées</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Prix original:</span>
                     <span className="text-gray-300">{orderInfo.originalPrice.toFixed(2)}€</span>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">Réduction:</span>
-                    <span className="text-accent-mint">-{orderInfo.discountAmount.toFixed(2)}€</span>
-                  </div>
-                  {orderInfo.promotion && (
-                    <div className="flex justify-between text-sm mt-1">
-                      <span className="text-gray-400">Promotion:</span>
-                      <span className="text-gray-300">{orderInfo.promotion.name}</span>
+                  {orderInfo.productDiscountAmount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Réductions articles:</span>
+                      <span className="text-accent-mint">-{orderInfo.productDiscountAmount.toFixed(2)}€</span>
+                    </div>
+                  )}
+                  {orderInfo.cartDiscountAmount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Réduction panier{orderInfo.promotion ? ` (${orderInfo.promotion.name})` : ''}:</span>
+                      <span className="text-accent-mint">-{orderInfo.cartDiscountAmount.toFixed(2)}€</span>
+                    </div>
+                  )}
+                  {orderInfo.productDiscountAmount > 0 && orderInfo.cartDiscountAmount > 0 && (
+                    <div className="flex justify-between text-sm mt-1 pt-1 border-t border-accent-mint/20">
+                      <span className="text-gray-400">Total réductions:</span>
+                      <span className="text-accent-mint font-bold">-{orderInfo.discountAmount.toFixed(2)}€</span>
                     </div>
                   )}
                 </div>
@@ -563,10 +600,21 @@ const OrderPickupPage: React.FC = () => {
                 const maxRefundable = item.quantity - item.refundedQuantity;
                 const currentRefund = refundQuantities[item.id] || 0;
 
-                // Calculate effective price if discount was applied
-                const hasDiscount = orderInfo.discountAmount > 0 && orderInfo.originalPrice;
-                const discountRatio = hasDiscount ? orderInfo.discountAmount / orderInfo.originalPrice! : 0;
-                const effectivePrice = hasDiscount ? item.price * (1 - discountRatio) : item.price;
+                // Calculate the total price after product discounts for cart discount ratio
+                const totalPriceAfterProductDiscounts = orderInfo.items.reduce(
+                  (sum, i) => sum + (i.price * i.quantity),
+                  0
+                );
+
+                // Calculate cart discount ratio and effective price per item
+                const hasCartDiscount = orderInfo.cartDiscountAmount > 0 && totalPriceAfterProductDiscounts > 0;
+                const cartDiscountRatio = hasCartDiscount
+                  ? orderInfo.cartDiscountAmount / totalPriceAfterProductDiscounts
+                  : 0;
+
+                // item.price is already after product discount, apply cart discount to get effective price
+                const effectivePrice = item.price * (1 - cartDiscountRatio);
+                const hasProductDiscount = item.originalPrice && item.originalPrice > item.price;
 
                 return (
                   <div key={item.id} className="bg-dark-bg rounded-xl p-4">
@@ -577,11 +625,17 @@ const OrderPickupPage: React.FC = () => {
                           <p className="text-gray-500 text-sm">{item.variantName}</p>
                         )}
                         <p className="text-gray-400 text-xs mt-1">
-                          {hasDiscount ? (
+                          {hasProductDiscount && (
+                            <span className="line-through mr-1">{item.originalPrice!.toFixed(2)}€</span>
+                          )}
+                          {hasCartDiscount ? (
                             <>
-                              <span className="line-through">{item.price.toFixed(2)}€</span>
-                              <span className="text-accent-mint ml-1">{effectivePrice.toFixed(2)}€</span>/unite
+                              {!hasProductDiscount && <span className="line-through mr-1">{item.price.toFixed(2)}€</span>}
+                              {hasProductDiscount && <span className="line-through mr-1">{item.price.toFixed(2)}€</span>}
+                              <span className="text-accent-mint">{effectivePrice.toFixed(2)}€</span>/unite
                             </>
+                          ) : hasProductDiscount ? (
+                            <><span className="text-accent-mint">{item.price.toFixed(2)}€</span>/unite</>
                           ) : (
                             <>{item.price.toFixed(2)}€/unite</>
                           )} - {item.quantity} achete{item.quantity > 1 ? 's' : ''}
@@ -633,15 +687,15 @@ const OrderPickupPage: React.FC = () => {
                   <div className="flex justify-between items-center">
                     <span className="text-red-400 font-medium">Montant a rembourser</span>
                     <div className="text-right">
-                      {refundCalc.hasDiscount && (
-                        <span className="text-gray-500 line-through text-sm mr-2">{refundCalc.originalAmount.toFixed(2)}€</span>
+                      {refundCalc.hasCartDiscount && (
+                        <span className="text-gray-500 line-through text-sm mr-2">{refundCalc.itemPricesTotal.toFixed(2)}€</span>
                       )}
                       <span className="text-red-400 font-koulen text-2xl">{refundCalc.actualAmount.toFixed(2)}€</span>
                     </div>
                   </div>
-                  {refundCalc.hasDiscount && (
+                  {refundCalc.hasCartDiscount && (
                     <p className="text-xs text-gray-500 mt-2">
-                      Le montant reflète la réduction appliquée à la commande
+                      Le montant reflète la réduction panier appliquée à la commande
                     </p>
                   )}
                 </div>

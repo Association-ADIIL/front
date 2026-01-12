@@ -465,20 +465,35 @@ const AdminDashboardPage: React.FC = () => {
                 <div className="bg-darker-bg p-3 rounded-md border border-gray-700">
                   <p className="font-bold text-gray-300 mb-2 text-sm">Détail de la commande:</p>
                   <ul className="space-y-2">
-                    {order.items.map((item) => (
-                      <li key={item.id} className="flex justify-between text-sm">
-                        <span className="text-gray-400">
-                          {item.product.name}
-                          {item.variantId && item.product.variants && (
-                            <span className="text-accent-mint ml-2">
-                              ({(item.product.variants as any[]).find((v: any) => v.id === item.variantId)?.name})
-                            </span>
-                          )}
-                          <span className="text-gray-500 ml-2">x{item.quantity}</span>
-                        </span>
-                        <span className="text-white font-medium">{(item.price * item.quantity).toFixed(2)} €</span>
-                      </li>
-                    ))}
+                    {order.items.map((item) => {
+                      const hasProductDiscount = item.originalPrice && item.originalPrice > item.price;
+                      const originalTotal = hasProductDiscount ? item.originalPrice! * item.quantity : null;
+                      const itemTotal = item.price * item.quantity;
+
+                      return (
+                        <li key={item.id} className="flex justify-between text-sm">
+                          <span className="text-gray-400">
+                            {item.product.name}
+                            {item.variantId && item.product.variants && (
+                              <span className="text-accent-mint ml-2">
+                                ({(item.product.variants as any[]).find((v: any) => v.id === item.variantId)?.name})
+                              </span>
+                            )}
+                            <span className="text-gray-500 ml-2">x{item.quantity}</span>
+                          </span>
+                          <span className="text-right">
+                            {hasProductDiscount ? (
+                              <>
+                                <span className="text-gray-500 line-through text-xs mr-1">{originalTotal!.toFixed(2)} €</span>
+                                <span className="text-red-400 font-medium">{itemTotal.toFixed(2)} €</span>
+                              </>
+                            ) : (
+                              <span className="text-white font-medium">{itemTotal.toFixed(2)} €</span>
+                            )}
+                          </span>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               </div>

@@ -28,7 +28,7 @@ export const fetchJson = async (endpoint: string, options: RequestInit = {}) => 
     headers,
   });
 
-  if (response.status === 401) {
+  if (response.status === 401 || response.status === 403) {
     if (onUnauthorized) {
       onUnauthorized();
     }
@@ -37,10 +37,8 @@ export const fetchJson = async (endpoint: string, options: RequestInit = {}) => 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => ({ message: 'Une erreur est survenue' }));
     
-    // Notify about the error
-    if (onError && (response.status === 403 || response.status === 404)) {
-       // We can choose to suppress 401 here if we only want logout, but showing a message "Session expired" is good too.
-       // Let's pass it.
+    // Notify about the error (not 401/403 which are handled by onUnauthorized)
+    if (onError && response.status === 404) {
        onError(response.status, errorBody.message || `Erreur ${response.status}`);
     }
     
@@ -77,7 +75,7 @@ export const uploadFile = async (
     body: formData,
   });
 
-  if (response.status === 401) {
+  if (response.status === 401 || response.status === 403) {
     if (onUnauthorized) {
       onUnauthorized();
     }
@@ -88,7 +86,7 @@ export const uploadFile = async (
       message: 'Erreur lors de l\'upload'
     }));
 
-    if (onError && (response.status === 403 || response.status === 404)) {
+    if (onError && response.status === 404) {
       onError(response.status, errorBody.message);
     }
 
@@ -113,7 +111,7 @@ export const deleteUploadedImage = async (imageUrl: string): Promise<void> => {
     body: JSON.stringify({ url: imageUrl }),
   });
 
-  if (response.status === 401) {
+  if (response.status === 401 || response.status === 403) {
     if (onUnauthorized) {
       onUnauthorized();
     }
@@ -124,7 +122,7 @@ export const deleteUploadedImage = async (imageUrl: string): Promise<void> => {
       message: 'Erreur lors de la suppression'
     }));
 
-    if (onError && (response.status === 403 || response.status === 404)) {
+    if (onError && response.status === 404) {
       onError(response.status, errorBody.message);
     }
 

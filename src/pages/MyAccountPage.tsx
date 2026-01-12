@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getMyOrders, type Order } from '../api/orders';
 import { getMyInscriptions, type Inscription } from '../api/inscriptions';
+import { deleteAccount } from '../api/auth';
 import { Link, Navigate } from 'react-router-dom';
 import {
   ChevronDown,
@@ -18,16 +19,20 @@ import {
   Ticket,
   QrCode,
   X,
-  Gift
+  Gift,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import BalanceDisplay from '../components/BalanceDisplay';
 import BonusBubble from '../components/BonusBubble';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { useNotification } from '../context/NotificationContext';
 
 const MyAccountPage: React.FC = () => {
   useDocumentTitle('Mon Compte');
   const { user, token, loading: authLoading, logout } = useAuth();
+  const { addNotification } = useNotification();
   const [orders, setOrders] = useState<Order[]>([]);
   const [inscriptions, setInscriptions] = useState<Inscription[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
@@ -35,6 +40,9 @@ const MyAccountPage: React.FC = () => {
   const [isOrdersExpanded, setIsOrdersExpanded] = useState(false);
   const [isInscriptionsExpanded, setIsInscriptionsExpanded] = useState(false);
   const [qrCodeOrder, setQrCodeOrder] = useState<Order | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -87,6 +95,23 @@ const MyAccountPage: React.FC = () => {
       case 'ADMIN_BDE': return 'Admin BDE';
       case 'ADMIN_PROF': return 'Admin Prof';
       default: return 'Utilisateur';
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== 'SUPPRIMER') return;
+
+    setIsDeleting(true);
+    try {
+      await deleteAccount();
+      addNotification('success', 'Votre compte a été supprimé avec succès.');
+      logout();
+    } catch (error: any) {
+      addNotification('error', error.message || 'Erreur lors de la suppression du compte.');
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
+      setDeleteConfirmText('');
     }
   };
 
@@ -176,6 +201,26 @@ const MyAccountPage: React.FC = () => {
                 <BalanceDisplay variant="card" showRechargeButton={true} />
                 <BonusBubble variant="overlay" className="-top-3 -right-3" />
               </div>
+
+              {/* Danger Zone */}
+              <div className="bg-darker-bg rounded-2xl border border-red-500/30 p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-red-500/10 rounded-xl flex items-center justify-center">
+                    <AlertTriangle size={20} className="text-red-400" />
+                  </div>
+                  <h2 className="text-lg font-bold text-red-400">Zone de danger</h2>
+                </div>
+                <p className="text-gray-400 text-sm mb-4">
+                  La suppression de votre compte est irréversible. Vos informations personnelles seront effacées mais vos commandes et inscriptions resteront dans l'historique.
+                </p>
+                <button
+                  onClick={() => setIsDeleteModalOpen(true)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500/10 border border-red-500/30 text-red-400 font-medium rounded-xl hover:bg-red-500/20 transition-colors"
+                >
+                  <Trash2 size={18} />
+                  Supprimer mon compte
+                </button>
+              </div>
             </div>
 
             {/* Right column - Orders & Inscriptions */}
@@ -243,30 +288,67 @@ const MyAccountPage: React.FC = () => {
 
                             {/* Discount info */}
                             {order.discountAmount > 0 && (
-                              <div className="flex items-center gap-2 mb-3 p-2 bg-accent-mint/10 border border-accent-mint/20 rounded-lg">
-                                <Gift size={14} className="text-accent-mint" />
-                                <span className="text-xs text-accent-mint">
-                                  Réduction de {order.discountAmount.toFixed(2)}€
-                                  {order.promotion && ` (${order.promotion.name})`}
-                                </span>
+                              <div className="mb-3 p-2 bg-accent-mint/10 border border-accent-mint/20 rounded-lg">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Gift size={14} className="text-accent-mint" />
+                                  <span className="text-xs text-accent-mint font-bold">Réductions appliquées</span>
+                                </div>
+                                <div className="text-xs space-y-0.5 ml-5">
+                                  {(order.productDiscountAmount ?? 0) > 0 && (
+                                    <div className="flex justify-between">
+                                      <span className="text-gray-400">Articles en promo:</span>
+                                      <span className="text-accent-mint">-{order.productDiscountAmount!.toFixed(2)}€</span>
+                                    </div>
+                                  )}
+                                  {(order.cartDiscountAmount ?? 0) > 0 && (
+                                    <div className="flex justify-between">
+                                      <span className="text-gray-400">Code promo{order.promotion && ` (${order.promotion.name})`}:</span>
+                                      <span className="text-accent-mint">-{order.cartDiscountAmount!.toFixed(2)}€</span>
+                                    </div>
+                                  )}
+                                  {(order.productDiscountAmount ?? 0) === 0 && (order.cartDiscountAmount ?? 0) === 0 && (
+                                    <div className="flex justify-between">
+                                      <span className="text-gray-400">Réduction:</span>
+                                      <span className="text-accent-mint">-{order.discountAmount.toFixed(2)}€</span>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             )}
 
                             <div className="bg-dark-bg rounded-xl p-3">
                               <div className="space-y-1">
-                                {order.items.map((item) => (
-                                  <div key={item.id} className="flex justify-between text-sm">
-                                    <span className="text-gray-400">
-                                      {item.quantity}x {item.product.name}
-                                      {item.refundedQuantity > 0 && (
-                                        <span className="text-red-400 ml-1 text-xs">
-                                          ({item.refundedQuantity} remb.)
-                                        </span>
-                                      )}
-                                    </span>
-                                    <span className="text-gray-300">{(item.price * item.quantity).toFixed(2)}€</span>
-                                  </div>
-                                ))}
+                                {order.items.map((item) => {
+                                  // Check if item had a product discount
+                                  const hasProductDiscount = item.originalPrice && item.originalPrice > item.price;
+                                  const originalTotal = hasProductDiscount ? item.originalPrice! * item.quantity : null;
+                                  const itemTotal = item.price * item.quantity;
+
+                                  return (
+                                    <div key={item.id} className="flex justify-between text-sm">
+                                      <span className="text-gray-400">
+                                        {item.quantity}x {item.product.name}
+                                        {item.refundedQuantity > 0 && (
+                                          <span className="text-red-400 ml-1 text-xs">
+                                            ({item.refundedQuantity} remb.)
+                                          </span>
+                                        )}
+                                      </span>
+                                      <span className="text-right">
+                                        {hasProductDiscount ? (
+                                          <>
+                                            <span className="text-gray-500 line-through text-xs mr-1">
+                                              {originalTotal!.toFixed(2)}€
+                                            </span>
+                                            <span className="text-red-400">{itemTotal.toFixed(2)}€</span>
+                                          </>
+                                        ) : (
+                                          <span className="text-gray-300">{itemTotal.toFixed(2)}€</span>
+                                        )}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </div>
 
@@ -426,6 +508,85 @@ const MyAccountPage: React.FC = () => {
               <p className="text-gray-500 text-xs mt-3">
                 Presentez ce QR Code lors du retrait de votre commande
               </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Account Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-darker-bg rounded-2xl border border-red-500/30 p-6 max-w-md w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center">
+                <AlertTriangle size={24} className="text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-white">Supprimer votre compte</h3>
+                <p className="text-red-400 text-sm">Cette action est irréversible</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <p className="text-gray-400 text-sm">
+                Êtes-vous sûr de vouloir supprimer votre compte ? Cette action va :
+              </p>
+              <ul className="text-gray-400 text-sm space-y-2 ml-4">
+                <li className="flex items-start gap-2">
+                  <span className="text-red-400 mt-1">•</span>
+                  Supprimer vos informations personnelles (nom, email)
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-red-400 mt-1">•</span>
+                  Rendre impossible la connexion à ce compte
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-red-400 mt-1">•</span>
+                  Conserver l'historique de vos commandes et inscriptions
+                </li>
+              </ul>
+
+              <div className="pt-4 border-t border-gray-700">
+                <label className="block text-gray-400 text-sm mb-2">
+                  Pour confirmer, tapez <span className="font-bold text-red-400">SUPPRIMER</span> ci-dessous :
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="SUPPRIMER"
+                  className="w-full bg-dark-bg border border-gray-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-red-500"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    setIsDeleteModalOpen(false);
+                    setDeleteConfirmText('');
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-gray-700 text-white rounded-xl hover:bg-gray-600 transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={deleteConfirmText !== 'SUPPRIMER' || isDeleting}
+                  className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Suppression...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 size={16} />
+                      Supprimer
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

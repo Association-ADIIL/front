@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useNotification } from '../context/NotificationContext';
-import { Minus, Plus, Trash2, ShoppingBag, CreditCard, Heart, ArrowLeft, ChevronRight, Gift } from 'lucide-react';
+import { Minus, Plus, Trash2, ShoppingBag, CreditCard, Heart, ArrowLeft, ChevronRight, Gift, Tag } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { createOrder, type OrderItem as ApiOrderItem } from '../api/orders';
 import { getMyBalance, purchaseWithBalance } from '../api/balance';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
-import { checkBalanceRechargeBonus, checkCartDiscount, type CartDiscountCheck } from '../api/promotions';
+import { checkBalanceRechargeBonus, checkCartDiscount, getActiveProductPromotions, type CartDiscountCheck, type ProductPromotionsMap } from '../api/promotions';
 import LegalAcceptance from '../components/LegalAcceptance';
 
 const PayPalLogo: React.FC<{ className?: string }> = ({ className = '' }) => (
@@ -37,10 +37,25 @@ const CartPage: React.FC = () => {
   const [balance, setBalance] = useState<number>(0);
   const [maxBonusPercent, setMaxBonusPercent] = useState<number | null>(null);
   const [discountInfo, setDiscountInfo] = useState<CartDiscountCheck | null>(null);
+  const [productPromotions, setProductPromotions] = useState<ProductPromotionsMap>({});
   const [legalAccepted, setLegalAccepted] = useState(false);
 
-  // Calculate final price with discount
-  const finalPrice = discountInfo?.eligible ? discountInfo.finalAmount : totalPrice;
+  // Calculate total with product promotions
+  const totalWithProductPromotions = items.reduce((sum, item) => {
+    const variant = item.product.variants?.find(v => v.id === item.variantId);
+    const basePrice = item.product.price + (variant?.priceModifier || 0);
+    const promotion = productPromotions[parseInt(item.product.id)];
+    const discountedPrice = promotion
+      ? Math.round(basePrice * (1 - promotion.discountPercent / 100) * 100) / 100
+      : basePrice;
+    return sum + discountedPrice * item.quantity;
+  }, 0);
+
+  // Total savings from product promotions
+  const productPromotionsSavings = totalPrice - totalWithProductPromotions;
+
+  // Calculate final price with discount (cart discount applies on top of product promotions)
+  const finalPrice = discountInfo?.eligible ? discountInfo.finalAmount : totalWithProductPromotions;
 
   // Auto-deselect HelloAsso if below minimum
   useEffect(() => {
@@ -48,6 +63,20 @@ const CartPage: React.FC = () => {
       setSelectedPaymentMethod(null);
     }
   }, [finalPrice, selectedPaymentMethod]);
+
+  // Fetch product promotions
+  useEffect(() => {
+    const fetchPromotions = async () => {
+      try {
+        const promotions = await getActiveProductPromotions();
+        setProductPromotions(promotions || {});
+      } catch (error) {
+        console.error('Error fetching product promotions:', error);
+        setProductPromotions({});
+      }
+    };
+    fetchPromotions();
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -69,12 +98,12 @@ const CartPage: React.FC = () => {
     }
   }, [user]);
 
-  // Check for cart discounts when total changes
+  // Check for cart discounts when total changes (use total after product promotions)
   useEffect(() => {
-    if (user && totalPrice > 0) {
+    if (user && totalWithProductPromotions > 0) {
       const checkDiscount = async () => {
         try {
-          const discount = await checkCartDiscount(totalPrice);
+          const discount = await checkCartDiscount(totalWithProductPromotions);
           setDiscountInfo(discount);
         } catch (error) {
           console.error('Error checking discount:', error);
@@ -85,7 +114,7 @@ const CartPage: React.FC = () => {
     } else {
       setDiscountInfo(null);
     }
-  }, [user, totalPrice]);
+  }, [user, totalWithProductPromotions]);
 
   const handleUpdateQuantity = (productId: string, newQuantity: number, variantId?: number) => {
     updateQuantity(productId, newQuantity, variantId);
@@ -118,6 +147,7 @@ const CartPage: React.FC = () => {
             items: items.map(item => ({
               productId: parseInt(item.product.id),
               quantity: item.quantity,
+              variantId: item.variantId,
             })),
             promotionId: discountInfo?.eligible ? discountInfo.promotionId : undefined,
           });
@@ -183,6 +213,7 @@ const CartPage: React.FC = () => {
           items: items.map(item => ({
             productId: parseInt(item.product.id),
             quantity: item.quantity,
+            variantId: item.variantId,
           })),
           promotionId: discountInfo?.eligible ? discountInfo.promotionId : undefined,
         });
@@ -273,21 +304,34 @@ const CartPage: React.FC = () => {
               <div className="lg:col-span-2 space-y-4">
                 {items.map((cartItem) => {
                   const variant = cartItem.product.variants?.find(v => v.id === cartItem.variantId);
-                  const itemPrice = cartItem.product.price + (variant?.priceModifier || 0);
+                  const basePrice = cartItem.product.price + (variant?.priceModifier || 0);
+                  const promotion = productPromotions[parseInt(cartItem.product.id)];
+                  const discountedPrice = promotion
+                    ? Math.round(basePrice * (1 - promotion.discountPercent / 100) * 100) / 100
+                    : basePrice;
+                  const hasPromotion = !!promotion;
                   const cartItemKey = `${cartItem.product.id}-${cartItem.variantId || 'no-variant'}`;
 
                   return (
                     <div
                       key={cartItemKey}
-                      className="bg-darker-bg rounded-2xl border border-gray-800 p-4 flex items-center gap-4"
+                      className={`bg-darker-bg rounded-2xl border p-4 flex items-center gap-4 ${
+                        hasPromotion ? 'border-red-500/30' : 'border-gray-800'
+                      }`}
                     >
                       {/* Image */}
-                      <div className="w-20 h-20 flex-shrink-0 bg-gray-800 rounded-xl overflow-hidden">
+                      <div className="w-20 h-20 flex-shrink-0 bg-gray-800 rounded-xl overflow-hidden relative">
                         <img
                           src={cartItem.product.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(cartItem.product.name)}&background=1E1E1E&color=fff&size=200`}
                           alt={cartItem.product.name}
                           className="w-full h-full object-cover"
                         />
+                        {hasPromotion && (
+                          <div className="absolute top-1 left-1 bg-red-500 text-white px-1.5 py-0.5 rounded text-xs font-bold flex items-center gap-0.5">
+                            <Tag size={10} />
+                            -{promotion.discountPercent}%
+                          </div>
+                        )}
                       </div>
 
                       {/* Info */}
@@ -298,9 +342,16 @@ const CartPage: React.FC = () => {
                         {variant && (
                           <span className="text-accent-mint text-sm">{variant.name}</span>
                         )}
-                        <p className="text-accent-mint font-koulen text-lg mt-1">
-                          {itemPrice.toFixed(2)}€
-                        </p>
+                        {hasPromotion ? (
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-gray-500 line-through text-sm">{basePrice.toFixed(2)}€</span>
+                            <span className="text-red-400 font-koulen text-lg">{discountedPrice.toFixed(2)}€</span>
+                          </div>
+                        ) : (
+                          <p className="text-accent-mint font-koulen text-lg mt-1">
+                            {basePrice.toFixed(2)}€
+                          </p>
+                        )}
                       </div>
 
                       {/* Quantity */}
@@ -323,7 +374,14 @@ const CartPage: React.FC = () => {
 
                       {/* Total & Remove */}
                       <div className="text-right">
-                        <p className="font-bold text-white text-lg">{(itemPrice * cartItem.quantity).toFixed(2)}€</p>
+                        {hasPromotion ? (
+                          <>
+                            <p className="text-gray-500 line-through text-sm">{(basePrice * cartItem.quantity).toFixed(2)}€</p>
+                            <p className="font-bold text-red-400 text-lg">{(discountedPrice * cartItem.quantity).toFixed(2)}€</p>
+                          </>
+                        ) : (
+                          <p className="font-bold text-white text-lg">{(basePrice * cartItem.quantity).toFixed(2)}€</p>
+                        )}
                         <button
                           onClick={() => handleRemoveItem(cartItem.product.id, cartItem.variantId)}
                           className="text-red-400 hover:text-red-300 transition-colors mt-1"
@@ -345,20 +403,53 @@ const CartPage: React.FC = () => {
                   <div className="space-y-3 mb-6">
                     {items.map((item) => {
                       const variant = item.product.variants?.find(v => v.id === item.variantId);
-                      const price = item.product.price + (variant?.priceModifier || 0);
+                      const basePrice = item.product.price + (variant?.priceModifier || 0);
+                      const promotion = productPromotions[parseInt(item.product.id)];
+                      const discountedPrice = promotion
+                        ? Math.round(basePrice * (1 - promotion.discountPercent / 100) * 100) / 100
+                        : basePrice;
+                      const hasPromotion = !!promotion;
                       return (
                         <div key={`${item.product.id}-${item.variantId}`} className="flex justify-between text-sm">
                           <span className="text-gray-400 truncate max-w-[60%]">
                             {item.quantity}x {item.product.name}
+                            {hasPromotion && (
+                              <span className="ml-1 text-red-400 text-xs">(-{promotion.discountPercent}%)</span>
+                            )}
                           </span>
-                          <span className="text-white font-medium">{(price * item.quantity).toFixed(2)}€</span>
+                          {hasPromotion ? (
+                            <div className="text-right">
+                              <span className="text-gray-500 line-through text-xs mr-1">{(basePrice * item.quantity).toFixed(2)}€</span>
+                              <span className="text-red-400 font-medium">{(discountedPrice * item.quantity).toFixed(2)}€</span>
+                            </div>
+                          ) : (
+                            <span className="text-white font-medium">{(basePrice * item.quantity).toFixed(2)}€</span>
+                          )}
                         </div>
                       );
                     })}
                   </div>
 
                   <div className="border-t border-gray-800 pt-4 mb-6">
-                    {/* Discount display */}
+                    {/* Product promotions savings */}
+                    {productPromotionsSavings > 0 && (
+                      <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Tag size={16} className="text-red-400" />
+                          <span className="text-sm font-bold text-red-400">
+                            Promotions produits
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-400">Économies</span>
+                          <span className="text-red-400 font-bold">
+                            -{productPromotionsSavings.toFixed(2)}€
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Cart discount display */}
                     {discountInfo?.eligible && (
                       <div className="mb-4 p-3 bg-gradient-to-r from-accent-mint/10 via-yellow-500/5 to-accent-mint/10 border border-accent-mint/30 rounded-xl">
                         <div className="flex items-center gap-2 mb-1">
@@ -377,10 +468,18 @@ const CartPage: React.FC = () => {
                       </div>
                     )}
 
+                    {/* Subtotal */}
+                    {productPromotionsSavings > 0 && (
+                      <div className="flex justify-between items-center text-sm mb-2">
+                        <span className="text-gray-500">Prix initial</span>
+                        <span className="text-gray-500 line-through">{totalPrice.toFixed(2)}€</span>
+                      </div>
+                    )}
+
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-400">Sous-total</span>
+                      <span className="text-gray-400">{discountInfo?.eligible ? 'Sous-total' : 'Total'}</span>
                       <span className={`font-koulen ${discountInfo?.eligible ? 'text-gray-500 line-through text-xl' : 'text-accent-mint text-3xl'}`}>
-                        {totalPrice.toFixed(2)}€
+                        {totalWithProductPromotions.toFixed(2)}€
                       </span>
                     </div>
                     {discountInfo?.eligible && (

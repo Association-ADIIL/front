@@ -7,6 +7,7 @@ export interface User {
   lastName: string;
   type: 'STUDENT' | 'PROFESSOR' | 'EXTERNAL' | 'ADMIN_BDE' | 'ADMIN_PROF';
   studentGroup?: string;
+  deletedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -48,4 +49,11 @@ export const register = async (data: RegisterData): Promise<{ message: string; u
 // Get current user info (for refreshing permissions)
 export const getMe = async (): Promise<{ user: User }> => {
   return fetchJson('/auth/me');
+};
+
+// Delete own account (soft delete)
+export const deleteAccount = async (): Promise<{ message: string }> => {
+  return fetchJson('/auth/me', {
+    method: 'DELETE',
+  });
 };

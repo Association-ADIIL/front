@@ -9,8 +9,10 @@ export interface Order {
   id: number;
   userId: number;
   totalPrice: number;
-  originalPrice?: number | null; // Price before discount
-  discountAmount: number; // Amount discounted
+  originalPrice?: number | null; // Price before any discount
+  productDiscountAmount?: number; // Amount discounted from product promotions
+  cartDiscountAmount?: number; // Amount discounted from cart/global promotions
+  discountAmount: number; // Total amount discounted
   promotionId?: number | null;
   promotion?: {
     id: number;
@@ -32,7 +34,8 @@ export interface Order {
     orderId: number;
     productId: number;
     quantity: number;
-    price: number;
+    originalPrice?: number | null; // Price before product discount
+    price: number; // Final price after product discount
     refundedQuantity: number;
     variantId?: number;
     product: {
@@ -139,7 +142,9 @@ export interface OrderPickupInfo {
   orderStatus: 'PENDING' | 'PAID' | 'COLLECTED' | 'CANCELLED';
   totalPrice: number;
   originalPrice?: number | null;
-  discountAmount: number;
+  productDiscountAmount: number; // Amount discounted from product promotions
+  cartDiscountAmount: number; // Amount discounted from cart/global promotions
+  discountAmount: number; // Total discount (product + cart)
   refundedAmount: number;
   promotion?: {
     id: number;
@@ -152,7 +157,8 @@ export interface OrderPickupInfo {
     variantName: string | null;
     quantity: number;
     refundedQuantity: number;
-    price: number;
+    originalPrice?: number | null; // Price before product discount (null if no product discount)
+    price: number; // Final price after product discount
   }>;
   createdAt: string;
 }
