@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { getAllProducts, deleteProduct, createProduct, updateProduct, type Product, type ProductFormData, type ProductVariant } from '../api/products';
 import { getAllCategories, type Category } from '../api/categories';
 import { Edit2, Trash2, Plus, X, Search } from 'lucide-react';
