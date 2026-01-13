@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { logger } from '../utils/logger';
 import { getAllEvents, deleteEvent, createEvent, updateEvent, type Event, type EventFormData, type EventFormField } from '../api/events';
 import { Edit2, Trash2, Plus, Calendar, MapPin, Download, X, Search, Users, ChevronDown, ChevronUp } from 'lucide-react';
 import Modal from '../components/Modal';
@@ -58,7 +59,7 @@ const EventManagementPage: React.FC = () => {
       const data = await getAllEvents();
       setEvents(data);
     } catch (error) {
-      console.error("Failed to fetch events:", error);
+      logger.error('Failed to fetch events', error);
     } finally {
       setLoading(false);
     }
@@ -135,7 +136,7 @@ const EventManagementPage: React.FC = () => {
       const data = await getAllInscriptions({ eventId: event.id });
       setInscriptions(data);
     } catch (error) {
-      console.error('Failed to fetch inscriptions:', error);
+      logger.error('Failed to fetch inscriptions', error);
       addNotification('error', 'Erreur lors du chargement des inscriptions');
     } finally {
       setLoadingInscriptions(false);
@@ -180,7 +181,7 @@ const EventManagementPage: React.FC = () => {
       try {
         await deleteImage(imageUrl);
       } catch (error) {
-        console.error('Failed to delete image:', error);
+        logger.error('Failed to delete image', error);
       }
     }
     uploadedImagesRef.current = [];
@@ -215,7 +216,7 @@ const EventManagementPage: React.FC = () => {
       setIsModalOpen(false);
       fetchEvents();
     } catch (error) {
-      console.error("Failed to save event:", error);
+      logger.error('Failed to save event', error);
       addNotification('error', "Erreur lors de l'enregistrement de l'événement.");
     }
   };
@@ -229,7 +230,7 @@ const EventManagementPage: React.FC = () => {
       setEventToDelete(null);
       fetchEvents();
     } catch (error) {
-      console.error("Failed to delete event:", error);
+      logger.error('Failed to delete event', error);
       addNotification('error', "Erreur lors de la suppression.");
     }
   };
@@ -246,7 +247,7 @@ const EventManagementPage: React.FC = () => {
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Failed to export CSV:', error);
+      logger.error('Failed to export CSV', error);
       alert('Erreur lors de l\'export CSV');
     }
   };

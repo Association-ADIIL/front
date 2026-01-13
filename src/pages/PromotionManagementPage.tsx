@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { logger } from '../utils/logger';
 import {
   getAllPromotions,
   createPromotion,
@@ -112,7 +113,7 @@ const PromotionManagementPage: React.FC = () => {
       const data = await getAllPromotions();
       setPromotions(data);
     } catch (error) {
-      console.error('Failed to fetch promotions:', error);
+      logger.error('Failed to fetch promotions', error);
       addNotification('error', 'Erreur lors du chargement des promotions.');
     } finally {
       setLoading(false);
@@ -129,7 +130,7 @@ const PromotionManagementPage: React.FC = () => {
       const data = await getAllProducts();
       setProducts(data.filter(p => p.active));
     } catch (error) {
-      console.error('Failed to fetch products:', error);
+      logger.error('Failed to fetch products', error);
     }
   };
 
@@ -152,7 +153,7 @@ const PromotionManagementPage: React.FC = () => {
         const promoWithProducts = await getProductPromotionById(promotion.id);
         selectedProductIds = promoWithProducts.productPromotions?.map((pp: any) => pp.productId) || [];
       } catch (error) {
-        console.error('Failed to fetch promotion products:', error);
+        logger.error('Failed to fetch promotion products', error);
       }
     }
 
@@ -251,9 +252,9 @@ const PromotionManagementPage: React.FC = () => {
 
       setIsModalOpen(false);
       fetchPromotions();
-    } catch (error: any) {
-      console.error('Failed to save promotion:', error);
-      addNotification('error', error.message || "Erreur lors de l'enregistrement.");
+    } catch (error) {
+      logger.error('Failed to save promotion', error);
+      addNotification('error', (error as any).message || "Erreur lors de l'enregistrement.");
     }
   };
 
@@ -266,9 +267,9 @@ const PromotionManagementPage: React.FC = () => {
       setIsDeleteModalOpen(false);
       setPromotionToDelete(null);
       fetchPromotions();
-    } catch (error: any) {
-      console.error('Failed to delete promotion:', error);
-      addNotification('error', error.message || 'Erreur lors de la suppression.');
+    } catch (error) {
+      logger.error('Failed to delete promotion', error);
+      addNotification('error', (error as any).message || 'Erreur lors de la suppression.');
     }
   };
 
@@ -277,8 +278,8 @@ const PromotionManagementPage: React.FC = () => {
       await updatePromotion(promotion.id, { isActive: !promotion.isActive });
       addNotification('success', `Promotion ${!promotion.isActive ? 'activee' : 'desactivee'} !`);
       fetchPromotions();
-    } catch (error: any) {
-      addNotification('error', error.message || 'Erreur lors de la mise a jour.');
+    } catch (error) {
+      addNotification('error', (error as any).message || 'Erreur lors de la mise a jour.');
     }
   };
 
@@ -291,7 +292,7 @@ const PromotionManagementPage: React.FC = () => {
       const data = await getPromotionStats(promotion.id);
       setStats(data);
     } catch (error) {
-      console.error('Failed to fetch stats:', error);
+      logger.error('Failed to fetch stats', error);
       addNotification('error', 'Erreur lors du chargement des statistiques.');
     } finally {
       setLoadingStats(false);

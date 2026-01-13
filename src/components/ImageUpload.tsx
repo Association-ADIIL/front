@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Upload, X, Image as ImageIcon, Loader } from 'lucide-react';
 import { uploadImage, deleteImage } from '../api/upload';
+import { logger } from '../utils/logger';
+import { getErrorMessage } from '../types/errors';
 
 interface ImageUploadProps {
   value: string;
@@ -54,9 +56,9 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       const response = await uploadImage(file, folder);
       setUploadedImageUrl(response.imageUrl);
       onChange(response.imageUrl);
-    } catch (error: any) {
-      console.error('Upload failed:', error);
-      alert(`Erreur lors de l'upload: ${error.message}`);
+    } catch (error) {
+      logger.error('Upload failed', error);
+      alert(`Erreur lors de l'upload: ${getErrorMessage(error)}`);
       setPreview(null);
     } finally {
       setUploading(false);
@@ -96,7 +98,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
         await deleteImage(uploadedImageUrl);
         setUploadedImageUrl(null);
       } catch (error) {
-        console.error('Failed to delete image:', error);
+        logger.error('Failed to delete image', error);
       }
     }
 

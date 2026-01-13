@@ -28,6 +28,8 @@ import BalanceDisplay from '../components/BalanceDisplay';
 import BonusBubble from '../components/BonusBubble';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { useNotification } from '../context/NotificationContext';
+import { logger } from '../utils/logger';
+import { getErrorMessage } from '../types/errors';
 
 const MyAccountPage: React.FC = () => {
   useDocumentTitle('Mon Compte');
@@ -51,7 +53,7 @@ const MyAccountPage: React.FC = () => {
           const data = await getMyOrders();
           setOrders(data);
         } catch (error) {
-          console.error("Failed to fetch orders:", error);
+          logger.error('Failed to fetch orders', error);
         } finally {
           setLoadingOrders(false);
         }
@@ -64,7 +66,7 @@ const MyAccountPage: React.FC = () => {
           const data = await getMyInscriptions();
           setInscriptions(data);
         } catch (error) {
-          console.error("Failed to fetch inscriptions:", error);
+          logger.error('Failed to fetch inscriptions', error);
         } finally {
           setLoadingInscriptions(false);
         }
@@ -106,8 +108,8 @@ const MyAccountPage: React.FC = () => {
       await deleteAccount();
       addNotification('success', 'Votre compte a été supprimé avec succès.');
       logout();
-    } catch (error: any) {
-      addNotification('error', error.message || 'Erreur lors de la suppression du compte.');
+    } catch (error) {
+      addNotification('error', getErrorMessage(error));
     } finally {
       setIsDeleting(false);
       setIsDeleteModalOpen(false);
@@ -323,11 +325,20 @@ const MyAccountPage: React.FC = () => {
                                   const hasProductDiscount = item.originalPrice && item.originalPrice > item.price;
                                   const originalTotal = hasProductDiscount ? item.originalPrice! * item.quantity : null;
                                   const itemTotal = item.price * item.quantity;
+                                  // Find variant name (compare as strings to handle type mismatch)
+                                  const variantName = item.variantId && item.product.variants
+                                    ? (item.product.variants as Array<{ id: number; name: string }>).find(
+                                        v => String(v.id) === String(item.variantId)
+                                      )?.name
+                                    : null;
 
                                   return (
                                     <div key={item.id} className="flex justify-between text-sm">
                                       <span className="text-gray-400">
                                         {item.quantity}x {item.product.name}
+                                        {variantName && (
+                                          <span className="text-accent-mint ml-1">({variantName})</span>
+                                        )}
                                         {item.refundedQuantity > 0 && (
                                           <span className="text-red-400 ml-1 text-xs">
                                             ({item.refundedQuantity} remb.)

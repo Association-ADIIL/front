@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { logger } from '../utils/logger';
 import { getRecentAuditLogs } from '../api/auditLogs';
 import { FileText, User, Calendar, Filter, Eye, Search, X } from 'lucide-react';
 import Modal from '../components/Modal';
@@ -38,7 +39,7 @@ const AdminAuditLogsPage: React.FC = () => {
         setLogs(data);
         setFilteredLogs(data);
       } catch (error) {
-        console.error('Error fetching audit logs:', error);
+        logger.error('Error fetching audit logs', error);
       } finally {
         setLoading(false);
       }

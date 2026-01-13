@@ -5,6 +5,8 @@ import { getMyBalance } from '../api/balance';
 import { useNotification } from '../context/NotificationContext';
 import { X, CreditCard, Wallet, Banknote, Users, Minus, Plus, ChevronRight, AlertCircle, Check } from 'lucide-react';
 import LegalAcceptance from './LegalAcceptance';
+import { logger } from '../utils/logger';
+import { getErrorMessage } from '../types/errors';
 
 interface EventRegistrationModalProps {
   isOpen: boolean;
@@ -51,7 +53,7 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
       const data = await getMyBalance();
       setUserBalance(data.balance);
     } catch (error) {
-      console.error("Failed to fetch balance:", error);
+      logger.error('Failed to fetch balance', error);
       setUserBalance(0);
     }
   };
@@ -75,7 +77,7 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
         setQuantity(1);
       }
     } catch (error) {
-      console.error("Failed to check quota:", error);
+      logger.error('Failed to check quota', error);
     } finally {
       setCheckingQuota(false);
     }
@@ -172,9 +174,9 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
         window.location.reload();
       }
 
-    } catch (error: any) {
-      console.error("Registration failed:", error);
-      addNotification('error', error.message || "Erreur lors de l'inscription");
+    } catch (error) {
+      logger.error('Registration failed', error);
+      addNotification('error', getErrorMessage(error));
     } finally {
       setLoading(false);
     }

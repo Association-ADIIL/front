@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { logger } from '../utils/logger';
 import { getAllUsers, deleteUser, createUser, updateUser } from '../api/users';
 import { type User } from '../api/auth';
 import { Edit2, Trash2, Plus, User as UserIcon, Search } from 'lucide-react';
@@ -35,7 +36,7 @@ const UserManagementPage: React.FC = () => {
       setUsers(data);
       setFilteredUsers(data);
     } catch (error) {
-      console.error("Failed to fetch users:", error);
+      logger.error('Failed to fetch users', error);
     } finally {
       setLoading(false);
     }
@@ -112,7 +113,7 @@ const UserManagementPage: React.FC = () => {
       setIsModalOpen(false);
       fetchUsers();
     } catch (error) {
-      console.error("Failed to save user:", error);
+      logger.error('Failed to save user', error);
       alert("Erreur lors de l'enregistrement de l'utilisateur.");
     }
   };
@@ -125,7 +126,7 @@ const UserManagementPage: React.FC = () => {
       setUserToDelete(null);
       fetchUsers();
     } catch (error) {
-      console.error("Failed to delete user:", error);
+      logger.error('Failed to delete user', error);
       alert("Erreur lors de la suppression.");
     }
   };

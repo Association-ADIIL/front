@@ -57,3 +57,10 @@ export const deleteAccount = async (): Promise<{ message: string }> => {
     method: 'DELETE',
   });
 };
+
+// Logout (clears HttpOnly cookie on server)
+export const logout = async (): Promise<{ message: string }> => {
+  return fetchJson('/auth/logout', {
+    method: 'POST',
+  });
+};

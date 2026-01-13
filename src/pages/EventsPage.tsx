@@ -5,6 +5,7 @@ import { Calendar, MapPin, Users, ChevronRight, Filter } from 'lucide-react';
 import BalanceDisplay from '../components/BalanceDisplay';
 import BonusBubble from '../components/BonusBubble';
 import SEO from '../components/SEO';
+import { logger } from '../utils/logger';
 
 type FilterType = 'all' | 'upcoming' | 'passed';
 
@@ -26,7 +27,7 @@ const EventsPage: React.FC = () => {
         const sortedEvents = data.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         setEvents(sortedEvents);
       } catch (err) {
-        console.error("Failed to fetch events:", err);
+        logger.error('Failed to fetch events', err);
         setError("Impossible de charger les événements.");
       } finally {
         setLoading(false);

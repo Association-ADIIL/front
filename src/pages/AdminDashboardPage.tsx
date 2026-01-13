@@ -12,6 +12,7 @@ import {
 import AddBalanceModal from '../components/AddBalanceModal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { logger } from '../utils/logger';
 
 const AdminDashboardPage: React.FC = () => {
   useDocumentTitle('Admin - Dashboard');
@@ -28,8 +29,6 @@ const AdminDashboardPage: React.FC = () => {
     totalInscriptions: 0,
   });
   const [balanceStats, setBalanceStats] = useState<BalanceStats | null>(null);
-  const [, setRecentEvents] = useState<Event[]>([]);
-  const [, setRecentOrders] = useState<Order[]>([]);
   const [recentInscriptions, setRecentInscriptions] = useState<Inscription[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [ordersToCollect, setOrdersToCollect] = useState<Order[]>([]);
@@ -45,7 +44,7 @@ const AdminDashboardPage: React.FC = () => {
       setOrdersToCollect(prev => prev.filter(o => o.id !== orderId));
       setConfirmOrderId(null);
     } catch (error) {
-      console.error("Failed to mark order as collected:", error);
+      logger.error('Failed to mark order as collected', error);
     } finally {
       setConfirmLoading(false);
     }
@@ -99,15 +98,7 @@ const AdminDashboardPage: React.FC = () => {
           (o.paymentStatus === 'PAID' || (o.paymentMethod === 'CASH_CB' && o.paymentStatus === 'PENDING'))
         ));
 
-        // Recent items
-        const recentEventsList = events
-          .sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime())
-          .slice(0, 3);
-
-        const recentOrdersList = orders
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-          .slice(0, 5);
-
+        // Recent inscriptions
         const recentInscriptionsList = inscriptions
           .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
           .slice(0, 5);
@@ -124,12 +115,10 @@ const AdminDashboardPage: React.FC = () => {
           totalInscriptions: inscriptions.length,
         });
 
-        setRecentEvents(recentEventsList);
-        setRecentOrders(recentOrdersList);
         setRecentInscriptions(recentInscriptionsList);
         setUpcomingEvents(upcoming.slice(0, 4));
       } catch (error) {
-        console.error("Failed to fetch admin stats:", error);
+        logger.error('Failed to fetch admin stats', error);
       } finally {
         setLoading(false);
       }
@@ -476,7 +465,7 @@ const AdminDashboardPage: React.FC = () => {
                             {item.product.name}
                             {item.variantId && item.product.variants && (
                               <span className="text-accent-mint ml-2">
-                                ({(item.product.variants as any[]).find((v: any) => v.id === item.variantId)?.name})
+                                ({(item.product.variants as any[]).find((v: any) => String(v.id) === String(item.variantId))?.name})
                               </span>
                             )}
                             <span className="text-gray-500 ml-2">x{item.quantity}</span>
@@ -508,7 +497,7 @@ const AdminDashboardPage: React.FC = () => {
         onClose={() => setIsAddBalanceModalOpen(false)}
         onSuccess={() => {
           // Optionally refresh balance stats
-          getBalanceStats().then(setBalanceStats).catch(console.error);
+          getBalanceStats().then(setBalanceStats).catch(err => logger.error('Failed to refresh balance stats', err));
         }}
       />
 

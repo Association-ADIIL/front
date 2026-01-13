@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { logger } from '../utils/logger';
 import { getAllOrders, updateOrderStatus, updatePaymentStatus, refundOrderItems, type Order } from '../api/orders';
 import { getAllInscriptions, updateInscriptionPaymentStatus, refundInscription, type Inscription } from '../api/inscriptions';
 import { getAllEvents, type Event } from '../api/events';
@@ -76,7 +77,7 @@ const OrderManagementPage: React.FC = () => {
       const data = await getAllOrders();
       setOrders(data);
     } catch (error) {
-      console.error("Failed to fetch orders:", error);
+      logger.error('Failed to fetch orders', error);
     }
   };
 
@@ -86,7 +87,7 @@ const OrderManagementPage: React.FC = () => {
       const data = await getAllInscriptions(filters);
       setInscriptions(data);
     } catch (error) {
-      console.error("Failed to fetch inscriptions:", error);
+      logger.error('Failed to fetch inscriptions', error);
     }
   };
 
@@ -110,7 +111,7 @@ const OrderManagementPage: React.FC = () => {
         const eventsData = await getAllEvents();
         setEvents(eventsData);
       } catch (error) {
-        console.error("Failed to fetch events:", error);
+        logger.error('Failed to fetch events', error);
       }
     };
     loadEvents();
@@ -206,7 +207,7 @@ const OrderManagementPage: React.FC = () => {
       fetchOrders();
       addNotification('success', 'Statut mis à jour avec succès');
     } catch (error) {
-      console.error("Failed to update order status:", error);
+      logger.error('Failed to update order status', error);
       addNotification('error', 'Erreur lors de la mise à jour du statut');
     }
   };
@@ -219,7 +220,7 @@ const OrderManagementPage: React.FC = () => {
       fetchOrders();
       addNotification('success', 'Statut de paiement mis à jour');
     } catch (error) {
-      console.error("Failed to update payment status:", error);
+      logger.error('Failed to update payment status', error);
       addNotification('error', 'Erreur lors de la mise à jour du statut de paiement');
     }
   };
@@ -232,7 +233,7 @@ const OrderManagementPage: React.FC = () => {
       fetchInscriptions();
       addNotification('success', 'Statut de paiement mis à jour');
     } catch (error) {
-      console.error("Failed to update inscription payment status:", error);
+      logger.error('Failed to update inscription payment status', error);
       addNotification('error', 'Erreur lors de la mise à jour du statut de paiement');
     }
   };
@@ -252,9 +253,9 @@ const OrderManagementPage: React.FC = () => {
           addNotification('success', 'Inscription remboursée avec succès. La place a été libérée.');
           setIsModalOpen(false);
           fetchInscriptions();
-        } catch (error: any) {
-          console.error("Failed to refund inscription:", error);
-          addNotification('error', `Erreur lors du remboursement: ${error.message || 'Une erreur est survenue'}`);
+        } catch (error) {
+          logger.error('Failed to refund inscription', error);
+          addNotification('error', `Erreur lors du remboursement: ${(error as any).message || 'Une erreur est survenue'}`);
         }
       },
     });
@@ -353,9 +354,9 @@ const OrderManagementPage: React.FC = () => {
                   setIsModalOpen(false);
                   setConfirmDialog(prev => ({ ...prev, isOpen: false }));
                   fetchOrders();
-              } catch (error: any) {
-                  console.error("Refund failed:", error);
-                  addNotification('error', error.message || 'Échec du remboursement');
+              } catch (error) {
+                  logger.error('Refund failed', error);
+                  addNotification('error', (error as any).message || 'Échec du remboursement');
               }
           }
       });
@@ -760,7 +761,7 @@ const OrderManagementPage: React.FC = () => {
                                         </div>
                                         {item.variantId && item.product.variants && (
                                             <div className="text-accent-mint text-sm mt-1">
-                                                {(item.product.variants as any[]).find((v: any) => v.id === item.variantId)?.name}
+                                                {(item.product.variants as any[]).find((v: any) => String(v.id) === String(item.variantId))?.name}
                                             </div>
                                         )}
                                         <div className="text-gray-400 text-sm mt-1">
@@ -873,9 +874,9 @@ const OrderManagementPage: React.FC = () => {
                                     const availableRefund = item.quantity - (item.refundedQuantity || 0);
                                     if (availableRefund <= 0) return null;
 
-                                    // Find variant info if variantId exists
+                                    // Find variant info if variantId exists (compare as strings to handle type mismatch)
                                     const variantInfo = item.variantId && item.product.variants ?
-                                        (item.product.variants as any[]).find((v: any) => v.id === item.variantId) : null;
+                                        (item.product.variants as any[]).find((v: any) => String(v.id) === String(item.variantId)) : null;
 
                                     return (
                                         <tr key={item.id} className="border-b border-gray-700 last:border-0">

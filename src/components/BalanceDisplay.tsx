@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { CreditCard, Plus } from 'lucide-react';
 import { getMyBalance } from '../api/balance';
 import { useAuth } from '../context/AuthContext';
+import { logger } from '../utils/logger';
 
 interface BalanceDisplayProps {
   variant?: 'card' | 'inline' | 'compact';
@@ -25,7 +26,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
           const data = await getMyBalance();
           setBalance(data.balance);
         } catch (error) {
-          console.error('Error fetching balance:', error);
+          logger.error('Error fetching balance', error);
         } finally {
           setLoading(false);
         }

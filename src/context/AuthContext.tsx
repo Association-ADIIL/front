@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import { type User, type LoginCredentials, login as apiLogin, register as apiRegister, getMe, type RegisterData } from '../api/auth';
+import { type User, type LoginCredentials, login as apiLogin, register as apiRegister, getMe, logout as apiLogout, type RegisterData } from '../api/auth';
 import { useNavigate } from 'react-router-dom';
+import { logger } from '../utils/logger';
+import { isUnauthorizedError } from '../types/errors';
 
 interface AuthContextType {
   user: User | null;
@@ -8,29 +10,53 @@ interface AuthContextType {
   loading: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   isAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/**
+ * Token storage utilities
+ * Centralized to make it easier to migrate to httpOnly cookies later
+ */
+const TokenStorage = {
+  get: (): string | null => localStorage.getItem('token'),
+  set: (token: string): void => localStorage.setItem('token', token),
+  remove: (): void => localStorage.removeItem('token'),
+};
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+  const [token, setToken] = useState<string | null>(TokenStorage.get());
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  // Fetch user data from server on mount if we have a token
   useEffect(() => {
-    // On mount, check if we have a token and user in localStorage
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
+    const initializeAuth = async () => {
+      const storedToken = TokenStorage.get();
 
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
+      if (storedToken) {
+        setToken(storedToken);
+        try {
+          // Always fetch fresh user data from server instead of localStorage
+          const response = await getMe();
+          setUser(response.user);
+          logger.auth('refresh', true);
+        } catch (error) {
+          // Token is invalid, clear it
+          logger.error('Failed to fetch user on init', error);
+          TokenStorage.remove();
+          setToken(null);
+          setUser(null);
+        }
+      }
+      setLoading(false);
+    };
+
+    initializeAuth();
   }, []);
 
   const login = async (credentials: LoginCredentials) => {
@@ -38,11 +64,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const response = await apiLogin(credentials);
       setToken(response.token);
       setUser(response.user);
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('user', JSON.stringify(response.user));
+      TokenStorage.set(response.token);
+      logger.auth('login', true);
       navigate('/my-account');
     } catch (error) {
-      console.error("Login failed:", error);
+      logger.error('Login failed', error);
+      logger.auth('login', false);
       throw error;
     }
   };
@@ -50,22 +77,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const register = async (data: RegisterData) => {
     try {
       await apiRegister(data);
-      // Auto-login after register? Or redirect to login? 
-      // For now, let's redirect to login
+      logger.auth('register', true);
       navigate('/login');
     } catch (error) {
-       console.error("Register failed:", error);
-       throw error;
+      logger.error('Register failed', error);
+      logger.auth('register', false);
+      throw error;
     }
   };
 
-  const logout = () => {
+  const logout = useCallback(async () => {
+    try {
+      // Call API to clear HttpOnly cookie on server
+      await apiLogout();
+    } catch (error) {
+      // Log but don't block logout if API call fails
+      logger.error('Logout API call failed', error);
+    }
     setToken(null);
     setUser(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    TokenStorage.remove();
+    logger.auth('logout', true);
     navigate('/login');
-  };
+  }, [navigate]);
 
   // Refresh user data from server (for permission updates)
   const refreshUser = useCallback(async () => {
@@ -74,15 +108,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const response = await getMe();
       setUser(response.user);
-      localStorage.setItem('user', JSON.stringify(response.user));
+      logger.auth('refresh', true);
     } catch (error) {
-      console.error('Failed to refresh user:', error);
+      logger.error('Failed to refresh user', error);
       // If token is invalid, log out
-      if ((error as any)?.message?.includes('401') || (error as any)?.message?.includes('Unauthorized')) {
+      if (isUnauthorizedError(error)) {
         logout();
       }
     }
-  }, [token]);
+  }, [token, logout]);
 
   // Refresh user permissions when window gains focus
   useEffect(() => {

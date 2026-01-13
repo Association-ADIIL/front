@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { logger } from '../utils/logger';
 import { getAllProducts, type Product } from '../api/products';
 import { getAllCategories, type Category } from '../api/categories';
 import { getActiveProductPromotions, type ProductPromotionsMap } from '../api/promotions';
@@ -46,7 +47,7 @@ const ShopPage: React.FC = () => {
         });
         setQuantities(initialQuantities);
       } catch (err) {
-        console.error("Failed to fetch data:", err);
+        logger.error('Failed to fetch data', err);
         setError("Impossible de charger les produits.");
       } finally {
         setLoading(false);

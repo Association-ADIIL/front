@@ -188,13 +188,6 @@ const AboutPage: React.FC = () => {
             ))}
           </div>
 
-        {/*  /!* TODO notice *!/*/}
-        {/*  <div className="mt-8 p-4 bg-orange-500/10 border border-orange-500/30 rounded-xl max-w-2xl mx-auto">*/}
-        {/*    <p className="text-orange-400 text-sm text-center font-montserrat">*/}
-        {/*      <strong>Note :</strong> Les informations des membres sont à compléter dans le fichier AboutPage.tsx*/}
-        {/*    </p>*/}
-        {/*  </div>*/}
-
         </div>
       </section>
 

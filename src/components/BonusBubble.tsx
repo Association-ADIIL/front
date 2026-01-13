@@ -3,6 +3,7 @@ import { Gift, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { checkBalanceRechargeBonus } from '../api/promotions';
 import { useNavigate } from 'react-router-dom';
+import { logger } from '../utils/logger';
 
 interface BonusBubbleProps {
   className?: string;
@@ -29,7 +30,7 @@ const BonusBubble: React.FC<BonusBubbleProps> = ({ className = '', variant = 'in
           setMaxBonusPercent(result.bonusPercent);
         }
       } catch (error) {
-        console.error('Error checking bonus:', error);
+        logger.error('Error checking bonus', error);
       } finally {
         setLoading(false);
       }

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { logger } from '../utils/logger';
 import { getAllProducts, deleteProduct, createProduct, updateProduct, type Product, type ProductFormData, type ProductVariant } from '../api/products';
 import { getAllCategories, type Category } from '../api/categories';
 import { Edit2, Trash2, Plus, X, Search } from 'lucide-react';
@@ -48,7 +49,7 @@ const ProductManagementPage: React.FC = () => {
       const data = await getAllProducts();
       setProducts(data);
     } catch (error) {
-      console.error("Failed to fetch products:", error);
+      logger.error('Failed to fetch products', error);
     } finally {
       setLoading(false);
     }
@@ -59,7 +60,7 @@ const ProductManagementPage: React.FC = () => {
       const data = await getAllCategories();
       setCategories(data);
     } catch (error) {
-      console.error("Failed to fetch categories:", error);
+      logger.error('Failed to fetch categories', error);
     }
   };
 
@@ -121,7 +122,7 @@ const ProductManagementPage: React.FC = () => {
       try {
         await deleteImage(imageUrl);
       } catch (error) {
-        console.error('Failed to delete image:', error);
+        logger.error('Failed to delete image', error);
       }
     }
     uploadedImagesRef.current = [];
@@ -148,7 +149,7 @@ const ProductManagementPage: React.FC = () => {
       setIsModalOpen(false);
       fetchProducts();
     } catch (error) {
-      console.error("Failed to save product:", error);
+      logger.error('Failed to save product', error);
       addNotification('error', "Erreur lors de l'enregistrement du produit.");
     }
   };
@@ -162,7 +163,7 @@ const ProductManagementPage: React.FC = () => {
       setProductToDelete(null);
       fetchProducts();
     } catch (error) {
-      console.error("Failed to delete product:", error);
+      logger.error('Failed to delete product', error);
       addNotification('error', "Erreur lors de la suppression.");
     }
   };

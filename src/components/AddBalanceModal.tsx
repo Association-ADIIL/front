@@ -5,6 +5,8 @@ import { useNotification } from '../context/NotificationContext';
 import Modal from './Modal';
 import NumberInput from './NumberInput';
 import { Loader, Plus } from 'lucide-react';
+import { logger } from '../utils/logger';
+import { getErrorMessage } from '../types/errors';
 
 interface User {
   id: string;
@@ -41,7 +43,7 @@ const AddBalanceModal: React.FC<AddBalanceModalProps> = ({ isOpen, onClose, onSu
       const data = await getAllUsers();
       setUsers(data);
     } catch (error) {
-      console.error('Error fetching users:', error);
+      logger.error('Error fetching users', error);
       addNotification('error', 'Erreur lors du chargement des utilisateurs');
     } finally {
       setLoadingUsers(false);
@@ -74,8 +76,8 @@ const AddBalanceModal: React.FC<AddBalanceModalProps> = ({ isOpen, onClose, onSu
       setAmount('');
       if (onSuccess) onSuccess();
       onClose();
-    } catch (error: any) {
-      addNotification('error', error.message || 'Erreur lors de l\'ajout du solde');
+    } catch (error) {
+      addNotification('error', getErrorMessage(error));
     } finally {
       setLoading(false);
     }

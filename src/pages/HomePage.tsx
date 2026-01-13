@@ -12,6 +12,7 @@ import {
   Clock,
   ChevronRight
 } from 'lucide-react';
+import { logger } from '../utils/logger';
 
 const HomePage: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
@@ -42,7 +43,7 @@ const HomePage: React.FC = () => {
         setTotalProductsCount(activeProducts.length);
         setProducts(activeProducts.slice(0, 12));
       } catch (err) {
-        console.error("Failed to fetch data:", err);
+        logger.error('Failed to fetch data', err);
       } finally {
         setLoadingEvents(false);
         setLoadingProducts(false);

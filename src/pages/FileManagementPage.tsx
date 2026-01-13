@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { logger } from '../utils/logger';
 import { Upload, File, Trash2, Copy, Check, Folder, FolderPlus, Home, ChevronRight, Move, Edit, Download, Loader2 } from 'lucide-react';
 import { uploadPrivateFile, deletePrivateFile, getFiles, getPrivateFileUrl } from '../api/upload';
 import { useNotification } from '../context/NotificationContext';
@@ -84,8 +85,8 @@ const FileManagementPage: React.FC = () => {
           const merged = [...new Set([...prev, ...fileFolders])];
           return merged.sort();
         });
-      } catch (error: any) {
-        console.error('Failed to load files:', error);
+      } catch (error) {
+        logger.error('Failed to load files', error);
         addNotification('error', 'Erreur lors du chargement des fichiers');
       } finally {
         setIsLoadingFiles(false);
@@ -175,9 +176,9 @@ const FileManagementPage: React.FC = () => {
 
       setFiles(convertedFiles);
       addNotification('success', `${uploadedFileNames.length} fichier(s) uploadé(s) avec succès !`);
-    } catch (error: any) {
-      console.error('Upload error:', error);
-      addNotification('error', error.message || 'Erreur lors de l\'upload');
+    } catch (error) {
+      logger.error('Upload error', error);
+      addNotification('error', (error as any).message || 'Erreur lors de l\'upload');
     } finally {
       setIsUploading(false);
     }
@@ -257,7 +258,7 @@ const FileManagementPage: React.FC = () => {
             await deletePrivateFile(file.id);
           }
         } catch (error) {
-          console.error('Failed to delete file:', error);
+          logger.error('Failed to delete file', error);
         }
       }
 
@@ -299,9 +300,9 @@ const FileManagementPage: React.FC = () => {
           }
           setFiles(prev => prev.filter(f => f.id !== file.id));
           addNotification('success', 'Fichier supprimé avec succès !');
-        } catch (error: any) {
-          console.error('Delete error:', error);
-          addNotification('error', error.message || 'Erreur lors de la suppression');
+        } catch (error) {
+          logger.error('Delete error', error);
+          addNotification('error', (error as any).message || 'Erreur lors de la suppression');
         } finally {
           setConfirmDialog(prev => ({ ...prev, isOpen: false }));
         }
@@ -349,8 +350,8 @@ const FileManagementPage: React.FC = () => {
         navigator.clipboard.writeText(result.url);
         setCopiedUrl(String(file.id));
         addNotification('success', 'URL copiée (valide 1h)');
-      } catch (error: any) {
-        addNotification('error', error.message || 'Erreur lors de la génération de l\'URL');
+      } catch (error) {
+        addNotification('error', (error as any).message || 'Erreur lors de la génération de l\'URL');
       } finally {
         setLoadingUrls(prev => {
           const next = new Set(prev);
@@ -376,8 +377,8 @@ const FileManagementPage: React.FC = () => {
         const result = await getPrivateFileUrl(file.id);
         // Open the signed URL in a new tab to trigger download
         window.open(result.url, '_blank');
-      } catch (error: any) {
-        addNotification('error', error.message || 'Erreur lors du téléchargement');
+      } catch (error) {
+        addNotification('error', (error as any).message || 'Erreur lors du téléchargement');
       } finally {
         setLoadingUrls(prev => {
           const next = new Set(prev);

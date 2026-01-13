@@ -9,6 +9,8 @@ import { getMyBalance, purchaseWithBalance } from '../api/balance';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { checkBalanceRechargeBonus, checkCartDiscount, getActiveProductPromotions, type CartDiscountCheck, type ProductPromotionsMap } from '../api/promotions';
 import LegalAcceptance from '../components/LegalAcceptance';
+import { logger } from '../utils/logger';
+import { getErrorMessage } from '../types/errors';
 
 const PayPalLogo: React.FC<{ className?: string }> = ({ className = '' }) => (
   <svg viewBox="0 0 24 24" className={className} fill="currentColor">
@@ -71,7 +73,7 @@ const CartPage: React.FC = () => {
         const promotions = await getActiveProductPromotions();
         setProductPromotions(promotions || {});
       } catch (error) {
-        console.error('Error fetching product promotions:', error);
+        logger.error('Error fetching product promotions', error);
         setProductPromotions({});
       }
     };
@@ -91,7 +93,7 @@ const CartPage: React.FC = () => {
             setMaxBonusPercent(bonusData.bonusPercent);
           }
         } catch (error) {
-          console.error('Error fetching data:', error);
+          logger.error('Error fetching balance data', error);
         }
       };
       fetchData();
@@ -106,7 +108,7 @@ const CartPage: React.FC = () => {
           const discount = await checkCartDiscount(totalWithProductPromotions);
           setDiscountInfo(discount);
         } catch (error) {
-          console.error('Error checking discount:', error);
+          logger.error('Error checking discount', error);
           setDiscountInfo(null);
         }
       };
@@ -155,8 +157,8 @@ const CartPage: React.FC = () => {
           addNotification('success', 'Commande confirmee via Solde ADIIL !');
           clearCart();
           navigate('/my-account');
-        } catch (error: any) {
-          addNotification('error', error.message || 'Erreur lors de la commande');
+        } catch (error) {
+          addNotification('error', getErrorMessage(error));
         } finally {
           setIsProcessingOrder(false);
         }
@@ -185,9 +187,9 @@ const CartPage: React.FC = () => {
         addNotification('success', 'Commande confirmee !');
         clearCart();
         navigate('/my-account');
-      } catch (error: any) {
-        console.error('Erreur lors de la commande:', error);
-        addNotification('error', error.message || 'Echec de la commande.');
+      } catch (error) {
+        logger.error('Erreur lors de la commande', error);
+        addNotification('error', getErrorMessage(error));
       } finally {
         setIsProcessingOrder(false);
       }
@@ -221,8 +223,8 @@ const CartPage: React.FC = () => {
         addNotification('success', 'Achat effectué avec succès ! Votre solde a été débité.');
         clearCart();
         navigate('/my-account');
-      } catch (error: any) {
-        addNotification('error', error.message || 'Erreur lors de l\'achat');
+      } catch (error) {
+        addNotification('error', getErrorMessage(error));
       } finally {
         setIsProcessingOrder(false);
       }
@@ -259,9 +261,9 @@ const CartPage: React.FC = () => {
         navigate('/my-account');
       }
 
-    } catch (error: any) {
-      console.error('Erreur lors de la commande:', error);
-      addNotification('error', error.message || 'Échec de la commande.');
+    } catch (error) {
+      logger.error('Erreur lors de la commande', error);
+      addNotification('error', getErrorMessage(error));
     } finally {
       setIsProcessingOrder(false);
     }

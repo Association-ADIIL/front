@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { logger } from '../utils/logger';
 import { getAllTransactions, refreshTransactionStatus } from '../api/transactions';
 import type { Transaction, TransactionType, PaymentStatus, PaymentMethod } from '../api/transactions';
 import { Search, RefreshCw, CreditCard, ShoppingCart, Calendar, ExternalLink } from 'lucide-react';
@@ -54,7 +55,7 @@ const TransactionManagementPage: React.FC = () => {
       setTransactions(data);
       setFilteredTransactions(data);
     } catch (error) {
-      console.error('Failed to fetch transactions:', error);
+      logger.error('Failed to fetch transactions', error);
       addNotification('error', 'Erreur lors du chargement des transactions');
     } finally {
       setLoading(false);
@@ -118,9 +119,9 @@ const TransactionManagementPage: React.FC = () => {
       } else {
         addNotification('info', `Aucun changement. Statut provider: ${result.providerStatus || 'N/A'}`);
       }
-    } catch (error: any) {
-      console.error('Failed to refresh status:', error);
-      addNotification('error', error.message || 'Erreur lors du rafraîchissement');
+    } catch (error) {
+      logger.error('Failed to refresh status', error);
+      addNotification('error', (error as any).message || 'Erreur lors du rafraîchissement');
     } finally {
       setRefreshingId(null);
     }

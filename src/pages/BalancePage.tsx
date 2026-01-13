@@ -9,6 +9,8 @@ import NumberInput from '../components/NumberInput';
 import BonusBubble from '../components/BonusBubble';
 import { checkBalanceRechargeBonus, type BalanceBonusCheck, type BalanceRechargeTier } from '../api/promotions';
 import LegalAcceptance from '../components/LegalAcceptance';
+import { logger } from '../utils/logger';
+import { getErrorMessage } from '../types/errors';
 
 const BalancePage: React.FC = () => {
   useDocumentTitle('Mon Solde ADIIL');
@@ -44,7 +46,7 @@ const BalancePage: React.FC = () => {
       const result = await checkBalanceRechargeBonus(amountValue);
       setBonusInfo(result);
     } catch (error) {
-      console.error('Error checking bonus:', error);
+      logger.error('Error checking bonus', error);
       setBonusInfo(null);
     } finally {
       setCheckingBonus(false);
@@ -75,7 +77,7 @@ const BalancePage: React.FC = () => {
         setBalance(balanceData.balance);
         setRecharges(rechargesData);
       } catch (error) {
-        console.error('Error fetching balance data:', error);
+        logger.error('Error fetching balance data', error);
         addNotification('error', 'Erreur lors du chargement des donnees');
       } finally {
         setLoading(false);
@@ -119,8 +121,8 @@ const BalancePage: React.FC = () => {
       } else {
         addNotification('success', 'Recharge creee avec succes');
       }
-    } catch (error: any) {
-      addNotification('error', error.message || 'Erreur lors de la recharge');
+    } catch (error) {
+      addNotification('error', getErrorMessage(error));
     } finally {
       setRecharging(false);
     }

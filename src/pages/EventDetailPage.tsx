@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { logger } from '../utils/logger';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getEventById, type Event } from '../api/events';
 import { Calendar, MapPin, ArrowLeft, Users, Clock, Share2, ChevronRight, LogIn } from 'lucide-react';
@@ -29,7 +30,7 @@ const EventDetailPage: React.FC = () => {
         const data = await getEventById(id);
         setEvent(data);
       } catch (err) {
-        console.error("Failed to fetch event:", err);
+        logger.error('Failed to fetch event', err);
         setError("Impossible de charger les détails de l'événement.");
       } finally {
         setLoading(false);
@@ -48,7 +49,7 @@ const EventDetailPage: React.FC = () => {
           url: window.location.href,
         });
       } catch (err) {
-        console.log('Share cancelled');
+        logger.debug('Share cancelled');
       }
     } else {
       navigator.clipboard.writeText(window.location.href);

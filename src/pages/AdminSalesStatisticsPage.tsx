@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { logger } from '../utils/logger';
 import { getAllOrders, type Order } from '../api/orders';
 import { getAllInscriptions, type Inscription } from '../api/inscriptions';
 import { TrendingUp, DollarSign, ShoppingBag, Calendar, Users } from 'lucide-react';
@@ -153,7 +154,7 @@ const AdminSalesStatisticsPage: React.FC = () => {
         );
 
       } catch (error) {
-        console.error('Error fetching statistics:', error);
+        logger.error('Error fetching statistics', error);
       } finally {
         setLoading(false);
       }

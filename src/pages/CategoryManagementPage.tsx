@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { logger } from '../utils/logger';
 import {
   getAllCategories,
   createCategory,
@@ -52,7 +53,7 @@ const CategoryManagementPage: React.FC = () => {
       const data = await getAllCategories();
       setCategories(data);
     } catch (error) {
-      console.error('Failed to fetch categories:', error);
+      logger.error('Failed to fetch categories', error);
       addNotification('error', 'Erreur lors du chargement des categories.');
     } finally {
       setLoading(false);
@@ -104,9 +105,9 @@ const CategoryManagementPage: React.FC = () => {
       }
       setIsCategoryModalOpen(false);
       fetchCategories();
-    } catch (error: any) {
-      console.error('Failed to save category:', error);
-      addNotification('error', error.message || "Erreur lors de l'enregistrement.");
+    } catch (error) {
+      logger.error('Failed to save category', error);
+      addNotification('error', (error as any).message || "Erreur lors de l'enregistrement.");
     }
   };
 
@@ -146,9 +147,9 @@ const CategoryManagementPage: React.FC = () => {
       }
       setIsSubcategoryModalOpen(false);
       fetchCategories();
-    } catch (error: any) {
-      console.error('Failed to save subcategory:', error);
-      addNotification('error', error.message || "Erreur lors de l'enregistrement.");
+    } catch (error) {
+      logger.error('Failed to save subcategory', error);
+      addNotification('error', (error as any).message || "Erreur lors de l'enregistrement.");
     }
   };
 
@@ -171,9 +172,9 @@ const CategoryManagementPage: React.FC = () => {
       setIsDeleteModalOpen(false);
       setItemToDelete(null);
       fetchCategories();
-    } catch (error: any) {
-      console.error('Failed to delete:', error);
-      addNotification('error', error.message || 'Erreur lors de la suppression.');
+    } catch (error) {
+      logger.error('Failed to delete', error);
+      addNotification('error', (error as any).message || 'Erreur lors de la suppression.');
     }
   };
 
