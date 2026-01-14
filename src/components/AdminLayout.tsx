@@ -224,11 +224,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         lg:translate-x-0
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        {/* Sidebar background decoration */}
-        <div className={`fixed bottom-0 left-0 w-72 h-64 pointer-events-none`}>
-          <div className={`absolute -bottom-10 -left-10 w-[200px] h-[200px] ${activeColors.bg} rounded-full blur-[80px]`} />
-        </div>
-
         <div className="relative p-5 pt-4 lg:pt-5">
           {/* Logo Section */}
           <Link to="/" className="block mb-6 group hidden lg:block">
@@ -304,6 +299,16 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           </div>
         </div>
       </aside>
+
+      {/* Sidebar glow decoration - fixed at bottom, above sidebar */}
+      <div className={`
+        fixed bottom-0 left-0 w-72 h-48 pointer-events-none z-[101] overflow-hidden
+        transition-transform duration-300 ease-in-out
+        lg:translate-x-0
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
+        <div className={`absolute -bottom-10 -left-10 w-[200px] h-[200px] ${activeColors.bg} rounded-full blur-[80px]`} />
+      </div>
 
       {/* Main content */}
       <main className={`flex-1 p-4 lg:p-8 lg:ml-72 min-w-0 mt-14 lg:mt-0 relative overflow-y-auto ${activeColors.scrollbar}`}>
