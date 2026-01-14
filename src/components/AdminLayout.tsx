@@ -302,12 +302,12 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
       {/* Sidebar glow decoration - fixed at bottom, above sidebar */}
       <div className={`
-        fixed bottom-0 left-0 w-72 h-48 pointer-events-none z-[101] overflow-hidden
+        fixed -bottom-20 -left-20 w-[350px] h-[300px] pointer-events-none z-[101]
         transition-transform duration-300 ease-in-out
         lg:translate-x-0
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        <div className={`absolute -bottom-10 -left-10 w-[200px] h-[200px] ${activeColors.bg} rounded-full blur-[80px]`} />
+        <div className={`absolute bottom-10 left-10 w-[200px] h-[200px] ${activeColors.bg} rounded-full blur-[80px]`} />
       </div>
 
       {/* Main content */}
