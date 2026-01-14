@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Gift, Sparkles } from 'lucide-react';
+import { Gift, Zap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { checkBalanceRechargeBonus } from '../api/promotions';
 import { useNavigate } from 'react-router-dom';
@@ -24,10 +24,21 @@ const BonusBubble: React.FC<BonusBubbleProps> = ({ className = '', variant = 'in
       }
 
       try {
-        // Check bonus for a high amount to get the maximum bonus percentage
-        const result = await checkBalanceRechargeBonus(100);
-        if (result.eligible && result.bonusPercent) {
-          setMaxBonusPercent(result.bonusPercent);
+        // Check bonus with a reasonable amount (10€) that's likely within promotion tiers
+        const result = await checkBalanceRechargeBonus(10);
+        if (result.eligible) {
+          // Get max bonus percent from tiers if available, otherwise use the direct value
+          let bonusPercent = result.bonusPercent;
+
+          if (result.tiers && result.tiers.length > 0) {
+            // Find the maximum bonus percentage from all tiers
+            const maxFromTiers = Math.max(...result.tiers.map(tier => tier.bonusPercent));
+            bonusPercent = Math.max(bonusPercent || 0, maxFromTiers);
+          }
+
+          if (bonusPercent && bonusPercent > 0) {
+            setMaxBonusPercent(bonusPercent);
+          }
         }
       } catch (error) {
         logger.error('Error checking bonus', error);
@@ -39,7 +50,7 @@ const BonusBubble: React.FC<BonusBubbleProps> = ({ className = '', variant = 'in
     checkBonus();
   }, [user]);
 
-  if (loading || !maxBonusPercent) {
+  if (loading || maxBonusPercent === null || maxBonusPercent <= 0) {
     return null;
   }
 
@@ -51,11 +62,12 @@ const BonusBubble: React.FC<BonusBubbleProps> = ({ className = '', variant = 'in
     return (
       <button
         onClick={handleClick}
-        className={`absolute -top-2 -right-2 flex items-center gap-1 bg-gradient-to-r from-accent-mint to-yellow-500 text-darker-bg text-xs font-bold px-2 py-1 rounded-full shadow-lg hover:scale-105 transition-transform cursor-pointer z-10 ${className}`}
+        className={`absolute flex items-center gap-1 bg-yellow-400 text-darker-bg text-xs font-bold pl-1.5 pr-2.5 py-1 rounded-full shadow-lg shadow-yellow-400/40 hover:bg-yellow-300 hover:scale-110 transition-all cursor-pointer z-10 animate-bonus-pulse ${className}`}
       >
-        <Gift size={12} />
-        <span>+{maxBonusPercent}%</span>
-        <Sparkles size={10} />
+        <span className="w-5 h-5 bg-darker-bg/20 rounded-full flex items-center justify-center">
+          <Zap size={12} className="fill-current" />
+        </span>
+        <span className="font-extrabold">+{maxBonusPercent}%</span>
       </button>
     );
   }
@@ -63,13 +75,14 @@ const BonusBubble: React.FC<BonusBubbleProps> = ({ className = '', variant = 'in
   return (
     <button
       onClick={handleClick}
-      className={`inline-flex items-center gap-1.5 bg-gradient-to-r from-accent-mint/20 to-yellow-500/20 border border-accent-mint/40 rounded-full px-3 py-1.5 hover:from-accent-mint/30 hover:to-yellow-500/30 transition-colors cursor-pointer ${className}`}
+      className={`group inline-flex items-center gap-2 bg-yellow-400 text-darker-bg rounded-xl px-4 py-2 hover:bg-yellow-300 hover:shadow-lg hover:shadow-yellow-400/30 transition-all cursor-pointer ${className}`}
     >
-      <Gift size={14} className="text-accent-mint" />
-      <span className="text-xs font-bold text-accent-mint">
-        Jusqu'à +{maxBonusPercent}% offerts
+      <span className="w-6 h-6 bg-darker-bg/20 rounded-lg flex items-center justify-center group-hover:bg-darker-bg/30 transition-colors">
+        <Gift size={14} />
       </span>
-      <Sparkles size={12} className="text-yellow-400" />
+      <span className="text-sm font-bold">
+        Jusqu'à <span className="text-base font-extrabold">+{maxBonusPercent}%</span> offerts
+      </span>
     </button>
   );
 };

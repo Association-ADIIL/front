@@ -513,50 +513,65 @@ const OrderPickupPage: React.FC = () => {
 
       {/* Confirmation Modal */}
       {showConfirmModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-darker-bg rounded-2xl border border-gray-800 p-6 max-w-md w-full">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-white">Confirmer la recuperation</h3>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[1000] p-4">
+          <div className="bg-darker-bg rounded-2xl border border-gray-800 w-full max-w-md animate-fadeIn">
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-gray-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-accent-mint/10 rounded-xl flex items-center justify-center">
+                  <CheckCircle size={20} className="text-accent-mint" />
+                </div>
+                <h3 className="font-bold text-white">Confirmer la recuperation</h3>
+              </div>
               <button
                 onClick={() => setShowConfirmModal(false)}
-                className="text-gray-500 hover:text-white transition-colors"
+                disabled={confirming}
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-dark-bg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
               >
-                <X size={24} />
+                <X size={18} />
               </button>
             </div>
 
-            <p className="text-gray-400 mb-6">
-              Etes-vous sur de vouloir marquer cette commande comme recuperee ?
-              <br />
-              <span className="text-white font-bold mt-2 block">
-                Client: {orderInfo.customerName}
-              </span>
-              <span className="text-accent-mint font-bold">
-                Total: {orderInfo.totalPrice.toFixed(2)}€
-              </span>
-            </p>
+            {/* Content */}
+            <div className="p-5">
+              <p className="text-gray-400 text-sm mb-4">
+                Etes-vous sur de vouloir marquer cette commande comme recuperee ?
+              </p>
 
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowConfirmModal(false)}
-                className="flex-1 py-3 bg-dark-bg border border-gray-700 text-gray-300 font-medium rounded-xl hover:bg-gray-800 transition-colors"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleConfirmPickup}
-                disabled={confirming}
-                className="flex-1 py-3 bg-accent-mint text-dark-bg font-bold rounded-xl hover:bg-accent-mint/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {confirming ? (
-                  <div className="w-5 h-5 border-2 border-dark-bg border-t-transparent rounded-full animate-spin"></div>
-                ) : (
-                  <>
-                    <CheckCircle size={18} />
-                    Confirmer
-                  </>
-                )}
-              </button>
+              <div className="bg-dark-bg rounded-xl p-4 mb-5 border border-gray-800/50">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-gray-500 text-sm">Client</span>
+                  <span className="text-white font-bold">{orderInfo.customerName}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500 text-sm">Total</span>
+                  <span className="text-accent-mint font-koulen text-xl">{orderInfo.totalPrice.toFixed(2)}€</span>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowConfirmModal(false)}
+                  disabled={confirming}
+                  className="flex-1 py-2.5 bg-dark-bg border border-gray-800 text-gray-300 font-medium rounded-xl hover:bg-gray-800 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleConfirmPickup}
+                  disabled={confirming}
+                  className="flex-1 py-2.5 bg-accent-mint text-dark-bg font-bold rounded-xl hover:bg-accent-mint/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {confirming ? (
+                    <span className="w-5 h-5 border-2 border-dark-bg border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <CheckCircle size={18} />
+                      Confirmer
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -564,165 +579,176 @@ const OrderPickupPage: React.FC = () => {
 
       {/* Refund Modal */}
       {showRefundModal && orderInfo && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-darker-bg rounded-2xl border border-gray-800 p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-white">Rembourser des articles</h3>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[1000] p-4">
+          <div className="bg-darker-bg rounded-2xl border border-gray-800 w-full max-w-lg animate-fadeIn flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-gray-800 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-red-500/10 rounded-xl flex items-center justify-center">
+                  <RotateCcw size={20} className="text-red-400" />
+                </div>
+                <h3 className="font-bold text-white">Rembourser des articles</h3>
+              </div>
               <button
                 onClick={() => setShowRefundModal(false)}
-                className="text-gray-500 hover:text-white transition-colors"
+                disabled={refunding}
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-dark-bg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
               >
-                <X size={24} />
+                <X size={18} />
               </button>
             </div>
 
-            <p className="text-gray-400 mb-4 text-sm">
-              Selectionnez les articles et quantites a rembourser pour la commande de <span className="text-white font-bold">{orderInfo.customerName}</span>
-            </p>
+            {/* Content */}
+            <div className="p-5 overflow-y-auto custom-scrollbar flex-1">
+              <p className="text-gray-400 mb-4 text-sm">
+                Selectionnez les articles et quantites a rembourser pour la commande de <span className="text-white font-bold">{orderInfo.customerName}</span>
+              </p>
 
-            {/* HelloAsso Warning */}
-            {orderInfo.paymentMethod === 'HELLOASSO' && (
-              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 mb-4">
-                <div className="flex items-start gap-3">
-                  <AlertCircle size={20} className="text-yellow-400 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-yellow-400 font-bold text-sm">Attention - HelloAsso</p>
-                    <p className="text-yellow-300/80 text-xs mt-1">
-                      HelloAsso ne permet que les remboursements complets. Le remboursement partiel sera enregistre dans le systeme mais devra etre effectue manuellement sur HelloAsso ou par un autre moyen.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-3 mb-6">
-              {orderInfo.items.map((item) => {
-                const maxRefundable = item.quantity - item.refundedQuantity;
-                const currentRefund = refundQuantities[item.id] || 0;
-
-                // Calculate the total price after product discounts for cart discount ratio
-                const totalPriceAfterProductDiscounts = orderInfo.items.reduce(
-                  (sum, i) => sum + (i.price * i.quantity),
-                  0
-                );
-
-                // Calculate cart discount ratio and effective price per item
-                const hasCartDiscount = orderInfo.cartDiscountAmount > 0 && totalPriceAfterProductDiscounts > 0;
-                const cartDiscountRatio = hasCartDiscount
-                  ? orderInfo.cartDiscountAmount / totalPriceAfterProductDiscounts
-                  : 0;
-
-                // item.price is already after product discount, apply cart discount to get effective price
-                const effectivePrice = item.price * (1 - cartDiscountRatio);
-                const hasProductDiscount = item.originalPrice && item.originalPrice > item.price;
-
-                return (
-                  <div key={item.id} className="bg-dark-bg rounded-xl p-4">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <p className="text-white font-medium">{item.productName}</p>
-                        {item.variantName && (
-                          <p className="text-gray-500 text-sm">{item.variantName}</p>
-                        )}
-                        <p className="text-gray-400 text-xs mt-1">
-                          {hasProductDiscount && (
-                            <span className="line-through mr-1">{item.originalPrice!.toFixed(2)}€</span>
-                          )}
-                          {hasCartDiscount ? (
-                            <>
-                              {!hasProductDiscount && <span className="line-through mr-1">{item.price.toFixed(2)}€</span>}
-                              {hasProductDiscount && <span className="line-through mr-1">{item.price.toFixed(2)}€</span>}
-                              <span className="text-accent-mint">{effectivePrice.toFixed(2)}€</span>/unite
-                            </>
-                          ) : hasProductDiscount ? (
-                            <><span className="text-accent-mint">{item.price.toFixed(2)}€</span>/unite</>
-                          ) : (
-                            <>{item.price.toFixed(2)}€/unite</>
-                          )} - {item.quantity} achete{item.quantity > 1 ? 's' : ''}
-                          {item.refundedQuantity > 0 && (
-                            <span className="text-red-400"> ({item.refundedQuantity} deja remb.)</span>
-                          )}
-                        </p>
-                      </div>
-                      <p className="text-accent-mint font-koulen">
-                        {(effectivePrice * item.quantity).toFixed(2)}€
+              {/* HelloAsso Warning */}
+              {orderInfo.paymentMethod === 'HELLOASSO' && (
+                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 mb-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle size={20} className="text-yellow-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-yellow-400 font-bold text-sm">Attention - HelloAsso</p>
+                      <p className="text-yellow-300/80 text-xs mt-1">
+                        HelloAsso ne permet que les remboursements complets. Le remboursement partiel sera enregistre dans le systeme mais devra etre effectue manuellement sur HelloAsso ou par un autre moyen.
                       </p>
                     </div>
+                  </div>
+                </div>
+              )}
 
-                    {maxRefundable > 0 ? (
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-400 text-sm">A rembourser:</span>
-                        <div className="flex items-center gap-3">
-                          <button
-                            onClick={() => updateRefundQuantity(item.id, -1)}
-                            disabled={currentRefund === 0}
-                            className="w-8 h-8 bg-gray-700 rounded-lg flex items-center justify-center text-white hover:bg-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                          >
-                            <Minus size={16} />
-                          </button>
-                          <span className="text-white font-bold w-8 text-center">{currentRefund}</span>
-                          <button
-                            onClick={() => updateRefundQuantity(item.id, 1)}
-                            disabled={currentRefund >= maxRefundable}
-                            className="w-8 h-8 bg-gray-700 rounded-lg flex items-center justify-center text-white hover:bg-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                          >
-                            <Plus size={16} />
-                          </button>
-                          <span className="text-gray-500 text-sm">/ {maxRefundable}</span>
+              <div className="space-y-3 mb-5">
+                {orderInfo.items.map((item) => {
+                  const maxRefundable = item.quantity - item.refundedQuantity;
+                  const currentRefund = refundQuantities[item.id] || 0;
+
+                  // Calculate the total price after product discounts for cart discount ratio
+                  const totalPriceAfterProductDiscounts = orderInfo.items.reduce(
+                    (sum, i) => sum + (i.price * i.quantity),
+                    0
+                  );
+
+                  // Calculate cart discount ratio and effective price per item
+                  const hasCartDiscount = orderInfo.cartDiscountAmount > 0 && totalPriceAfterProductDiscounts > 0;
+                  const cartDiscountRatio = hasCartDiscount
+                    ? orderInfo.cartDiscountAmount / totalPriceAfterProductDiscounts
+                    : 0;
+
+                  // item.price is already after product discount, apply cart discount to get effective price
+                  const effectivePrice = item.price * (1 - cartDiscountRatio);
+                  const hasProductDiscount = item.originalPrice && item.originalPrice > item.price;
+
+                  return (
+                    <div key={item.id} className="bg-dark-bg rounded-xl p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <p className="text-white font-medium">{item.productName}</p>
+                          {item.variantName && (
+                            <p className="text-gray-500 text-sm">{item.variantName}</p>
+                          )}
+                          <p className="text-gray-400 text-xs mt-1">
+                            {hasProductDiscount && (
+                              <span className="line-through mr-1">{item.originalPrice!.toFixed(2)}€</span>
+                            )}
+                            {hasCartDiscount ? (
+                              <>
+                                {!hasProductDiscount && <span className="line-through mr-1">{item.price.toFixed(2)}€</span>}
+                                {hasProductDiscount && <span className="line-through mr-1">{item.price.toFixed(2)}€</span>}
+                                <span className="text-accent-mint">{effectivePrice.toFixed(2)}€</span>/unite
+                              </>
+                            ) : hasProductDiscount ? (
+                              <><span className="text-accent-mint">{item.price.toFixed(2)}€</span>/unite</>
+                            ) : (
+                              <>{item.price.toFixed(2)}€/unite</>
+                            )} - {item.quantity} achete{item.quantity > 1 ? 's' : ''}
+                            {item.refundedQuantity > 0 && (
+                              <span className="text-red-400"> ({item.refundedQuantity} deja remb.)</span>
+                            )}
+                          </p>
                         </div>
+                        <p className="text-accent-mint font-koulen">
+                          {(effectivePrice * item.quantity).toFixed(2)}€
+                        </p>
                       </div>
-                    ) : (
-                      <p className="text-red-400 text-sm text-center">Entierement rembourse</p>
+
+                      {maxRefundable > 0 ? (
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-400 text-sm">A rembourser:</span>
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => updateRefundQuantity(item.id, -1)}
+                              disabled={currentRefund === 0}
+                              className="w-8 h-8 bg-gray-700 rounded-lg flex items-center justify-center text-white hover:bg-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            >
+                              <Minus size={16} />
+                            </button>
+                            <span className="text-white font-bold w-8 text-center">{currentRefund}</span>
+                            <button
+                              onClick={() => updateRefundQuantity(item.id, 1)}
+                              disabled={currentRefund >= maxRefundable}
+                              className="w-8 h-8 bg-gray-700 rounded-lg flex items-center justify-center text-white hover:bg-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            >
+                              <Plus size={16} />
+                            </button>
+                            <span className="text-gray-500 text-sm">/ {maxRefundable}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-red-400 text-sm text-center">Entierement rembourse</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Refund Total */}
+              {(() => {
+                const refundCalc = calculateRefundTotal();
+                return (
+                  <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-5">
+                    <div className="flex justify-between items-center">
+                      <span className="text-red-400 font-medium">Montant a rembourser</span>
+                      <div className="text-right">
+                        {refundCalc.hasCartDiscount && (
+                          <span className="text-gray-500 line-through text-sm mr-2">{refundCalc.itemPricesTotal.toFixed(2)}€</span>
+                        )}
+                        <span className="text-red-400 font-koulen text-2xl">{refundCalc.actualAmount.toFixed(2)}€</span>
+                      </div>
+                    </div>
+                    {refundCalc.hasCartDiscount && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        Le montant reflète la réduction panier appliquée à la commande
+                      </p>
                     )}
                   </div>
                 );
-              })}
-            </div>
+              })()}
 
-            {/* Refund Total */}
-            {(() => {
-              const refundCalc = calculateRefundTotal();
-              return (
-                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-6">
-                  <div className="flex justify-between items-center">
-                    <span className="text-red-400 font-medium">Montant a rembourser</span>
-                    <div className="text-right">
-                      {refundCalc.hasCartDiscount && (
-                        <span className="text-gray-500 line-through text-sm mr-2">{refundCalc.itemPricesTotal.toFixed(2)}€</span>
-                      )}
-                      <span className="text-red-400 font-koulen text-2xl">{refundCalc.actualAmount.toFixed(2)}€</span>
-                    </div>
-                  </div>
-                  {refundCalc.hasCartDiscount && (
-                    <p className="text-xs text-gray-500 mt-2">
-                      Le montant reflète la réduction panier appliquée à la commande
-                    </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowRefundModal(false)}
+                  disabled={refunding}
+                  className="flex-1 py-2.5 bg-dark-bg border border-gray-800 text-gray-300 font-medium rounded-xl hover:bg-gray-800 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleRefund}
+                  disabled={refunding || !hasItemsToRefund()}
+                  className="flex-1 py-2.5 bg-red-500 text-white font-bold rounded-xl hover:bg-red-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {refunding ? (
+                    <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <RotateCcw size={18} />
+                      Rembourser
+                    </>
                   )}
-                </div>
-              );
-            })()}
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowRefundModal(false)}
-                className="flex-1 py-3 bg-dark-bg border border-gray-700 text-gray-300 font-medium rounded-xl hover:bg-gray-800 transition-colors"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleRefund}
-                disabled={refunding || !hasItemsToRefund()}
-                className="flex-1 py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {refunding ? (
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                ) : (
-                  <>
-                    <RotateCcw size={18} />
-                    Rembourser
-                  </>
-                )}
-              </button>
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -144,12 +144,30 @@ const MyAccountPage: React.FC = () => {
   return (
     <div className="bg-dark-bg">
       {/* Header Section */}
-      <section className="bg-darker-bg py-8 border-b border-gray-800">
-        <div className="container mx-auto px-4">
+      <section className="bg-darker-bg py-12 border-b border-gray-800 relative overflow-hidden">
+        {/* Background effects */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-20 -right-20 w-[400px] h-[400px] bg-accent-mint/5 rounded-full blur-[100px]" />
+          <div className="absolute bottom-0 left-1/3 w-[200px] h-[200px] bg-blue-500/5 rounded-full blur-[80px]" />
+        </div>
+        <div className="absolute inset-0 opacity-[0.02]" style={{
+          backgroundImage: `repeating-linear-gradient(
+            -45deg,
+            transparent,
+            transparent 40px,
+            rgba(119,241,190,0.5) 40px,
+            rgba(119,241,190,0.5) 41px
+          )`
+        }} />
+
+        <div className="container mx-auto px-4 relative z-10">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-            <div>
-              <span className="text-accent-mint text-sm font-bold uppercase tracking-wider">Espace personnel</span>
-              <h1 className="text-5xl md:text-6xl font-koulen text-white mt-2">MON COMPTE</h1>
+            <div className="flex items-center gap-4">
+              <div className="w-1 h-14 bg-accent-mint rounded-full hidden sm:block" />
+              <div>
+                <span className="text-accent-mint text-sm font-bold uppercase tracking-wider">Espace personnel</span>
+                <h1 className="text-5xl md:text-6xl font-koulen text-white mt-1">MON COMPTE</h1>
+              </div>
             </div>
             <button
               onClick={logout}
@@ -199,7 +217,7 @@ const MyAccountPage: React.FC = () => {
               </div>
 
               {/* Balance Card */}
-              <div className="relative">
+              <div className="relative overflow-visible">
                 <BalanceDisplay variant="card" showRechargeButton={true} />
                 <BonusBubble variant="overlay" className="-top-3 -right-3" />
               </div>
@@ -228,21 +246,23 @@ const MyAccountPage: React.FC = () => {
             {/* Right column - Orders & Inscriptions */}
             <div className="lg:col-span-2 space-y-6">
               {/* Orders Section */}
-              <div className="bg-darker-bg rounded-2xl border border-gray-800 overflow-hidden">
+              <div className="bg-darker-bg rounded-2xl border border-gray-800 overflow-hidden hover:border-gray-700 transition-colors">
                 <button
                   onClick={() => setIsOrdersExpanded(!isOrdersExpanded)}
-                  className="w-full flex items-center justify-between p-6 hover:bg-dark-bg/50 transition-colors"
+                  className="w-full flex items-center justify-between p-6 hover:bg-dark-bg/50 transition-colors group"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-accent-mint/10 rounded-xl flex items-center justify-center">
-                      <ShoppingBag size={20} className="text-accent-mint" />
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-accent-mint/10 rounded-xl flex items-center justify-center group-hover:bg-accent-mint/20 transition-colors">
+                      <ShoppingBag size={22} className="text-accent-mint" />
                     </div>
                     <div className="text-left">
                       <h2 className="text-lg font-bold text-white">Mes commandes</h2>
                       <p className="text-sm text-gray-500">{orders.length} commande{orders.length > 1 ? 's' : ''}</p>
                     </div>
                   </div>
-                  {isOrdersExpanded ? <ChevronDown size={20} className="text-gray-500" /> : <ChevronRight size={20} className="text-gray-500" />}
+                  <div className="w-8 h-8 rounded-lg bg-dark-bg flex items-center justify-center group-hover:bg-accent-mint/10 transition-colors">
+                    {isOrdersExpanded ? <ChevronDown size={18} className="text-gray-500" /> : <ChevronRight size={18} className="text-gray-500" />}
+                  </div>
                 </button>
 
                 {isOrdersExpanded && (
@@ -252,35 +272,40 @@ const MyAccountPage: React.FC = () => {
                         <div className="w-8 h-8 border-2 border-accent-mint border-t-transparent rounded-full animate-spin"></div>
                       </div>
                     ) : orders.length === 0 ? (
-                      <div className="p-6 text-center">
-                        <Package size={40} className="mx-auto text-gray-700 mb-3" />
-                        <p className="text-gray-500 font-montserrat">Aucune commande pour le moment</p>
-                        <Link to="/shop" className="text-accent-mint text-sm hover:underline mt-2 inline-block">
+                      <div className="p-8 text-center">
+                        <div className="w-14 h-14 bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                          <Package size={24} className="text-gray-600" />
+                        </div>
+                        <p className="text-gray-500 font-montserrat mb-3">Aucune commande pour le moment</p>
+                        <Link to="/shop" className="inline-flex items-center gap-2 text-accent-mint text-sm hover:underline">
                           Decouvrir la boutique
+                          <ChevronRight size={14} />
                         </Link>
                       </div>
                     ) : (
-                      <div className="divide-y divide-gray-800">
+                      <div className="divide-y divide-gray-800/50">
                         {orders.map((order) => (
-                          <div key={order.id} className="p-4 hover:bg-dark-bg/30 transition-colors">
-                            <div className="flex items-start justify-between mb-3">
+                          <div key={order.id} className="p-5 hover:bg-dark-bg/30 transition-colors">
+                            <div className="flex items-start justify-between mb-4">
                               <div>
-                                <p className="font-bold text-white">
-                                  Commande #{order.id.toString().padStart(6, '0')}
-                                </p>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-xs text-gray-500 font-mono bg-dark-bg px-2 py-0.5 rounded">
+                                    #{order.id.toString().padStart(6, '0')}
+                                  </span>
+                                  {getStatusBadge(order.orderStatus, 'order')}
+                                </div>
                                 <p className="text-xs text-gray-500 font-montserrat">
                                   {new Date(order.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
                                 </p>
                               </div>
                               <div className="text-right">
-                                {getStatusBadge(order.orderStatus, 'order')}
                                 {order.discountAmount > 0 && order.originalPrice ? (
                                   <>
-                                    <p className="text-gray-500 line-through text-sm mt-1">{order.originalPrice.toFixed(2)}€</p>
-                                    <p className="text-accent-mint font-koulen text-lg">{order.totalPrice.toFixed(2)}€</p>
+                                    <p className="text-gray-500 line-through text-sm">{order.originalPrice.toFixed(2)}€</p>
+                                    <p className="text-accent-mint font-koulen text-xl">{order.totalPrice.toFixed(2)}€</p>
                                   </>
                                 ) : (
-                                  <p className="text-accent-mint font-koulen text-lg mt-1">{order.totalPrice.toFixed(2)}€</p>
+                                  <p className="text-accent-mint font-koulen text-xl">{order.totalPrice.toFixed(2)}€</p>
                                 )}
                                 {order.refundedAmount > 0 && (
                                   <p className="text-xs text-red-400">-{order.refundedAmount.toFixed(2)}€ rembourse</p>
@@ -290,36 +315,36 @@ const MyAccountPage: React.FC = () => {
 
                             {/* Discount info */}
                             {order.discountAmount > 0 && (
-                              <div className="mb-3 p-2 bg-accent-mint/10 border border-accent-mint/20 rounded-lg">
-                                <div className="flex items-center gap-2 mb-1">
+                              <div className="mb-4 p-3 bg-accent-mint/5 border border-accent-mint/20 rounded-xl">
+                                <div className="flex items-center gap-2 mb-2">
                                   <Gift size={14} className="text-accent-mint" />
-                                  <span className="text-xs text-accent-mint font-bold">Réductions appliquées</span>
+                                  <span className="text-xs text-accent-mint font-bold">Reductions appliquees</span>
                                 </div>
-                                <div className="text-xs space-y-0.5 ml-5">
+                                <div className="text-xs space-y-1 ml-5">
                                   {(order.productDiscountAmount ?? 0) > 0 && (
                                     <div className="flex justify-between">
                                       <span className="text-gray-400">Articles en promo:</span>
-                                      <span className="text-accent-mint">-{order.productDiscountAmount!.toFixed(2)}€</span>
+                                      <span className="text-accent-mint font-medium">-{order.productDiscountAmount!.toFixed(2)}€</span>
                                     </div>
                                   )}
                                   {(order.cartDiscountAmount ?? 0) > 0 && (
                                     <div className="flex justify-between">
                                       <span className="text-gray-400">Code promo{order.promotion && ` (${order.promotion.name})`}:</span>
-                                      <span className="text-accent-mint">-{order.cartDiscountAmount!.toFixed(2)}€</span>
+                                      <span className="text-accent-mint font-medium">-{order.cartDiscountAmount!.toFixed(2)}€</span>
                                     </div>
                                   )}
                                   {(order.productDiscountAmount ?? 0) === 0 && (order.cartDiscountAmount ?? 0) === 0 && (
                                     <div className="flex justify-between">
-                                      <span className="text-gray-400">Réduction:</span>
-                                      <span className="text-accent-mint">-{order.discountAmount.toFixed(2)}€</span>
+                                      <span className="text-gray-400">Reduction:</span>
+                                      <span className="text-accent-mint font-medium">-{order.discountAmount.toFixed(2)}€</span>
                                     </div>
                                   )}
                                 </div>
                               </div>
                             )}
 
-                            <div className="bg-dark-bg rounded-xl p-3">
-                              <div className="space-y-1">
+                            <div className="bg-dark-bg rounded-xl p-4 border border-gray-800/50">
+                              <div className="space-y-2">
                                 {order.items.map((item) => {
                                   // Check if item had a product discount
                                   const hasProductDiscount = item.originalPrice && item.originalPrice > item.price;
@@ -333,11 +358,11 @@ const MyAccountPage: React.FC = () => {
                                     : null;
 
                                   return (
-                                    <div key={item.id} className="flex justify-between text-sm">
-                                      <span className="text-gray-400">
-                                        {item.quantity}x {item.product.name}
+                                    <div key={item.id} className="flex justify-between text-sm py-1">
+                                      <span className="text-gray-300">
+                                        <span className="text-accent-mint font-medium">{item.quantity}x</span> {item.product.name}
                                         {variantName && (
-                                          <span className="text-accent-mint ml-1">({variantName})</span>
+                                          <span className="text-gray-500 ml-1">({variantName})</span>
                                         )}
                                         {item.refundedQuantity > 0 && (
                                           <span className="text-red-400 ml-1 text-xs">
@@ -345,7 +370,7 @@ const MyAccountPage: React.FC = () => {
                                           </span>
                                         )}
                                       </span>
-                                      <span className="text-right">
+                                      <span className="text-right font-medium">
                                         {hasProductDiscount ? (
                                           <>
                                             <span className="text-gray-500 line-through text-xs mr-1">
@@ -373,9 +398,9 @@ const MyAccountPage: React.FC = () => {
                               (order.paymentStatus === 'PENDING' && order.paymentMethod === 'CASH_CB')) && (
                               <button
                                 onClick={() => setQrCodeOrder(order)}
-                                className="mt-3 w-full flex items-center justify-center gap-2 py-2 bg-accent-mint/10 border border-accent-mint/30 text-accent-mint text-sm font-medium rounded-xl hover:bg-accent-mint/20 transition-colors"
+                                className="mt-4 w-full flex items-center justify-center gap-2 py-3 bg-accent-mint/10 border border-accent-mint/30 text-accent-mint text-sm font-bold rounded-xl hover:bg-accent-mint/20 hover:border-accent-mint/50 transition-all"
                               >
-                                <QrCode size={16} />
+                                <QrCode size={18} />
                                 Afficher le QR Code
                               </button>
                             )}
@@ -388,71 +413,81 @@ const MyAccountPage: React.FC = () => {
               </div>
 
               {/* Inscriptions Section */}
-              <div className="bg-darker-bg rounded-2xl border border-gray-800 overflow-hidden">
+              <div className="bg-darker-bg rounded-2xl border border-gray-800 overflow-hidden hover:border-gray-700 transition-colors">
                 <button
                   onClick={() => setIsInscriptionsExpanded(!isInscriptionsExpanded)}
-                  className="w-full flex items-center justify-between p-6 hover:bg-dark-bg/50 transition-colors"
+                  className="w-full flex items-center justify-between p-6 hover:bg-dark-bg/50 transition-colors group"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-accent-mint/10 rounded-xl flex items-center justify-center">
-                      <Ticket size={20} className="text-accent-mint" />
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center group-hover:bg-purple-500/20 transition-colors">
+                      <Ticket size={22} className="text-purple-400" />
                     </div>
                     <div className="text-left">
                       <h2 className="text-lg font-bold text-white">Mes inscriptions</h2>
                       <p className="text-sm text-gray-500">{inscriptions.length} evenement{inscriptions.length > 1 ? 's' : ''}</p>
                     </div>
                   </div>
-                  {isInscriptionsExpanded ? <ChevronDown size={20} className="text-gray-500" /> : <ChevronRight size={20} className="text-gray-500" />}
+                  <div className="w-8 h-8 rounded-lg bg-dark-bg flex items-center justify-center group-hover:bg-purple-500/10 transition-colors">
+                    {isInscriptionsExpanded ? <ChevronDown size={18} className="text-gray-500" /> : <ChevronRight size={18} className="text-gray-500" />}
+                  </div>
                 </button>
 
                 {isInscriptionsExpanded && (
                   <div className="border-t border-gray-800">
                     {loadingInscriptions ? (
                       <div className="flex justify-center py-8">
-                        <div className="w-8 h-8 border-2 border-accent-mint border-t-transparent rounded-full animate-spin"></div>
+                        <div className="w-8 h-8 border-2 border-purple-400 border-t-transparent rounded-full animate-spin"></div>
                       </div>
                     ) : inscriptions.length === 0 ? (
-                      <div className="p-6 text-center">
-                        <Calendar size={40} className="mx-auto text-gray-700 mb-3" />
-                        <p className="text-gray-500 font-montserrat">Aucune inscription pour le moment</p>
-                        <Link to="/events" className="text-accent-mint text-sm hover:underline mt-2 inline-block">
+                      <div className="p-8 text-center">
+                        <div className="w-14 h-14 bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                          <Calendar size={24} className="text-gray-600" />
+                        </div>
+                        <p className="text-gray-500 font-montserrat mb-3">Aucune inscription pour le moment</p>
+                        <Link to="/events" className="inline-flex items-center gap-2 text-accent-mint text-sm hover:underline">
                           Voir les evenements
+                          <ChevronRight size={14} />
                         </Link>
                       </div>
                     ) : (
-                      <div className="divide-y divide-gray-800">
+                      <div className="divide-y divide-gray-800/50">
                         {inscriptions.map((inscription) => (
-                          <div key={inscription.id} className="p-4 hover:bg-dark-bg/30 transition-colors">
-                            <div className="flex items-start justify-between mb-3">
+                          <div key={inscription.id} className="p-5 hover:bg-dark-bg/30 transition-colors">
+                            <div className="flex items-start justify-between mb-4">
                               <div className="flex-1">
-                                <p className="font-bold text-white">{inscription.event?.title || 'Événement inconnu'}</p>
-                                <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-gray-500">
-                                  <span className="flex items-center gap-1">
-                                    <Calendar size={12} className="text-accent-mint" />
+                                <div className="flex items-center gap-2 mb-2">
+                                  <p className="font-bold text-white">{inscription.event?.title || 'Evenement inconnu'}</p>
+                                  {getStatusBadge(inscription.paymentStatus, 'inscription')}
+                                </div>
+                                <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                                  <span className="flex items-center gap-1.5 bg-dark-bg px-2 py-1 rounded-lg">
+                                    <Calendar size={12} className="text-purple-400" />
                                     {inscription.event?.date
                                       ? new Date(inscription.event.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
                                       : 'N/A'
                                     }
                                   </span>
-                                  <span className="flex items-center gap-1">
-                                    <MapPin size={12} className="text-accent-mint" />
+                                  <span className="flex items-center gap-1.5 bg-dark-bg px-2 py-1 rounded-lg">
+                                    <MapPin size={12} className="text-purple-400" />
                                     {inscription.event?.location || 'N/A'}
                                   </span>
                                 </div>
                               </div>
                               <div className="text-right">
-                                {getStatusBadge(inscription.paymentStatus, 'inscription')}
-                                <p className="text-accent-mint font-koulen text-lg mt-1">
+                                <p className="text-accent-mint font-koulen text-xl">
                                   {inscription.totalPrice === 0 ? 'GRATUIT' : `${inscription.totalPrice}€`}
                                 </p>
                               </div>
                             </div>
 
-                            <div className="flex items-center justify-between text-xs text-gray-500 bg-dark-bg rounded-xl p-3">
+                            <div className="flex items-center justify-between text-xs text-gray-500 bg-dark-bg rounded-xl p-3 border border-gray-800/50">
                               <div className="flex items-center gap-4">
-                                <span>{inscription.quantity} place{inscription.quantity > 1 ? 's' : ''}</span>
-                                <span className="flex items-center gap-1">
-                                  <CreditCard size={12} />
+                                <span className="flex items-center gap-1.5">
+                                  <Ticket size={12} className="text-purple-400" />
+                                  {inscription.quantity} place{inscription.quantity > 1 ? 's' : ''}
+                                </span>
+                                <span className="flex items-center gap-1.5">
+                                  <CreditCard size={12} className="text-gray-500" />
                                   {inscription.paymentMethod === 'HELLOASSO' ? 'HelloAsso' :
                                    inscription.paymentMethod === 'PAYPAL' ? 'PayPal' :
                                    inscription.paymentMethod === 'CASH_CB' ? 'Sur place' :
@@ -475,50 +510,59 @@ const MyAccountPage: React.FC = () => {
 
       {/* QR Code Modal */}
       {qrCodeOrder && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-darker-bg rounded-2xl border border-gray-800 p-6 max-w-sm w-full">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-white">QR Code de retrait</h3>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[1000] p-4">
+          <div className="bg-darker-bg rounded-2xl border border-gray-800 w-full max-w-sm animate-fadeIn">
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-gray-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-accent-mint/10 rounded-xl flex items-center justify-center">
+                  <QrCode size={20} className="text-accent-mint" />
+                </div>
+                <h3 className="font-bold text-white">QR Code de retrait</h3>
+              </div>
               <button
                 onClick={() => setQrCodeOrder(null)}
-                className="text-gray-500 hover:text-white transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-dark-bg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
               >
-                <X size={24} />
+                <X size={18} />
               </button>
             </div>
 
-            <div className="bg-white rounded-xl p-4 mb-4">
-              <QRCodeSVG
-                value={`${window.location.origin}/order-pickup/${qrCodeOrder.id}`}
-                size={250}
-                level="H"
-                className="w-full h-auto"
-              />
-            </div>
+            {/* Content */}
+            <div className="p-5">
+              <div className="bg-white rounded-xl p-4 mb-4">
+                <QRCodeSVG
+                  value={`${window.location.origin}/order-pickup/${qrCodeOrder.id}`}
+                  size={250}
+                  level="H"
+                  className="w-full h-auto"
+                />
+              </div>
 
-            <div className="text-center">
-              <p className="text-gray-400 text-sm mb-2">
-                Commande #{qrCodeOrder.id.toString().padStart(6, '0')}
-              </p>
-              {qrCodeOrder.discountAmount > 0 && qrCodeOrder.originalPrice ? (
-                <>
-                  <p className="text-gray-500 line-through text-sm">{qrCodeOrder.originalPrice.toFixed(2)}€</p>
-                  <p className="text-accent-mint font-koulen text-xl">
+              <div className="text-center">
+                <p className="text-gray-500 text-xs font-mono mb-2">
+                  #{qrCodeOrder.id.toString().padStart(6, '0')}
+                </p>
+                {qrCodeOrder.discountAmount > 0 && qrCodeOrder.originalPrice ? (
+                  <>
+                    <p className="text-gray-500 line-through text-sm">{qrCodeOrder.originalPrice.toFixed(2)}€</p>
+                    <p className="text-accent-mint font-koulen text-2xl">
+                      {qrCodeOrder.totalPrice.toFixed(2)}€
+                    </p>
+                    <div className="flex items-center justify-center gap-1 mt-1 text-xs text-accent-mint">
+                      <Gift size={12} />
+                      <span>-{qrCodeOrder.discountAmount.toFixed(2)}€</span>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-accent-mint font-koulen text-2xl">
                     {qrCodeOrder.totalPrice.toFixed(2)}€
                   </p>
-                  <div className="flex items-center justify-center gap-1 mt-1 text-xs text-accent-mint">
-                    <Gift size={12} />
-                    <span>-{qrCodeOrder.discountAmount.toFixed(2)}€</span>
-                  </div>
-                </>
-              ) : (
-                <p className="text-accent-mint font-koulen text-xl">
-                  {qrCodeOrder.totalPrice.toFixed(2)}€
+                )}
+                <p className="text-gray-500 text-xs mt-4 bg-dark-bg rounded-lg px-3 py-2">
+                  Presentez ce QR Code lors du retrait
                 </p>
-              )}
-              <p className="text-gray-500 text-xs mt-3">
-                Presentez ce QR Code lors du retrait de votre commande
-              </p>
+              </div>
             </div>
           </div>
         </div>
@@ -526,23 +570,37 @@ const MyAccountPage: React.FC = () => {
 
       {/* Delete Account Confirmation Modal */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-darker-bg rounded-2xl border border-red-500/30 p-6 max-w-md w-full">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center">
-                <AlertTriangle size={24} className="text-red-400" />
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[1000] p-4">
+          <div className="bg-darker-bg rounded-2xl border border-gray-800 border-l-red-500/50 w-full max-w-md animate-fadeIn">
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-gray-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-red-500/10 rounded-xl flex items-center justify-center">
+                  <AlertTriangle size={20} className="text-red-400" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white">Supprimer votre compte</h3>
+                  <p className="text-red-400 text-xs">Cette action est irréversible</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-xl font-bold text-white">Supprimer votre compte</h3>
-                <p className="text-red-400 text-sm">Cette action est irréversible</p>
-              </div>
+              <button
+                onClick={() => {
+                  setIsDeleteModalOpen(false);
+                  setDeleteConfirmText('');
+                }}
+                disabled={isDeleting}
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-dark-bg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
+              >
+                <X size={18} />
+              </button>
             </div>
 
-            <div className="space-y-4">
-              <p className="text-gray-400 text-sm">
+            {/* Content */}
+            <div className="p-5">
+              <p className="text-gray-400 text-sm mb-4">
                 Êtes-vous sûr de vouloir supprimer votre compte ? Cette action va :
               </p>
-              <ul className="text-gray-400 text-sm space-y-2 ml-4">
+              <ul className="text-gray-400 text-sm space-y-2 mb-5">
                 <li className="flex items-start gap-2">
                   <span className="text-red-400 mt-1">•</span>
                   Supprimer vos informations personnelles (nom, email)
@@ -557,7 +615,7 @@ const MyAccountPage: React.FC = () => {
                 </li>
               </ul>
 
-              <div className="pt-4 border-t border-gray-700">
+              <div className="mb-5">
                 <label className="block text-gray-400 text-sm mb-2">
                   Pour confirmer, tapez <span className="font-bold text-red-400">SUPPRIMER</span> ci-dessous :
                 </label>
@@ -566,28 +624,29 @@ const MyAccountPage: React.FC = () => {
                   value={deleteConfirmText}
                   onChange={(e) => setDeleteConfirmText(e.target.value)}
                   placeholder="SUPPRIMER"
-                  className="w-full bg-dark-bg border border-gray-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-red-500"
+                  className="w-full bg-dark-bg border border-gray-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-red-500 transition-colors"
                 />
               </div>
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3">
                 <button
                   onClick={() => {
                     setIsDeleteModalOpen(false);
                     setDeleteConfirmText('');
                   }}
-                  className="flex-1 px-4 py-2.5 bg-gray-700 text-white rounded-xl hover:bg-gray-600 transition-colors"
+                  disabled={isDeleting}
+                  className="flex-1 px-4 py-2.5 bg-dark-bg border border-gray-800 text-gray-300 font-medium rounded-xl hover:bg-gray-800 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Annuler
                 </button>
                 <button
                   onClick={handleDeleteAccount}
                   disabled={deleteConfirmText !== 'SUPPRIMER' || isDeleting}
-                  className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-2.5 bg-red-500 text-white font-bold rounded-xl hover:bg-red-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isDeleting ? (
                     <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                       Suppression...
                     </>
                   ) : (

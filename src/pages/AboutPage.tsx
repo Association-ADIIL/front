@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, Mail, MapPin, Heart, Target, Sparkles } from 'lucide-react';
+import { Users, Mail, MapPin, Target, Code, Coffee, Gamepad2 } from 'lucide-react';
 import SEO from '../components/SEO';
 
 // TODO: Remplacer par les vraies données des membres
@@ -88,28 +88,62 @@ const AboutPage: React.FC = () => {
       />
       {/* Hero Section */}
       <section className="bg-darker-bg py-20 border-b border-gray-800 relative overflow-hidden">
-        {/* Background decoration */}
-        <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-accent-mint/5 to-transparent"></div>
-        <div className="absolute bottom-0 left-1/4 w-64 h-64 bg-accent-mint/5 rounded-full blur-3xl"></div>
+        {/* Background effects */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-20 right-0 w-[500px] h-[500px] bg-accent-mint/5 rounded-full blur-[120px]" />
+          <div className="absolute bottom-0 left-1/4 w-[300px] h-[300px] bg-purple-500/5 rounded-full blur-[100px]" />
+        </div>
+        <div className="absolute inset-0 opacity-[0.02]" style={{
+          backgroundImage: `repeating-linear-gradient(
+            -45deg,
+            transparent,
+            transparent 40px,
+            rgba(119,241,190,0.5) 40px,
+            rgba(119,241,190,0.5) 41px
+          )`
+        }} />
+
+        {/* Floating decorative code snippet */}
+        <div className="absolute top-20 right-12 hidden xl:block opacity-15 font-mono text-xs text-accent-mint/60 animate-[float_8s_ease-in-out_infinite]">
+          <div className="bg-darker-bg/80 backdrop-blur border border-accent-mint/20 rounded-lg p-3">
+            <span className="text-purple-400">class</span> ADIIL {"{"}<br/>
+            &nbsp;&nbsp;mission = <span className="text-amber-400">"fun"</span>;<br/>
+            {"}"}
+          </div>
+        </div>
 
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl">
-            <span className="text-accent-mint text-sm font-bold uppercase tracking-wider">Qui sommes-nous ?</span>
-            <h1 className="text-5xl md:text-7xl font-koulen text-white mt-2 mb-6">L'ADIIL</h1>
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-accent-mint/10 border border-accent-mint/30 rounded-full mb-6">
+              <Code size={14} className="text-accent-mint" />
+              <span className="text-xs text-accent-mint font-medium">Bureau des Etudiants</span>
+            </div>
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-koulen text-white mb-6">
+              L'<span className="text-accent-mint">ADIIL</span>
+            </h1>
             <p className="text-xl text-gray-300 leading-relaxed font-montserrat">
               L'<span className="text-accent-mint font-bold">Association du Département Informatique de l'IUT de Laval</span> est
               le Bureau Des Étudiants (BDE) qui anime la vie étudiante du département informatique.
             </p>
           </div>
         </div>
+
+        <style>{`
+          @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+          }
+        `}</style>
       </section>
 
       {/* Mission Section */}
-      <section className="py-20 bg-dark-bg">
-        <div className="container mx-auto px-4">
+      <section className="py-20 bg-dark-bg relative overflow-hidden">
+        <div className="absolute top-1/2 left-0 w-[300px] h-[300px] bg-accent-mint/3 rounded-full blur-[120px] -translate-y-1/2" />
+
+        <div className="container mx-auto px-4 relative z-10">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-darker-bg rounded-2xl p-8 border border-gray-800 hover:border-accent-mint/30 transition-colors">
-              <div className="w-14 h-14 bg-accent-mint/10 rounded-xl flex items-center justify-center mb-6">
+            <div className="bg-darker-bg rounded-2xl p-8 border border-gray-800 hover:border-accent-mint/30 transition-all hover:-translate-y-1 group">
+              <div className="w-14 h-14 bg-accent-mint/10 rounded-xl flex items-center justify-center mb-6 group-hover:bg-accent-mint/20 transition-colors">
                 <Target size={28} className="text-accent-mint" />
               </div>
               <h3 className="text-xl font-koulen text-white mb-3">NOTRE MISSION</h3>
@@ -118,9 +152,9 @@ const AboutPage: React.FC = () => {
               </p>
             </div>
 
-            <div className="bg-darker-bg rounded-2xl p-8 border border-gray-800 hover:border-accent-mint/30 transition-colors">
-              <div className="w-14 h-14 bg-accent-mint/10 rounded-xl flex items-center justify-center mb-6">
-                <Sparkles size={28} className="text-accent-mint" />
+            <div className="bg-darker-bg rounded-2xl p-8 border border-gray-800 hover:border-accent-mint/30 transition-all hover:-translate-y-1 group">
+              <div className="w-14 h-14 bg-accent-mint/10 rounded-xl flex items-center justify-center mb-6 group-hover:bg-accent-mint/20 transition-colors">
+                <Gamepad2 size={28} className="text-accent-mint" />
               </div>
               <h3 className="text-xl font-koulen text-white mb-3">NOS EVENTS</h3>
               <p className="text-gray-400 font-montserrat">
@@ -128,9 +162,9 @@ const AboutPage: React.FC = () => {
               </p>
             </div>
 
-            <div className="bg-darker-bg rounded-2xl p-8 border border-gray-800 hover:border-accent-mint/30 transition-colors">
-              <div className="w-14 h-14 bg-accent-mint/10 rounded-xl flex items-center justify-center mb-6">
-                <Heart size={28} className="text-accent-mint" />
+            <div className="bg-darker-bg rounded-2xl p-8 border border-gray-800 hover:border-accent-mint/30 transition-all hover:-translate-y-1 group">
+              <div className="w-14 h-14 bg-accent-mint/10 rounded-xl flex items-center justify-center mb-6 group-hover:bg-accent-mint/20 transition-colors">
+                <Coffee size={28} className="text-accent-mint" />
               </div>
               <h3 className="text-xl font-koulen text-white mb-3">POUR VOUS</h3>
               <p className="text-gray-400 font-montserrat">
