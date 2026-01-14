@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getMyOrders, type Order } from '../api/orders';
 import { getMyInscriptions, type Inscription } from '../api/inscriptions';
-import { deleteAccount } from '../api/auth';
+import { deleteAccount, updateProfile } from '../api/auth';
 import { Link, Navigate } from 'react-router-dom';
 import {
   ChevronDown,
@@ -21,7 +21,10 @@ import {
   X,
   Gift,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  Edit2,
+  Check,
+  Loader2
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import BalanceDisplay from '../components/BalanceDisplay';
@@ -31,9 +34,24 @@ import { useNotification } from '../context/NotificationContext';
 import { logger } from '../utils/logger';
 import { getErrorMessage } from '../types/errors';
 
+const STUDENT_GROUPS = [
+  { value: 'G11A', label: '11A' },
+  { value: 'G11B', label: '11B' },
+  { value: 'G12C', label: '12C' },
+  { value: 'G12D', label: '12D' },
+  { value: 'G21A', label: '21A' },
+  { value: 'G21B', label: '21B' },
+  { value: 'G22C', label: '22C' },
+  { value: 'G22D', label: '22D' },
+  { value: 'G31A', label: '31A' },
+  { value: 'G31B', label: '31B' },
+  { value: 'G32C', label: '32C' },
+  { value: 'G32D', label: '32D' },
+];
+
 const MyAccountPage: React.FC = () => {
   useDocumentTitle('Mon Compte');
-  const { user, token, loading: authLoading, logout } = useAuth();
+  const { user, token, loading: authLoading, logout, refreshUser } = useAuth();
   const { addNotification } = useNotification();
   const [orders, setOrders] = useState<Order[]>([]);
   const [inscriptions, setInscriptions] = useState<Inscription[]>([]);
@@ -45,6 +63,26 @@ const MyAccountPage: React.FC = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isEditingGroup, setIsEditingGroup] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState<string>('');
+  const [isUpdatingGroup, setIsUpdatingGroup] = useState(false);
+
+  const handleUpdateGroup = async () => {
+    if (!selectedGroup) return;
+
+    setIsUpdatingGroup(true);
+    try {
+      await updateProfile({ studentGroup: selectedGroup });
+      await refreshUser();
+      addNotification('success', 'Groupe TD mis à jour');
+      setIsEditingGroup(false);
+    } catch (error) {
+      logger.error('Failed to update group', error);
+      addNotification('error', getErrorMessage(error));
+    } finally {
+      setIsUpdatingGroup(false);
+    }
+  };
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -207,10 +245,61 @@ const MyAccountPage: React.FC = () => {
                     <Mail size={18} className="text-accent-mint" />
                     <span className="text-sm font-montserrat">{user.email}</span>
                   </div>
-                  {user.studentGroup && (
+                  {(user.type === 'STUDENT' || user.type === 'ADMIN_BDE') && (
                     <div className="flex items-center gap-3 text-gray-400">
                       <GraduationCap size={18} className="text-accent-mint" />
-                      <span className="text-sm font-montserrat">Groupe {user.studentGroup.replace(/^G/, '')}</span>
+                      {isEditingGroup ? (
+                        <div className="flex items-center gap-2 flex-1">
+                          <select
+                            value={selectedGroup}
+                            onChange={(e) => setSelectedGroup(e.target.value)}
+                            className="flex-1 bg-dark-bg border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:border-accent-mint focus:outline-none"
+                          >
+                            <option value="">Choisir un groupe</option>
+                            {STUDENT_GROUPS.map((group) => (
+                              <option key={group.value} value={group.value}>
+                                {group.label}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            onClick={handleUpdateGroup}
+                            disabled={!selectedGroup || isUpdatingGroup}
+                            className="p-1.5 bg-accent-mint text-darker-bg rounded-lg hover:bg-accent-mint/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isUpdatingGroup ? (
+                              <Loader2 size={16} className="animate-spin" />
+                            ) : (
+                              <Check size={16} />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setIsEditingGroup(false);
+                              setSelectedGroup('');
+                            }}
+                            className="p-1.5 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 flex-1">
+                          <span className="text-sm font-montserrat">
+                            {user.studentGroup ? `Groupe ${user.studentGroup.replace(/^G/, '')}` : 'Aucun groupe'}
+                          </span>
+                          <button
+                            onClick={() => {
+                              setSelectedGroup(user.studentGroup || '');
+                              setIsEditingGroup(true);
+                            }}
+                            className="p-1 text-gray-500 hover:text-accent-mint transition-colors"
+                            title="Modifier le groupe TD"
+                          >
+                            <Edit2 size={14} />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

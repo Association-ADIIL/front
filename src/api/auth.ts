@@ -64,3 +64,11 @@ export const logout = async (): Promise<{ message: string }> => {
     method: 'POST',
   });
 };
+
+// Update own profile
+export const updateProfile = async (data: { studentGroup?: string | null }): Promise<{ message: string; user: User }> => {
+  return fetchJson('/auth/me', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+};
