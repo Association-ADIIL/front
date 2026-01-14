@@ -3,7 +3,7 @@ import { logger } from '../utils/logger';
 import { getAllProducts, type Product } from '../api/products';
 import { getAllCategories, type Category } from '../api/categories';
 import { getActiveProductPromotions, type ProductPromotionsMap } from '../api/promotions';
-import { ShoppingBag, Minus, Plus, ShoppingCart, Search, LogIn, X, Tag } from 'lucide-react';
+import { ShoppingBag, Minus, Plus, ShoppingCart, Search, LogIn, X, Tag, Coffee } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useNotification } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
@@ -38,7 +38,14 @@ const ShopPage: React.FC = () => {
         ]);
         const activeProducts = productsData.filter(p => p.active);
         setProducts(activeProducts);
-        setCategories(categoriesData);
+        // Sort categories and subcategories by order
+        const sortedCategories = [...categoriesData].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        sortedCategories.forEach(cat => {
+          if (cat.subcategories) {
+            cat.subcategories.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+          }
+        });
+        setCategories(sortedCategories);
         setProductPromotions(promotionsData);
 
         const initialQuantities: { [key: string]: number } = {};
@@ -84,7 +91,7 @@ const ShopPage: React.FC = () => {
     const variantId = selectedVariants[product.id];
 
     if (product.variants && product.variants.length > 0 && !variantId) {
-      addNotification('error', 'Veuillez sélectionner un format');
+      addNotification('error', 'Veuillez sélectionner une variante');
       return;
     }
 
@@ -117,31 +124,39 @@ const ShopPage: React.FC = () => {
 
   // Group products by subcategory for better organization
   const groupedProducts = React.useMemo(() => {
-    const groups: { [key: string]: { name: string; categoryName: string; products: Product[] } } = {};
+    const groups: { [key: string]: { name: string; categoryName: string; categoryOrder: number; subcategoryOrder: number; products: Product[] } } = {};
 
     filteredProducts.forEach(product => {
-      const subcategoryName = product.subcategory?.name || 'Autres';
-      const categoryName = product.subcategory?.category?.name || '';
+      const subcategory = product.subcategory;
+      const category = subcategory?.category;
+      const subcategoryName = subcategory?.name || 'Autres';
+      const categoryName = category?.name || '';
       const key = `${categoryName}-${subcategoryName}`;
+
+      // Find order from categories state (more reliable than product.subcategory which may not have order)
+      const categoryFromState = categories.find(c => c.name === categoryName);
+      const subcategoryFromState = categoryFromState?.subcategories?.find(s => s.name === subcategoryName);
 
       if (!groups[key]) {
         groups[key] = {
           name: subcategoryName,
           categoryName: categoryName,
+          categoryOrder: categoryFromState?.order ?? 999,
+          subcategoryOrder: subcategoryFromState?.order ?? 999,
           products: []
         };
       }
       groups[key].products.push(product);
     });
 
-    // Sort groups by category then subcategory name
+    // Sort groups by category order then subcategory order
     return Object.values(groups).sort((a, b) => {
-      if (a.categoryName !== b.categoryName) {
-        return a.categoryName.localeCompare(b.categoryName);
+      if (a.categoryOrder !== b.categoryOrder) {
+        return a.categoryOrder - b.categoryOrder;
       }
-      return a.name.localeCompare(b.name);
+      return a.subcategoryOrder - b.subcategoryOrder;
     });
-  }, [filteredProducts]);
+  }, [filteredProducts, categories]);
 
   return (
     <div className="min-h-screen">
@@ -151,12 +166,32 @@ const ShopPage: React.FC = () => {
         url="/shop"
       />
       {/* Header Section */}
-      <section className="bg-darker-bg py-16 border-b border-gray-800">
-        <div className="container mx-auto px-4">
+      <section className="bg-darker-bg py-16 border-b border-gray-800 relative overflow-hidden">
+        {/* Background effects */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-20 -right-20 w-[400px] h-[400px] bg-accent-mint/5 rounded-full blur-[100px]" />
+          <div className="absolute bottom-0 left-1/4 w-[300px] h-[300px] bg-amber-500/5 rounded-full blur-[80px]" />
+        </div>
+        <div className="absolute inset-0 opacity-[0.02]" style={{
+          backgroundImage: `repeating-linear-gradient(
+            -45deg,
+            transparent,
+            transparent 40px,
+            rgba(119,241,190,0.5) 40px,
+            rgba(119,241,190,0.5) 41px
+          )`
+        }} />
+
+        <div className="container mx-auto px-4 relative z-10">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
             <div>
-              <span className="text-accent-mint text-sm font-bold uppercase tracking-wider">Boutique</span>
-              <h1 className="text-5xl md:text-6xl font-koulen text-white mt-2">SNACKS & DRINKS</h1>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-accent-mint/10 border border-accent-mint/30 rounded-full mb-4">
+                <Coffee size={14} className="text-accent-mint" />
+                <span className="text-xs text-accent-mint font-medium">Boutique ADIIL</span>
+              </div>
+              <h1 className="text-5xl md:text-7xl font-koulen text-white">
+                SNACKS & <span className="text-accent-mint">DRINKS</span>
+              </h1>
               <p className="text-gray-400 mt-4 max-w-xl font-montserrat">
                 Un petit creux entre deux cours ? Boissons fraîches et snacks disponibles pour tous les étudiants.
               </p>
@@ -164,18 +199,18 @@ const ShopPage: React.FC = () => {
             <div className="flex-shrink-0 flex items-center gap-4">
               {user ? (
                 <>
-                  <div className="relative">
+                  <div className="relative overflow-visible">
                     <BalanceDisplay variant="compact" showRechargeButton={true} />
-                    <BonusBubble variant="overlay" />
+                    <BonusBubble variant="overlay" className="-top-3 -right-3" />
                   </div>
                   {cartItemsCount > 0 && (
                     <Link
                       to="/cart"
-                      className="relative flex items-center gap-2 px-4 py-2 bg-accent-mint text-darker-bg font-bold rounded-xl hover:bg-white transition-colors"
+                      className="relative flex items-center gap-2 px-4 py-2.5 bg-accent-mint text-darker-bg font-bold rounded-xl hover:bg-white transition-colors shadow-lg shadow-accent-mint/20"
                     >
                       <ShoppingCart size={20} />
                       <span className="hidden sm:inline">Panier</span>
-                      <span className="absolute -top-2 -right-2 w-6 h-6 bg-white text-darker-bg text-xs font-bold rounded-full flex items-center justify-center">
+                      <span className="absolute -top-2 -right-2 w-6 h-6 bg-white text-darker-bg text-xs font-bold rounded-full flex items-center justify-center shadow-md">
                         {cartItemsCount}
                       </span>
                     </Link>
@@ -184,7 +219,7 @@ const ShopPage: React.FC = () => {
               ) : (
                 <Link
                   to="/login"
-                  className="flex items-center gap-2 px-4 py-2 bg-accent-mint text-darker-bg font-bold rounded-xl hover:bg-white transition-colors"
+                  className="flex items-center gap-2 px-4 py-2.5 bg-accent-mint text-darker-bg font-bold rounded-xl hover:bg-white transition-colors shadow-lg shadow-accent-mint/20"
                 >
                   <LogIn size={18} />
                   <span>Se connecter</span>
@@ -195,8 +230,8 @@ const ShopPage: React.FC = () => {
 
           {/* Search bar */}
           <div className="mt-8 max-w-md">
-            <div className="relative">
-              <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+            <div className="relative group">
+              <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-accent-mint transition-colors" />
               <input
                 type="text"
                 placeholder="Rechercher un produit..."
@@ -216,7 +251,7 @@ const ShopPage: React.FC = () => {
                   className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                     !selectedCategoryId
                       ? 'bg-accent-mint text-darker-bg'
-                      : 'bg-dark-bg text-gray-400 hover:text-white border border-gray-700'
+                      : 'bg-dark-bg text-gray-400 hover:text-accent-mint hover:border-accent-mint/50 border border-gray-700'
                   }`}
                 >
                   Tout
@@ -228,7 +263,7 @@ const ShopPage: React.FC = () => {
                     className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                       selectedCategoryId === category.id
                         ? 'bg-accent-mint text-darker-bg'
-                        : 'bg-dark-bg text-gray-400 hover:text-white border border-gray-700'
+                        : 'bg-dark-bg text-gray-400 hover:text-accent-mint hover:border-accent-mint/50 border border-gray-700'
                     }`}
                   >
                     {category.name}
@@ -243,8 +278,8 @@ const ShopPage: React.FC = () => {
                     onClick={() => handleSubcategoryClick(null)}
                     className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                       !selectedSubcategoryId
-                        ? 'bg-blue-500/30 text-blue-300 border border-blue-500/50'
-                        : 'bg-dark-bg text-gray-500 hover:text-gray-300 border border-gray-700'
+                        ? 'bg-accent-mint/20 text-accent-mint border border-accent-mint/30'
+                        : 'bg-dark-bg text-gray-500 hover:text-accent-mint hover:border-accent-mint/30 border border-gray-700'
                     }`}
                   >
                     Tous les {selectedCategory.name.toLowerCase()}
@@ -255,8 +290,8 @@ const ShopPage: React.FC = () => {
                       onClick={() => handleSubcategoryClick(subcategory.id)}
                       className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                         selectedSubcategoryId === subcategory.id
-                          ? 'bg-blue-500/30 text-blue-300 border border-blue-500/50'
-                          : 'bg-dark-bg text-gray-500 hover:text-gray-300 border border-gray-700'
+                          ? 'bg-accent-mint/20 text-accent-mint border border-accent-mint/30'
+                          : 'bg-dark-bg text-gray-500 hover:text-accent-mint hover:border-accent-mint/30 border border-gray-700'
                       }`}
                     >
                       {subcategory.name}
@@ -280,7 +315,7 @@ const ShopPage: React.FC = () => {
                     </span>
                   )}
                   {selectedSubcategoryId && (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full">
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-accent-mint/10 text-accent-mint/80 text-xs rounded-full">
                       {selectedCategory?.subcategories?.find(s => s.id === selectedSubcategoryId)?.name}
                       <button onClick={() => handleSubcategoryClick(null)} className="hover:text-white">
                         <X size={12} />
@@ -295,8 +330,12 @@ const ShopPage: React.FC = () => {
       </section>
 
       {/* Products Grid */}
-      <section className="py-12 bg-dark-bg">
-        <div className="container mx-auto px-4">
+      <section className="py-12 bg-dark-bg relative overflow-hidden">
+        {/* Background decoration */}
+        <div className="absolute top-1/4 right-0 w-[300px] h-[300px] bg-accent-mint/3 rounded-full blur-[150px]" />
+        <div className="absolute bottom-1/4 left-0 w-[250px] h-[250px] bg-amber-500/3 rounded-full blur-[120px]" />
+
+        <div className="container mx-auto px-4 relative z-10">
           {loading ? (
             <div className="flex justify-center py-20">
               <div className="w-12 h-12 border-2 border-accent-mint border-t-transparent rounded-full animate-spin"></div>
@@ -307,39 +346,41 @@ const ShopPage: React.FC = () => {
             </div>
           ) : filteredProducts.length === 0 ? (
             <div className="text-center py-20 bg-darker-bg rounded-2xl border border-gray-800">
-              <ShoppingBag size={56} className="mx-auto text-gray-700 mb-4" />
+              <div className="w-16 h-16 bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <ShoppingBag size={32} className="text-gray-600" />
+              </div>
               <p className="text-gray-400 text-lg font-montserrat">
-                {searchQuery ? "Aucun produit trouvé." : "La boutique est vide pour le moment."}
+                {searchQuery ? "Aucun produit trouve." : "La boutique est vide pour le moment."}
               </p>
             </div>
           ) : (
-            <div className="space-y-10">
+            <div className="space-y-12">
               {/* Results count */}
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between bg-darker-bg/50 backdrop-blur-sm rounded-xl px-4 py-3 border border-gray-800/50">
                 <p className="text-gray-400 text-sm">
-                  <span className="text-white font-bold">{filteredProducts.length}</span> produit{filteredProducts.length > 1 ? 's' : ''} disponible{filteredProducts.length > 1 ? 's' : ''}
+                  <span className="text-accent-mint font-bold">{filteredProducts.length}</span> produit{filteredProducts.length > 1 ? 's' : ''} disponible{filteredProducts.length > 1 ? 's' : ''}
                   {groupedProducts.length > 1 && (
-                    <span className="text-gray-500"> • {groupedProducts.length} catégories</span>
+                    <span className="text-gray-500"> dans {groupedProducts.length} categories</span>
                   )}
                 </p>
               </div>
 
               {/* Grouped products by subcategory */}
               {groupedProducts.map((group) => (
-                <div key={`${group.categoryName}-${group.name}`} className="space-y-4">
+                <div key={`${group.categoryName}-${group.name}`} className="space-y-5">
                   {/* Section header */}
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-1 h-8 bg-accent-mint rounded-full" />
+                      <div className="w-1.5 h-10 bg-gradient-to-b from-accent-mint to-accent-mint/30 rounded-full" />
                       <div>
                         {group.categoryName && !selectedCategoryId && (
-                          <p className="text-xs text-gray-500 uppercase tracking-wider">{group.categoryName}</p>
+                          <p className="text-xs text-accent-mint/70 uppercase tracking-wider font-medium">{group.categoryName}</p>
                         )}
-                        <h2 className="text-xl font-koulen text-white">{group.name}</h2>
+                        <h2 className="text-2xl font-koulen text-white">{group.name}</h2>
                       </div>
                     </div>
-                    <div className="flex-1 h-px bg-gray-800" />
-                    <span className="text-sm text-gray-500 bg-darker-bg px-3 py-1 rounded-full">
+                    <div className="flex-1 h-px bg-gradient-to-r from-gray-800 to-transparent" />
+                    <span className="text-xs text-gray-500 bg-darker-bg px-3 py-1.5 rounded-lg border border-gray-800">
                       {group.products.length} article{group.products.length > 1 ? 's' : ''}
                     </span>
                   </div>
@@ -359,30 +400,32 @@ const ShopPage: React.FC = () => {
                       return (
                         <div
                           key={product.id}
-                          className={`bg-darker-bg rounded-2xl border transition-all duration-300 overflow-hidden group flex flex-col ${
-                            hasPromotion ? 'border-red-500/50 hover:border-red-400' : 'border-gray-800 hover:border-accent-mint/30'
+                          className={`bg-darker-bg rounded-2xl border transition-all duration-300 overflow-hidden group flex flex-col hover:-translate-y-1 hover:shadow-[0_10px_40px_rgba(0,0,0,0.3)] ${
+                            hasPromotion ? 'border-red-500/50 hover:border-red-400' : 'border-gray-800 hover:border-accent-mint/40'
                           }`}
                         >
                           {/* Image */}
-                          <div className="aspect-square bg-gray-800 relative overflow-hidden">
+                          <div className="aspect-square bg-gray-900 relative overflow-hidden">
                             <img
                               src={product.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(product.name)}&background=1E1E1E&color=fff&size=200`}
                               alt={product.name}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                             />
+                            {/* Gradient overlay */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-darker-bg/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                             {/* Promotion badge */}
                             {hasPromotion && (
-                              <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded-lg flex items-center gap-1">
+                              <div className="absolute top-2 left-2 bg-gradient-to-r from-red-500 to-red-600 text-white px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-lg">
                                 <Tag size={12} />
                                 <span className="font-bold text-xs">-{promotion.discountPercent}%</span>
                               </div>
                             )}
                             {/* Price tag overlay */}
-                            <div className="absolute top-2 right-2 bg-darker-bg/90 backdrop-blur-sm px-2 py-1 rounded-lg">
+                            <div className="absolute top-2 right-2 bg-darker-bg/95 backdrop-blur-sm px-2.5 py-1.5 rounded-lg border border-gray-700/50">
                               {hasPromotion ? (
                                 <div className="flex flex-col items-end">
                                   <span className="text-gray-500 line-through text-xs">{basePrice.toFixed(2)}€</span>
-                                  <span className="text-red-400 font-koulen text-lg">{discountedPrice.toFixed(2)}€</span>
+                                  <span className="text-red-400 font-koulen text-lg leading-tight">{discountedPrice.toFixed(2)}€</span>
                                 </div>
                               ) : (
                                 <span className="text-accent-mint font-koulen text-lg">{basePrice.toFixed(2)}€</span>
@@ -391,8 +434,11 @@ const ShopPage: React.FC = () => {
                           </div>
 
                           {/* Content */}
-                          <div className="p-3 flex flex-col flex-1">
-                            <h3 className="font-bold text-white text-sm leading-tight mb-2 line-clamp-2">{product.name}</h3>
+                          <div className="p-3 flex flex-col flex-1 border-t border-gray-800/50">
+                            <h3 className="font-bold text-white text-sm leading-tight mb-1 line-clamp-2 group-hover:text-accent-mint transition-colors">{product.name}</h3>
+                            {product.description && (
+                              <p className="text-gray-500 text-xs line-clamp-2 mb-2">{product.description}</p>
+                            )}
 
                             {/* Variant selector */}
                             {product.variants && product.variants.length > 0 && (
@@ -402,9 +448,9 @@ const ShopPage: React.FC = () => {
                                   ...prev,
                                   [product.id]: e.target.value ? parseInt(e.target.value) : undefined
                                 }))}
-                                className="w-full bg-dark-bg border border-gray-700 rounded-lg p-1.5 text-white text-xs focus:border-accent-mint outline-none mb-2"
+                                className="w-full bg-dark-bg border border-gray-700 rounded-lg p-1.5 text-white text-xs focus:border-accent-mint outline-none mb-2 cursor-pointer hover:border-gray-600 transition-colors"
                               >
-                                <option value="">Format</option>
+                                <option value="">Variante</option>
                                 {product.variants.map((v) => (
                                   <option key={v.id} value={v.id}>
                                     {v.name}
@@ -418,7 +464,7 @@ const ShopPage: React.FC = () => {
 
                             {/* Quantity and add button in row */}
                             <div className="flex items-center gap-2">
-                              <div className="flex items-center bg-dark-bg rounded-lg">
+                              <div className="flex items-center bg-dark-bg rounded-lg border border-gray-800">
                                 <button
                                   onClick={() => updateQuantity(product.id, -1)}
                                   disabled={quantity <= 1}
@@ -438,7 +484,7 @@ const ShopPage: React.FC = () => {
                               {/* Add to cart button */}
                               <button
                                 onClick={() => handleAddToCart(product)}
-                                className="flex-1 py-2 bg-accent-mint text-darker-bg font-bold text-xs rounded-lg hover:bg-white transition-colors flex items-center justify-center gap-1"
+                                className="flex-1 py-2 bg-accent-mint text-darker-bg font-bold text-xs rounded-lg hover:bg-white transition-all hover:shadow-[0_0_20px_rgba(119,241,190,0.3)] flex items-center justify-center gap-1"
                               >
                                 <ShoppingCart size={12} />
                                 <span className="hidden sm:inline">Ajouter</span>
