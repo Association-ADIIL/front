@@ -238,69 +238,87 @@ const ProductManagementPage: React.FC = () => {
 
   return (
     <div>
+      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <h1 className="text-2xl sm:text-4xl font-bold text-accent-mint font-koulen">GESTION DES PRODUITS</h1>
-        <button onClick={handleOpenCreate} className="bg-accent-mint text-darker-bg font-bold py-2 px-4 rounded hover:bg-white transition-colors flex items-center">
-          <Plus size={20} className="mr-2" /> Ajouter un produit
+        <div className="flex items-center gap-4">
+          <div className="w-1 h-12 bg-orange-500 rounded-full hidden sm:block" />
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="px-2 py-0.5 bg-orange-500/20 text-orange-400 text-[10px] font-bold rounded-full uppercase tracking-wide">Gestion</span>
+            </div>
+            <h1 className="text-2xl sm:text-4xl font-bold text-white font-koulen">PRODUITS</h1>
+          </div>
+        </div>
+        <button
+          onClick={handleOpenCreate}
+          className="bg-orange-500 hover:bg-orange-400 text-white font-bold py-2.5 px-5 rounded-xl transition-all flex items-center gap-2 hover:shadow-lg hover:shadow-orange-500/20"
+        >
+          <Plus size={18} /> Ajouter
         </button>
       </div>
 
       {/* Search bar */}
       <div className="mb-6">
         <div className="relative max-w-md">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
           <input
             type="text"
             placeholder="Rechercher un produit..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-dark-bg border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-accent-mint focus:outline-none transition-colors"
+            className="w-full pl-11 pr-4 py-3 bg-darker-bg border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:border-orange-500/50 focus:outline-none transition-colors"
           />
         </div>
         {searchQuery && (
-          <p className="text-sm text-gray-400 mt-2">
-            {filteredProducts.length} produit(s) trouve(s)
+          <p className="text-xs text-gray-500 mt-2 ml-1">
+            <span className="text-orange-400 font-bold">{filteredProducts.length}</span> produit(s) trouve(s)
           </p>
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {paginatedProducts.map((product) => (
-          <div key={product.id} className={`bg-darker-bg border border-gray-800 rounded-2xl p-6 flex flex-col relative group hover:border-gray-700 transition-colors ${!product.active ? 'opacity-60' : ''}`}>
-            <div className="flex items-start justify-between mb-4">
-                 <div className="w-16 h-16 rounded bg-dark-bg flex items-center justify-center overflow-hidden">
-                     <img 
-                        src={product.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(product.name)}&background=1E1E1E&color=fff&size=64`} 
-                        alt={product.name} 
-                        className="w-full h-full object-cover" 
-                     />
-                 </div>
-                 <div className="flex space-x-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity bg-darker-bg p-1 rounded absolute top-4 right-4 shadow-lg">
-                    <button onClick={() => handleOpenEdit(product)} className="p-2 text-blue-400 hover:bg-blue-900/20 rounded"><Edit2 size={18} /></button>
-                    <button onClick={() => handleOpenDelete(product)} className="p-2 text-red-400 hover:bg-red-900/20 rounded"><Trash2 size={18} /></button>
-                 </div>
+          <div key={product.id} className={`bg-darker-bg border border-gray-800 rounded-2xl overflow-hidden flex flex-col relative group hover:border-orange-500/30 hover:-translate-y-1 transition-all hover:shadow-lg hover:shadow-orange-500/5 ${!product.active ? 'opacity-60' : ''}`}>
+            {/* Image Section */}
+            <div className="h-32 bg-dark-bg relative overflow-hidden">
+              <img
+                src={product.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(product.name)}&background=1E1E1E&color=fff&size=256`}
+                alt={product.name}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              />
+              {/* Action buttons overlay */}
+              <div className="absolute top-2 right-2 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                <button onClick={() => handleOpenEdit(product)} className="p-2 bg-darker-bg/90 backdrop-blur text-blue-400 hover:bg-blue-500/20 rounded-lg transition-colors"><Edit2 size={16} /></button>
+                <button onClick={() => handleOpenDelete(product)} className="p-2 bg-darker-bg/90 backdrop-blur text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"><Trash2 size={16} /></button>
+              </div>
+              {/* Status badge */}
+              <div className="absolute bottom-2 left-2">
+                <span className={`text-[10px] font-bold px-2 py-1 rounded-lg ${product.active ? 'bg-green-500/20 text-green-400 backdrop-blur' : 'bg-red-500/20 text-red-400 backdrop-blur'}`}>
+                  {product.active ? 'Disponible' : 'Indisponible'}
+                </span>
+              </div>
             </div>
 
-            <h3 className="text-xl font-bold mb-1">{product.name}</h3>
-            <p className="text-sm text-gray-400 mb-3 line-clamp-2">{product.description}</p>
-            <p className="text-lg font-bold text-accent-mint mb-2">{product.price} €</p>
+            {/* Content */}
+            <div className="p-4 flex-1 flex flex-col">
+              <h3 className="font-bold text-white mb-1 group-hover:text-orange-400 transition-colors">{product.name}</h3>
+              <p className="text-xs text-gray-500 mb-3 line-clamp-2">{product.description}</p>
 
-            <div className="mt-auto pt-4 border-t border-gray-800 space-y-2">
-                <div className="flex flex-wrap gap-2">
-                  <span className={`text-xs font-bold px-2 py-1 rounded ${product.active ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
-                      {product.active ? 'Disponible' : 'Indisponible'}
-                  </span>
+              <div className="mt-auto pt-3 border-t border-gray-800/50 flex items-center justify-between">
+                <div className="flex flex-wrap gap-1">
                   {product.subcategory && (
-                    <span className="text-xs font-medium px-2 py-1 rounded bg-blue-900/30 text-blue-400">
-                      {product.subcategory.category?.name} / {product.subcategory.name}
+                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400">
+                      {product.subcategory.name}
+                    </span>
+                  )}
+                  {product.variants && (product.variants as any[]).length > 0 && (
+                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400">
+                      {(product.variants as any[]).length} var.
                     </span>
                   )}
                 </div>
-                {product.variants && (product.variants as any[]).length > 0 && (
-                  <div className="text-xs text-accent-mint flex items-center gap-1">
-                    <span className="font-bold">{(product.variants as any[]).length}</span> variante(s)
-                  </div>
-                )}
+                <span className="text-lg font-koulen text-orange-400">{product.price}€</span>
+              </div>
             </div>
           </div>
         ))}
@@ -368,6 +386,7 @@ const ProductManagementPage: React.FC = () => {
                   label="Image du produit"
                   aspectRatio="16:9"
                   onCleanup={handleImageCleanup}
+                  accentColor="orange"
                 />
             </div>
 
@@ -422,7 +441,7 @@ const ProductManagementPage: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => setEditingVariantId(null)}
-                                className="text-accent-mint hover:text-white text-sm font-medium"
+                                className="text-orange-400 hover:text-white text-sm font-medium"
                               >
                                 Terminer
                               </button>
@@ -508,7 +527,7 @@ const ProductManagementPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleAddVariant}
-                  className="mt-3 bg-accent-mint text-darker-bg font-bold py-2 px-4 rounded hover:bg-white transition-colors text-sm"
+                  className="mt-3 bg-orange-400 text-darker-bg font-bold py-2 px-4 rounded hover:bg-white transition-colors text-sm"
                 >
                   Ajouter cette variante
                 </button>
@@ -517,7 +536,7 @@ const ProductManagementPage: React.FC = () => {
           </div>
           <div className="flex justify-end pt-4">
               <button type="button" onClick={handleCloseModal} className="mr-4 px-4 py-2 text-gray-300 hover:text-white">Annuler</button>
-              <button type="submit" className="bg-accent-mint text-darker-bg font-bold py-2 px-6 rounded hover:bg-white transition-colors">Enregistrer</button>
+              <button type="submit" className="bg-orange-400 text-darker-bg font-bold py-2 px-6 rounded hover:bg-white transition-colors">Enregistrer</button>
           </div>
         </form>
       </Modal>
@@ -529,7 +548,7 @@ const ProductManagementPage: React.FC = () => {
         title="Confirmer la suppression"
       >
         <div className="text-center">
-            <p className="mb-6 text-lg">Êtes-vous sûr de vouloir supprimer le produit <span className="font-bold text-accent-mint">{productToDelete?.name}</span> ?</p>
+            <p className="mb-6 text-lg">Êtes-vous sûr de vouloir supprimer le produit <span className="font-bold text-orange-400">{productToDelete?.name}</span> ?</p>
             <div className="flex justify-center space-x-4">
                 <button onClick={() => setIsDeleteModalOpen(false)} className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500">Annuler</button>
                 <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-500">Supprimer</button>

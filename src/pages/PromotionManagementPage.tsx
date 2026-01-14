@@ -394,7 +394,7 @@ const PromotionManagementPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="w-8 h-8 border-2 border-accent-mint border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 border-2 border-rose-400 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -403,16 +403,22 @@ const PromotionManagementPage: React.FC = () => {
     <div>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-koulen text-white">PROMOTIONS</h1>
-          <p className="text-gray-400 text-sm">{promotions.length} promotion(s)</p>
+        <div className="flex items-center gap-4">
+          <div className="w-1 h-12 bg-rose-500 rounded-full hidden sm:block" />
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="px-2 py-0.5 bg-rose-500/20 text-rose-400 text-[10px] font-bold rounded-full uppercase tracking-wide">Gestion</span>
+              <span className="text-xs text-gray-500">{promotions.length} promotion(s)</span>
+            </div>
+            <h1 className="text-2xl sm:text-4xl font-koulen text-white">PROMOTIONS</h1>
+          </div>
         </div>
         <button
           onClick={handleOpenCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-accent-mint text-dark-bg font-bold rounded-lg hover:bg-accent-mint/90 transition-colors"
+          className="bg-rose-500 hover:bg-rose-400 text-white font-bold py-2.5 px-5 rounded-xl transition-all flex items-center gap-2 hover:shadow-lg hover:shadow-rose-500/20"
         >
           <Plus size={18} />
-          Nouvelle promotion
+          Nouvelle
         </button>
       </div>
 
@@ -423,7 +429,7 @@ const PromotionManagementPage: React.FC = () => {
           <p className="text-gray-400">Aucune promotion pour le moment</p>
           <button
             onClick={handleOpenCreate}
-            className="mt-4 text-accent-mint hover:underline"
+            className="mt-4 text-rose-400 hover:underline"
           >
             Creer une promotion
           </button>
@@ -434,7 +440,7 @@ const PromotionManagementPage: React.FC = () => {
             <div
               key={promotion.id}
               className={`bg-darker-bg rounded-xl border ${
-                promotion.isActive ? 'border-accent-mint/30' : 'border-gray-800'
+                promotion.isActive ? 'border-rose-400/30' : 'border-gray-800'
               } p-5`}
             >
               <div className="flex items-start justify-between gap-4">
@@ -443,7 +449,7 @@ const PromotionManagementPage: React.FC = () => {
                     <span
                       className={`px-2 py-0.5 text-xs font-bold rounded ${
                         promotion.isActive
-                          ? 'bg-accent-mint/20 text-accent-mint'
+                          ? 'bg-rose-400/20 text-rose-400'
                           : 'bg-gray-700 text-gray-400'
                       }`}
                     >
@@ -455,7 +461,7 @@ const PromotionManagementPage: React.FC = () => {
                   </div>
 
                   <h3 className="text-lg font-bold text-white mb-1">{promotion.name}</h3>
-                  <p className="text-accent-mint font-medium mb-1">{promotion.displayTitle}</p>
+                  <p className="text-rose-400 font-medium mb-1">{promotion.displayTitle}</p>
                   <p className="text-gray-400 text-sm">{promotion.displayMessage}</p>
 
                   <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-gray-500">
@@ -487,7 +493,7 @@ const PromotionManagementPage: React.FC = () => {
                     title={promotion.isActive ? 'Desactiver' : 'Activer'}
                   >
                     {promotion.isActive ? (
-                      <ToggleRight size={20} className="text-accent-mint" />
+                      <ToggleRight size={20} className="text-rose-400" />
                     ) : (
                       <ToggleLeft size={20} className="text-gray-500" />
                     )}
@@ -539,7 +545,7 @@ const PromotionManagementPage: React.FC = () => {
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-3 py-2 bg-dark-bg border border-gray-700 rounded-lg text-white focus:border-accent-mint focus:outline-none"
+                className="w-full px-3 py-2 bg-dark-bg border border-gray-700 rounded-lg text-white focus:border-rose-400 focus:outline-none"
                 required
               />
             </div>
@@ -548,7 +554,7 @@ const PromotionManagementPage: React.FC = () => {
               <select
                 value={formData.type}
                 onChange={(e) => setFormData({ ...formData, type: e.target.value as PromotionType })}
-                className="w-full px-3 py-2 bg-dark-bg border border-gray-700 rounded-lg text-white focus:border-accent-mint focus:outline-none"
+                className="w-full px-3 py-2 bg-dark-bg border border-gray-700 rounded-lg text-white focus:border-rose-400 focus:outline-none"
               >
                 {PROMOTION_TYPES.map((type) => (
                   <option key={type.value} value={type.value}>
@@ -565,7 +571,7 @@ const PromotionManagementPage: React.FC = () => {
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={2}
-              className="w-full px-3 py-2 bg-dark-bg border border-gray-700 rounded-lg text-white focus:border-accent-mint focus:outline-none"
+              className="w-full px-3 py-2 bg-dark-bg border border-gray-700 rounded-lg text-white focus:border-rose-400 focus:outline-none"
             />
           </div>
 
@@ -579,7 +585,7 @@ const PromotionManagementPage: React.FC = () => {
                 value={formData.displayTitle}
                 onChange={(e) => setFormData({ ...formData, displayTitle: e.target.value })}
                 placeholder="ex: Bonus Premier Versement !"
-                className="w-full px-3 py-2 bg-dark-bg border border-gray-700 rounded-lg text-white focus:border-accent-mint focus:outline-none"
+                className="w-full px-3 py-2 bg-dark-bg border border-gray-700 rounded-lg text-white focus:border-rose-400 focus:outline-none"
                 required
               />
             </div>
@@ -590,7 +596,7 @@ const PromotionManagementPage: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, displayMessage: e.target.value })}
                 placeholder="ex: +10% offerts de 10 a 20€ et +15% au-dela de 20€ !"
                 rows={2}
-                className="w-full px-3 py-2 bg-dark-bg border border-gray-700 rounded-lg text-white focus:border-accent-mint focus:outline-none"
+                className="w-full px-3 py-2 bg-dark-bg border border-gray-700 rounded-lg text-white focus:border-rose-400 focus:outline-none"
                 required
               />
             </div>
@@ -608,7 +614,7 @@ const PromotionManagementPage: React.FC = () => {
                     checked={formData.firstRechargeOnly}
                     onChange={(e) => setFormData({ ...formData, firstRechargeOnly: e.target.checked })}
                     disabled={!!formData.maxUsagePerUser}
-                    className="w-4 h-4 rounded border-gray-600 bg-dark-bg text-accent-mint focus:ring-accent-mint disabled:opacity-50"
+                    className="w-4 h-4 rounded border-gray-600 bg-dark-bg text-rose-400 focus:ring-rose-400 disabled:opacity-50"
                   />
                   <span className="text-gray-300 text-sm">Premier versement uniquement</span>
                 </label>
@@ -620,7 +626,7 @@ const PromotionManagementPage: React.FC = () => {
                     onChange={(e) => setFormData({ ...formData, maxUsagePerUser: e.target.value })}
                     placeholder="0"
                     min="0"
-                    className="w-full px-2 py-1.5 bg-dark-bg border border-gray-700 rounded text-white text-sm focus:border-accent-mint focus:outline-none"
+                    className="w-full px-2 py-1.5 bg-dark-bg border border-gray-700 rounded text-white text-sm focus:border-rose-400 focus:outline-none"
                   />
                 </div>
               </div>
@@ -631,7 +637,7 @@ const PromotionManagementPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={addTier}
-                    className="text-accent-mint text-sm hover:underline"
+                    className="text-rose-400 text-sm hover:underline"
                   >
                     + Ajouter un palier
                   </button>
@@ -646,7 +652,7 @@ const PromotionManagementPage: React.FC = () => {
                           type="number"
                           value={tier.minAmount}
                           onChange={(e) => updateTier(index, 'minAmount', parseFloat(e.target.value) || 0)}
-                          className="w-full px-2 py-1.5 bg-darker-bg border border-gray-700 rounded text-white text-sm focus:border-accent-mint focus:outline-none"
+                          className="w-full px-2 py-1.5 bg-darker-bg border border-gray-700 rounded text-white text-sm focus:border-rose-400 focus:outline-none"
                         />
                       </div>
                       <div>
@@ -658,7 +664,7 @@ const PromotionManagementPage: React.FC = () => {
                             updateTier(index, 'maxAmount', e.target.value ? parseFloat(e.target.value) : null)
                           }
                           placeholder="Illimite"
-                          className="w-full px-2 py-1.5 bg-darker-bg border border-gray-700 rounded text-white text-sm focus:border-accent-mint focus:outline-none"
+                          className="w-full px-2 py-1.5 bg-darker-bg border border-gray-700 rounded text-white text-sm focus:border-rose-400 focus:outline-none"
                         />
                       </div>
                       <div>
@@ -667,7 +673,7 @@ const PromotionManagementPage: React.FC = () => {
                           type="number"
                           value={tier.bonusPercent}
                           onChange={(e) => updateTier(index, 'bonusPercent', parseFloat(e.target.value) || 0)}
-                          className="w-full px-2 py-1.5 bg-darker-bg border border-gray-700 rounded text-white text-sm focus:border-accent-mint focus:outline-none"
+                          className="w-full px-2 py-1.5 bg-darker-bg border border-gray-700 rounded text-white text-sm focus:border-rose-400 focus:outline-none"
                         />
                       </div>
                     </div>
@@ -702,7 +708,7 @@ const PromotionManagementPage: React.FC = () => {
                     checked={formData.firstOrderOnly}
                     onChange={(e) => setFormData({ ...formData, firstOrderOnly: e.target.checked })}
                     disabled={!!formData.maxUsagePerUser}
-                    className="w-4 h-4 rounded border-gray-600 bg-dark-bg text-accent-mint focus:ring-accent-mint disabled:opacity-50"
+                    className="w-4 h-4 rounded border-gray-600 bg-dark-bg text-rose-400 focus:ring-rose-400 disabled:opacity-50"
                   />
                   <span className="text-gray-300 text-sm">Premiere commande uniquement</span>
                 </label>
@@ -714,7 +720,7 @@ const PromotionManagementPage: React.FC = () => {
                     onChange={(e) => setFormData({ ...formData, maxUsagePerUser: e.target.value })}
                     placeholder="0"
                     min="0"
-                    className="w-full px-2 py-1.5 bg-dark-bg border border-gray-700 rounded text-white text-sm focus:border-accent-mint focus:outline-none"
+                    className="w-full px-2 py-1.5 bg-dark-bg border border-gray-700 rounded text-white text-sm focus:border-rose-400 focus:outline-none"
                   />
                 </div>
               </div>
@@ -725,7 +731,7 @@ const PromotionManagementPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={addDiscountTier}
-                    className="text-accent-mint text-sm hover:underline"
+                    className="text-rose-400 text-sm hover:underline"
                   >
                     + Ajouter un palier
                   </button>
@@ -740,7 +746,7 @@ const PromotionManagementPage: React.FC = () => {
                           type="number"
                           value={tier.minOrderAmount}
                           onChange={(e) => updateDiscountTier(index, 'minOrderAmount', parseFloat(e.target.value) || 0)}
-                          className="w-full px-2 py-1.5 bg-darker-bg border border-gray-700 rounded text-white text-sm focus:border-accent-mint focus:outline-none"
+                          className="w-full px-2 py-1.5 bg-darker-bg border border-gray-700 rounded text-white text-sm focus:border-rose-400 focus:outline-none"
                         />
                       </div>
                       <div>
@@ -752,7 +758,7 @@ const PromotionManagementPage: React.FC = () => {
                             updateDiscountTier(index, 'maxOrderAmount', e.target.value ? parseFloat(e.target.value) : null)
                           }
                           placeholder="Illimite"
-                          className="w-full px-2 py-1.5 bg-darker-bg border border-gray-700 rounded text-white text-sm focus:border-accent-mint focus:outline-none"
+                          className="w-full px-2 py-1.5 bg-darker-bg border border-gray-700 rounded text-white text-sm focus:border-rose-400 focus:outline-none"
                         />
                       </div>
                       <div>
@@ -763,7 +769,7 @@ const PromotionManagementPage: React.FC = () => {
                           type="number"
                           value={tier.discountValue}
                           onChange={(e) => updateDiscountTier(index, 'discountValue', parseFloat(e.target.value) || 0)}
-                          className="w-full px-2 py-1.5 bg-darker-bg border border-gray-700 rounded text-white text-sm focus:border-accent-mint focus:outline-none"
+                          className="w-full px-2 py-1.5 bg-darker-bg border border-gray-700 rounded text-white text-sm focus:border-rose-400 focus:outline-none"
                         />
                       </div>
                     </div>
@@ -795,7 +801,7 @@ const PromotionManagementPage: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, discountPercent: e.target.value })}
                   min="1"
                   max="100"
-                  className="w-32 px-3 py-2 bg-dark-bg border border-gray-700 rounded-lg text-white focus:border-accent-mint focus:outline-none"
+                  className="w-32 px-3 py-2 bg-dark-bg border border-gray-700 rounded-lg text-white focus:border-rose-400 focus:outline-none"
                 />
               </div>
 
@@ -808,7 +814,7 @@ const PromotionManagementPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={selectAllProducts}
-                      className="text-accent-mint text-xs hover:underline"
+                      className="text-rose-400 text-xs hover:underline"
                     >
                       Tout selectionner
                     </button>
@@ -830,7 +836,7 @@ const PromotionManagementPage: React.FC = () => {
                     value={productSearch}
                     onChange={(e) => setProductSearch(e.target.value)}
                     placeholder="Rechercher un produit..."
-                    className="w-full pl-9 pr-3 py-2 bg-dark-bg border border-gray-700 rounded-lg text-white text-sm focus:border-accent-mint focus:outline-none"
+                    className="w-full pl-9 pr-3 py-2 bg-dark-bg border border-gray-700 rounded-lg text-white text-sm focus:border-rose-400 focus:outline-none"
                   />
                 </div>
 
@@ -848,11 +854,11 @@ const PromotionManagementPage: React.FC = () => {
                           key={product.id}
                           onClick={() => toggleProductSelection(parseInt(product.id))}
                           className={`flex items-center gap-3 p-3 cursor-pointer transition-colors ${
-                            isSelected ? 'bg-accent-mint/10' : 'hover:bg-darker-bg'
+                            isSelected ? 'bg-rose-400/10' : 'hover:bg-darker-bg'
                           }`}
                         >
                           <div className={`w-5 h-5 rounded border flex items-center justify-center ${
-                            isSelected ? 'bg-accent-mint border-accent-mint' : 'border-gray-600'
+                            isSelected ? 'bg-rose-400 border-rose-400' : 'border-gray-600'
                           }`}>
                             {isSelected && <Check size={14} className="text-dark-bg" />}
                           </div>
@@ -866,7 +872,7 @@ const PromotionManagementPage: React.FC = () => {
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className={`text-sm font-medium truncate ${isSelected ? 'text-accent-mint' : 'text-white'}`}>
+                            <p className={`text-sm font-medium truncate ${isSelected ? 'text-rose-400' : 'text-white'}`}>
                               {product.name}
                             </p>
                             <p className="text-xs text-gray-500">{product.price.toFixed(2)}€</p>
@@ -894,7 +900,7 @@ const PromotionManagementPage: React.FC = () => {
                 type="checkbox"
                 checked={formData.isActive}
                 onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                className="w-4 h-4 rounded border-gray-600 bg-dark-bg text-accent-mint focus:ring-accent-mint"
+                className="w-4 h-4 rounded border-gray-600 bg-dark-bg text-rose-400 focus:ring-rose-400"
               />
               <span className="text-gray-300 text-sm">Promotion active</span>
             </label>
@@ -906,7 +912,7 @@ const PromotionManagementPage: React.FC = () => {
                   type="date"
                   value={formData.startDate}
                   onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                  className="w-full px-3 py-2 bg-dark-bg border border-gray-700 rounded-lg text-white focus:border-accent-mint focus:outline-none"
+                  className="w-full px-3 py-2 bg-dark-bg border border-gray-700 rounded-lg text-white focus:border-rose-400 focus:outline-none"
                 />
               </div>
               <div>
@@ -915,7 +921,7 @@ const PromotionManagementPage: React.FC = () => {
                   type="date"
                   value={formData.endDate}
                   onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                  className="w-full px-3 py-2 bg-dark-bg border border-gray-700 rounded-lg text-white focus:border-accent-mint focus:outline-none"
+                  className="w-full px-3 py-2 bg-dark-bg border border-gray-700 rounded-lg text-white focus:border-rose-400 focus:outline-none"
                 />
               </div>
               <div>
@@ -926,7 +932,7 @@ const PromotionManagementPage: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, maxUsage: e.target.value })}
                   placeholder="0"
                   min="0"
-                  className="w-full px-3 py-2 bg-dark-bg border border-gray-700 rounded-lg text-white focus:border-accent-mint focus:outline-none"
+                  className="w-full px-3 py-2 bg-dark-bg border border-gray-700 rounded-lg text-white focus:border-rose-400 focus:outline-none"
                 />
               </div>
             </div>
@@ -943,7 +949,7 @@ const PromotionManagementPage: React.FC = () => {
             </button>
             <button
               type="submit"
-              className="flex-1 py-2.5 bg-accent-mint text-dark-bg font-bold rounded-lg hover:bg-accent-mint/90 transition-colors"
+              className="flex-1 py-2.5 bg-rose-400 text-dark-bg font-bold rounded-lg hover:bg-rose-400/90 transition-colors"
             >
               {currentPromotion ? 'Enregistrer' : 'Creer'}
             </button>
@@ -976,13 +982,13 @@ const PromotionManagementPage: React.FC = () => {
       <Modal isOpen={isStatsModalOpen} onClose={() => setIsStatsModalOpen(false)} title={`Statistiques - ${statsPromotion?.name || ''}`}>
         {loadingStats ? (
           <div className="flex justify-center py-8">
-            <div className="w-8 h-8 border-2 border-accent-mint border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-8 h-8 border-2 border-rose-400 border-t-transparent rounded-full animate-spin"></div>
           </div>
         ) : stats ? (
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-dark-bg rounded-lg p-4 text-center">
-                <p className="text-2xl font-koulen text-accent-mint">{stats.totalUsages}</p>
+                <p className="text-2xl font-koulen text-rose-400">{stats.totalUsages}</p>
                 <p className="text-gray-400 text-sm">Utilisations</p>
               </div>
               <div className="bg-dark-bg rounded-lg p-4 text-center">
@@ -1005,7 +1011,7 @@ const PromotionManagementPage: React.FC = () => {
                         {new Date(usage.createdAt).toLocaleDateString('fr-FR')}
                       </span>
                       <span className="text-white">{usage.originalAmount.toFixed(2)}€</span>
-                      <span className="text-accent-mint">+{usage.bonusAmount.toFixed(2)}€</span>
+                      <span className="text-rose-400">+{usage.bonusAmount.toFixed(2)}€</span>
                     </div>
                   ))}
                 </div>

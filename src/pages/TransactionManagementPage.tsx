@@ -209,23 +209,36 @@ const TransactionManagementPage: React.FC = () => {
 
   return (
     <div>
-      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-        <h1 className="text-2xl sm:text-4xl font-bold text-accent-mint font-koulen">TRANSACTIONS</h1>
-        <div className="flex gap-2 w-full md:w-auto flex-wrap">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-1 h-12 bg-pink-500 rounded-full hidden sm:block" />
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="px-2 py-0.5 bg-pink-500/20 text-pink-400 text-[10px] font-bold rounded-full uppercase tracking-wide">Finances</span>
+            </div>
+            <h1 className="text-2xl sm:text-4xl font-bold text-white font-koulen">TRANSACTIONS</h1>
+          </div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-darker-bg border border-gray-800 rounded-2xl p-4 mb-6">
+        <div className="flex gap-3 flex-wrap">
           <div className="relative flex-grow md:flex-grow-0">
+            <Search size={18} className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500" />
             <input
               type="text"
               placeholder="Rechercher..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="bg-darker-bg border border-gray-700 rounded-md py-2 pl-10 pr-4 text-white focus:border-accent-mint focus:outline-none w-full md:w-48"
+              className="bg-dark-bg border border-gray-800 rounded-xl py-2.5 pl-11 pr-4 text-white placeholder-gray-500 focus:border-pink-500/50 focus:outline-none w-full md:w-48 transition-colors"
             />
-            <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           </div>
           <select
             value={typeFilter}
             onChange={e => setTypeFilter(e.target.value as TransactionType | '')}
-            className="bg-darker-bg border border-gray-700 rounded-md py-2 px-3 text-white focus:border-accent-mint focus:outline-none"
+            className="bg-dark-bg border border-gray-800 rounded-xl py-2.5 px-4 text-white focus:border-pink-500/50 focus:outline-none transition-colors"
           >
             <option value="">Tous types</option>
             <option value="ORDER">Commandes</option>
@@ -235,17 +248,17 @@ const TransactionManagementPage: React.FC = () => {
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value as PaymentStatus | '')}
-            className="bg-darker-bg border border-gray-700 rounded-md py-2 px-3 text-white focus:border-accent-mint focus:outline-none"
+            className="bg-dark-bg border border-gray-800 rounded-xl py-2.5 px-4 text-white focus:border-pink-500/50 focus:outline-none transition-colors"
           >
             <option value="">Tous statuts</option>
             <option value="PENDING">En attente</option>
-            <option value="PAID">Payé</option>
-            <option value="REFUNDED">Remboursé</option>
+            <option value="PAID">Paye</option>
+            <option value="REFUNDED">Rembourse</option>
           </select>
           <select
             value={methodFilter}
             onChange={e => setMethodFilter(e.target.value as PaymentMethod | '')}
-            className="bg-darker-bg border border-gray-700 rounded-md py-2 px-3 text-white focus:border-accent-mint focus:outline-none"
+            className="bg-dark-bg border border-gray-800 rounded-xl py-2.5 px-4 text-white focus:border-pink-500/50 focus:outline-none transition-colors"
           >
             <option value="">Toutes méthodes</option>
             <option value="HELLOASSO">HelloAsso</option>
@@ -254,7 +267,7 @@ const TransactionManagementPage: React.FC = () => {
           </select>
           <button
             onClick={fetchTransactions}
-            className="bg-accent-mint text-darker-bg font-bold py-2 px-4 rounded hover:bg-white transition-colors flex items-center whitespace-nowrap"
+            className="bg-pink-400 text-darker-bg font-bold py-2 px-4 rounded hover:bg-white transition-colors flex items-center whitespace-nowrap"
           >
             <RefreshCw size={18} className="mr-2" /> Actualiser
           </button>
@@ -367,7 +380,7 @@ const TransactionManagementPage: React.FC = () => {
                   <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
                       onClick={() => handleOpenDetail(tx)}
-                      className="text-accent-mint hover:text-white mr-2"
+                      className="text-pink-400 hover:text-white mr-2"
                       title="Voir détails"
                     >
                       <ExternalLink size={18} />

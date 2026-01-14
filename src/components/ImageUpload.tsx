@@ -11,7 +11,17 @@ interface ImageUploadProps {
   label: string;
   aspectRatio?: string;
   onCleanup?: (imageUrl: string) => void;
+  accentColor?: 'mint' | 'orange' | 'purple' | 'cyan' | 'rose' | 'amber';
 }
+
+const accentColors = {
+  mint: { border: 'border-accent-mint', bg: 'bg-accent-mint/10', button: 'bg-accent-mint' },
+  orange: { border: 'border-orange-400', bg: 'bg-orange-400/10', button: 'bg-orange-500' },
+  purple: { border: 'border-purple-400', bg: 'bg-purple-400/10', button: 'bg-purple-500' },
+  cyan: { border: 'border-cyan-400', bg: 'bg-cyan-400/10', button: 'bg-cyan-500' },
+  rose: { border: 'border-rose-400', bg: 'bg-rose-400/10', button: 'bg-rose-500' },
+  amber: { border: 'border-amber-400', bg: 'bg-amber-400/10', button: 'bg-amber-500' },
+};
 
 const ImageUpload: React.FC<ImageUploadProps> = ({
   value,
@@ -20,7 +30,9 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   label,
   aspectRatio = '16:9',
   onCleanup,
+  accentColor = 'mint',
 }) => {
+  const colors = accentColors[accentColor];
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
@@ -153,7 +165,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
         <div
           className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
             dragActive
-              ? 'border-accent-mint bg-accent-mint/10'
+              ? `${colors.border} ${colors.bg}`
               : 'border-gray-600 hover:border-gray-500 bg-dark-bg'
           } ${uploading ? 'pointer-events-none' : ''}`}
           onDragEnter={handleDrag}
@@ -176,7 +188,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
                 </p>
                 <button
                   type="button"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-accent-mint text-darker-bg font-bold rounded hover:bg-white transition-colors"
+                  className={`inline-flex items-center gap-2 px-4 py-2 ${colors.button} text-darker-bg font-bold rounded hover:bg-white transition-colors`}
                 >
                   <Upload size={16} />
                   Choisir un fichier

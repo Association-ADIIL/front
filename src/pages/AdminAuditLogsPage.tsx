@@ -105,7 +105,7 @@ const AdminAuditLogsPage: React.FC = () => {
       case 'DELETE':
         return 'bg-red-500/20 text-red-400 border-red-500/30';
       case 'CONFIRM_PAYMENT':
-        return 'bg-accent-mint/20 text-accent-mint border-accent-mint/30';
+        return 'bg-gray-400/20 text-gray-400 border-gray-400/30';
       case 'REFUND':
         return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
       case 'CANCEL':
@@ -179,7 +179,7 @@ const AdminAuditLogsPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="w-10 h-10 border-2 border-accent-mint border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-10 h-10 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -189,16 +189,23 @@ const AdminAuditLogsPage: React.FC = () => {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl sm:text-4xl font-bold font-koulen text-accent-mint mb-2">LOGS</h1>
-        <p className="text-gray-400">Historique de toutes les actions administratives</p>
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-6">
+        <div className="w-1 h-12 bg-gray-500 rounded-full hidden sm:block" />
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="px-2 py-0.5 bg-gray-500/20 text-gray-400 text-[10px] font-bold rounded-full uppercase tracking-wide">Systeme</span>
+          </div>
+          <h1 className="text-2xl sm:text-4xl font-bold font-koulen text-white">LOGS D'AUDIT</h1>
+          <p className="text-gray-500 text-sm mt-1">Historique de toutes les actions administratives</p>
+        </div>
       </div>
 
       {/* Filters */}
       <div className="bg-darker-bg p-6 rounded-2xl border border-gray-800 mb-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <Filter size={20} className="text-accent-mint" />
+            <Filter size={20} className="text-gray-400" />
             <h2 className="text-lg font-semibold text-white">Filtres</h2>
           </div>
           {hasActiveFilters && (
@@ -222,7 +229,7 @@ const AdminAuditLogsPage: React.FC = () => {
                 value={filterUser}
                 onChange={(e) => setFilterUser(e.target.value)}
                 placeholder="Rechercher..."
-                className="w-full bg-dark-bg border border-gray-700 rounded-xl pl-10 pr-4 py-2.5 text-white focus:outline-none focus:border-accent-mint"
+                className="w-full bg-dark-bg border border-gray-700 rounded-xl pl-10 pr-4 py-2.5 text-white focus:outline-none focus:border-gray-400"
               />
             </div>
           </div>
@@ -233,7 +240,7 @@ const AdminAuditLogsPage: React.FC = () => {
             <select
               value={filterAction}
               onChange={(e) => setFilterAction(e.target.value)}
-              className="w-full bg-dark-bg border border-gray-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-accent-mint"
+              className="w-full bg-dark-bg border border-gray-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-gray-400"
             >
               <option value="">Toutes les actions</option>
               {uniqueActions.map(action => (
@@ -248,7 +255,7 @@ const AdminAuditLogsPage: React.FC = () => {
             <select
               value={filterEntityType}
               onChange={(e) => setFilterEntityType(e.target.value)}
-              className="w-full bg-dark-bg border border-gray-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-accent-mint"
+              className="w-full bg-dark-bg border border-gray-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-gray-400"
             >
               <option value="">Tous les types</option>
               {uniqueEntityTypes.map(type => (
@@ -264,7 +271,7 @@ const AdminAuditLogsPage: React.FC = () => {
               type="date"
               value={filterDateFrom}
               onChange={(e) => setFilterDateFrom(e.target.value)}
-              className="w-full bg-dark-bg border border-gray-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-accent-mint"
+              className="w-full bg-dark-bg border border-gray-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-gray-400"
             />
           </div>
 
@@ -275,7 +282,7 @@ const AdminAuditLogsPage: React.FC = () => {
               type="date"
               value={filterDateTo}
               onChange={(e) => setFilterDateTo(e.target.value)}
-              className="w-full bg-dark-bg border border-gray-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-accent-mint"
+              className="w-full bg-dark-bg border border-gray-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-gray-400"
             />
           </div>
         </div>
@@ -339,7 +346,7 @@ const AdminAuditLogsPage: React.FC = () => {
                     <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
                         onClick={() => setSelectedLog(log)}
-                        className="text-accent-mint hover:text-white transition-colors p-2 hover:bg-white/10 rounded-full"
+                        className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-full"
                         title="Voir les details"
                       >
                         <Eye size={18} />
@@ -373,7 +380,7 @@ const AdminAuditLogsPage: React.FC = () => {
               <div className="space-y-1">
                 <h3 className="text-sm font-medium text-gray-400">Date et Heure</h3>
                 <p className="text-white flex items-center gap-2">
-                  <Calendar size={16} className="text-accent-mint" />
+                  <Calendar size={16} className="text-gray-400" />
                   {new Date(selectedLog.createdAt).toLocaleString('fr-FR')}
                 </p>
               </div>
@@ -381,7 +388,7 @@ const AdminAuditLogsPage: React.FC = () => {
               <div className="space-y-1">
                 <h3 className="text-sm font-medium text-gray-400">Auteur de l'action</h3>
                 <p className="text-white flex items-center gap-2">
-                  <User size={16} className="text-accent-mint" />
+                  <User size={16} className="text-gray-400" />
                   {selectedLog.userName || 'Systeme'}
                   <span className="text-xs text-gray-500">(ID: {selectedLog.userId || 'N/A'})</span>
                 </p>
@@ -409,7 +416,7 @@ const AdminAuditLogsPage: React.FC = () => {
 
             <div className="border-t border-gray-700 pt-4">
               <h3 className="text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
-                <FileText size={16} className="text-accent-mint" />
+                <FileText size={16} className="text-gray-400" />
                 Details Techniques
               </h3>
               <div className="bg-dark-bg rounded-xl p-4 border border-gray-700 overflow-x-auto">

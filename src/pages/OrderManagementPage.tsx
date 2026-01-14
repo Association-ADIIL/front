@@ -72,6 +72,17 @@ const OrderManagementPage: React.FC = () => {
     onConfirm: () => {},
   });
 
+  // Cash refund choice modal state
+  const [cashRefundModal, setCashRefundModal] = useState<{
+    isOpen: boolean;
+    itemsToRefund: { orderItemId: number; quantity: number }[];
+    refundAmount: number;
+  }>({
+    isOpen: false,
+    itemsToRefund: [],
+    refundAmount: 0,
+  });
+
   const fetchOrders = async () => {
     try {
       const data = await getAllOrders();
@@ -323,8 +334,9 @@ const OrderManagementPage: React.FC = () => {
           addNotification('info', 'Aucun article sélectionné pour le remboursement');
           return;
       }
-      
+
       const isHelloAsso = currentOrder.paymentMethod === 'HELLOASSO';
+      const isCashCB = currentOrder.paymentMethod === 'CASH_CB';
       const isFullRefundAttempt = currentOrder.items.every(item => {
           const totalRefundedForThisItem = (item.refundedQuantity || 0) + (refundSelection[item.id] || 0);
           return totalRefundedForThisItem >= item.quantity;
@@ -337,6 +349,18 @@ const OrderManagementPage: React.FC = () => {
 
       // Calculate refund amount considering discounts
       const refundCalc = calculateRefundAmount(currentOrder, refundSelection);
+
+      // For CASH_CB orders, show special modal with cancel/refund choice
+      if (isCashCB) {
+          setCashRefundModal({
+              isOpen: true,
+              itemsToRefund,
+              refundAmount: refundCalc.actualAmount,
+          });
+          return;
+      }
+
+      // For other payment methods, show normal confirm dialog
       let confirmMessage = `Vous allez rembourser un montant de ${refundCalc.actualAmount.toFixed(2)} €.`;
       if (refundCalc.hasCartDiscount) {
         confirmMessage += `\n\n(Avant réduction panier: ${refundCalc.itemPricesTotal.toFixed(2)} €)`;
@@ -362,6 +386,28 @@ const OrderManagementPage: React.FC = () => {
       });
   };
 
+  // Handle cash refund with choice (cancel only or refund to balance)
+  const handleCashRefund = async (refundToBalance: boolean) => {
+      if (!currentOrder) return;
+
+      try {
+          await refundOrderItems(currentOrder.id, cashRefundModal.itemsToRefund, {
+              refundToBalance,
+              cancelOnly: !refundToBalance,
+          });
+          const message = refundToBalance
+              ? 'Remboursement effectué sur le solde ADIIL'
+              : 'Commande annulée avec succès';
+          addNotification('success', message);
+          setIsModalOpen(false);
+          setCashRefundModal({ isOpen: false, itemsToRefund: [], refundAmount: 0 });
+          fetchOrders();
+      } catch (error) {
+          logger.error('Refund failed', error);
+          addNotification('error', (error as any).message || 'Échec de l\'opération');
+      }
+  };
+
   // Determine if full refund attempt for button disable state
   const isFullRefundAttemptForButton = currentOrder?.items.every(item => {
       const availableRefund = item.quantity - (item.refundedQuantity || 0);
@@ -372,33 +418,42 @@ const OrderManagementPage: React.FC = () => {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl sm:text-4xl font-bold text-accent-mint font-koulen">COMMANDES & INSCRIPTIONS</h1>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <div className="flex items-center gap-4">
+          <div className="w-1 h-12 bg-green-500 rounded-full hidden sm:block" />
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-[10px] font-bold rounded-full uppercase tracking-wide">Gestion</span>
+            </div>
+            <h1 className="text-2xl sm:text-4xl font-bold text-white font-koulen">COMMANDES & INSCRIPTIONS</h1>
+          </div>
+        </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-6 bg-darker-bg p-1.5 rounded-xl border border-gray-800 w-fit">
         <button
           onClick={() => setViewMode('orders')}
-          className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg font-bold transition-all text-sm sm:text-base ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-bold transition-all text-sm ${
             viewMode === 'orders'
-              ? 'bg-accent-mint text-darker-bg'
-              : 'bg-darker-bg text-gray-400 hover:bg-gray-800 border border-gray-700'
+              ? 'bg-green-500 text-darker-bg shadow-lg shadow-green-500/20'
+              : 'text-gray-400 hover:text-white'
           }`}
         >
-          <ShoppingBag size={18} />
+          <ShoppingBag size={16} />
           <span className="hidden sm:inline">Commandes</span>
           <span className="sm:hidden">Cmd</span>
         </button>
         <button
           onClick={() => setViewMode('inscriptions')}
-          className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg font-bold transition-all text-sm sm:text-base ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-bold transition-all text-sm ${
             viewMode === 'inscriptions'
-              ? 'bg-accent-mint text-darker-bg'
-              : 'bg-darker-bg text-gray-400 hover:bg-gray-800 border border-gray-700'
+              ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20'
+              : 'text-gray-400 hover:text-white'
           }`}
         >
-          <Calendar size={18} />
+          <Calendar size={16} />
           <span className="hidden sm:inline">Inscriptions</span>
           <span className="sm:hidden">Insc</span>
         </button>
@@ -406,17 +461,17 @@ const OrderManagementPage: React.FC = () => {
 
       {/* Filters for orders */}
       {viewMode === 'orders' && (
-        <div className="bg-darker-bg border border-gray-700 rounded-lg p-4 mb-4">
+        <div className="bg-darker-bg border border-gray-800 rounded-2xl p-4 mb-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Search */}
             <div>
-              <label className="text-gray-400 font-bold block mb-2 text-sm">Rechercher (ID, Nom, Email):</label>
+              <label className="text-gray-500 font-medium block mb-2 text-xs uppercase tracking-wide">Rechercher</label>
               <input
                 type="text"
                 value={orderSearchQuery}
                 onChange={(e) => setOrderSearchQuery(e.target.value)}
-                placeholder="Rechercher..."
-                className="w-full bg-dark-bg border border-gray-600 rounded px-4 py-2 text-white focus:border-accent-mint outline-none min-h-[42px]"
+                placeholder="ID, Nom, Email..."
+                className="w-full bg-dark-bg border border-gray-800 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:border-green-500/50 outline-none transition-colors"
               />
             </div>
 
@@ -445,18 +500,17 @@ const OrderManagementPage: React.FC = () => {
 
       {/* Filters for inscriptions */}
       {viewMode === 'inscriptions' && (
-        <>
-          <div className="bg-darker-bg border border-gray-700 rounded-lg p-4 mb-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-darker-bg border border-gray-800 rounded-2xl p-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Search Filter */}
             <div>
-              <label className="text-gray-400 font-bold block mb-2 text-sm">Rechercher (ID, Nom, Email, Événement):</label>
+              <label className="text-gray-500 font-medium block mb-2 text-xs uppercase tracking-wide">Rechercher</label>
               <input
                 type="text"
                 value={inscriptionSearchQuery}
                 onChange={(e) => setInscriptionSearchQuery(e.target.value)}
-                placeholder="Rechercher..."
-                className="w-full bg-dark-bg border border-gray-600 rounded px-4 py-2 text-white focus:border-accent-mint outline-none min-h-[42px]"
+                placeholder="ID, Nom, Email, Evenement..."
+                className="w-full bg-dark-bg border border-gray-800 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:border-purple-500/50 outline-none transition-colors"
               />
             </div>
 
@@ -473,7 +527,7 @@ const OrderManagementPage: React.FC = () => {
             {/* Payment Method Filter */}
             <div>
               <MultiSelect
-                label="Méthode de paiement:"
+                label="Methode de paiement:"
                 options={PAYMENT_METHOD_OPTIONS}
                 selectedValues={paymentMethodFilter}
                 onChange={setPaymentMethodFilter}
@@ -481,7 +535,6 @@ const OrderManagementPage: React.FC = () => {
             </div>
           </div>
         </div>
-        </>
       )}
 
       {viewMode === 'orders' ? (
@@ -554,7 +607,7 @@ const OrderManagementPage: React.FC = () => {
                       {order.discountAmount > 0 && order.originalPrice ? (
                         <div>
                           <span className="text-gray-500 line-through text-xs block">{order.originalPrice.toFixed(2)} €</span>
-                          <span className="font-bold text-accent-mint">{order.totalPrice.toFixed(2)} €</span>
+                          <span className="font-bold text-green-400">{order.totalPrice.toFixed(2)} €</span>
                           <div className="text-xs mt-0.5 space-y-0.5">
                             {order.productDiscountAmount && order.productDiscountAmount > 0 && (
                               <span className="text-red-400 flex items-center gap-1">
@@ -563,14 +616,14 @@ const OrderManagementPage: React.FC = () => {
                               </span>
                             )}
                             {order.cartDiscountAmount && order.cartDiscountAmount > 0 && (
-                              <span className="text-accent-mint flex items-center gap-1">
+                              <span className="text-green-400 flex items-center gap-1">
                                 <Gift size={10} />
                                 Panier: -{order.cartDiscountAmount.toFixed(2)}€
                               </span>
                             )}
                             {(!order.productDiscountAmount || order.productDiscountAmount === 0) &&
                              (!order.cartDiscountAmount || order.cartDiscountAmount === 0) && (
-                              <span className="text-accent-mint flex items-center gap-1">
+                              <span className="text-green-400 flex items-center gap-1">
                                 <Gift size={10} />
                                 -{order.discountAmount.toFixed(2)}€
                               </span>
@@ -578,13 +631,13 @@ const OrderManagementPage: React.FC = () => {
                           </div>
                         </div>
                       ) : (
-                        <span className="font-bold text-accent-mint">{order.totalPrice.toFixed(2)} €</span>
+                        <span className="font-bold text-green-400">{order.totalPrice.toFixed(2)} €</span>
                       )}
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
                         onClick={() => handleOpenEditOrder(order)}
-                        className="text-accent-mint hover:text-white transition-colors"
+                        className="text-green-400 hover:text-white transition-colors"
                         title="Voir les détails"
                       >
                         <Eye size={18} />
@@ -674,7 +727,7 @@ const OrderManagementPage: React.FC = () => {
                      inscription.paymentMethod === 'CASH_CB' ? 'Espèces/CB' : 'Gratuit'}
                   </td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button onClick={() => handleOpenEditInscription(inscription)} className="text-accent-mint hover:text-white">
+                    <button onClick={() => handleOpenEditInscription(inscription)} className="text-green-400 hover:text-white">
                       <Edit2 size={18} />
                     </button>
                   </td>
@@ -712,7 +765,7 @@ const OrderManagementPage: React.FC = () => {
                         <button
                             key={status}
                             onClick={() => handleStatusChange(status)}
-                            className={`py-2 px-4 rounded border ${currentOrder?.orderStatus === status ? 'bg-accent-mint text-darker-bg border-accent-mint font-bold' : 'bg-dark-bg border-gray-600 text-gray-400 hover:bg-gray-700'}`}
+                            className={`py-2 px-4 rounded border ${currentOrder?.orderStatus === status ? 'bg-green-400 text-darker-bg border-green-400 font-bold' : 'bg-dark-bg border-gray-600 text-gray-400 hover:bg-gray-700'}`}
                         >
                             {status === 'PENDING' ? 'En attente' :
                              status === 'PAID' ? 'Payée' :
@@ -729,7 +782,7 @@ const OrderManagementPage: React.FC = () => {
                         <button
                             key={status}
                             onClick={() => handlePaymentStatusChange(status)}
-                            className={`py-2 px-4 rounded border ${currentOrder?.paymentStatus === status ? 'bg-accent-mint text-darker-bg border-accent-mint font-bold' : 'bg-dark-bg border-gray-600 text-gray-400 hover:bg-gray-700'}`}
+                            className={`py-2 px-4 rounded border ${currentOrder?.paymentStatus === status ? 'bg-green-400 text-darker-bg border-green-400 font-bold' : 'bg-dark-bg border-gray-600 text-gray-400 hover:bg-gray-700'}`}
                         >
                              {status === 'PENDING' ? 'Non Payé' :
                               status === 'PAID' ? 'Payé' : 'Remboursé'}
@@ -760,7 +813,7 @@ const OrderManagementPage: React.FC = () => {
                                             {item.product.name}
                                         </div>
                                         {item.variantId && item.product.variants && (
-                                            <div className="text-accent-mint text-sm mt-1">
+                                            <div className="text-green-400 text-sm mt-1">
                                                 {(item.product.variants as any[]).find((v: any) => String(v.id) === String(item.variantId))?.name}
                                             </div>
                                         )}
@@ -790,7 +843,7 @@ const OrderManagementPage: React.FC = () => {
                                                 <div className="text-gray-500 line-through text-sm">
                                                     {originalTotal.toFixed(2)} €
                                                 </div>
-                                                <div className="text-accent-mint font-bold">
+                                                <div className="text-green-400 font-bold">
                                                     {effectiveTotal.toFixed(2)} €
                                                 </div>
                                             </div>
@@ -806,10 +859,10 @@ const OrderManagementPage: React.FC = () => {
                     </ul>
                     {/* Discount info */}
                     {currentOrder.discountAmount > 0 && (
-                        <div className="mt-4 p-3 bg-accent-mint/10 border border-accent-mint/20 rounded-lg">
+                        <div className="mt-4 p-3 bg-green-400/10 border border-green-400/20 rounded-lg">
                             <div className="flex items-center gap-2 mb-2">
-                                <Gift size={16} className="text-accent-mint" />
-                                <span className="text-accent-mint font-bold">Réductions appliquées</span>
+                                <Gift size={16} className="text-green-400" />
+                                <span className="text-green-400 font-bold">Réductions appliquées</span>
                             </div>
                             <div className="flex justify-between text-sm">
                                 <span className="text-gray-400">Prix original:</span>
@@ -824,21 +877,21 @@ const OrderManagementPage: React.FC = () => {
                             {currentOrder.cartDiscountAmount && currentOrder.cartDiscountAmount > 0 && (
                                 <div className="flex justify-between text-sm">
                                     <span className="text-gray-400">Réduction panier{currentOrder.promotion ? ` (${currentOrder.promotion.name})` : ''}:</span>
-                                    <span className="text-accent-mint">-{currentOrder.cartDiscountAmount.toFixed(2)} €</span>
+                                    <span className="text-green-400">-{currentOrder.cartDiscountAmount.toFixed(2)} €</span>
                                 </div>
                             )}
                             {currentOrder.productDiscountAmount && currentOrder.productDiscountAmount > 0 &&
                              currentOrder.cartDiscountAmount && currentOrder.cartDiscountAmount > 0 && (
-                                <div className="flex justify-between text-sm mt-1 pt-1 border-t border-accent-mint/20">
+                                <div className="flex justify-between text-sm mt-1 pt-1 border-t border-green-400/20">
                                     <span className="text-gray-400">Total réductions:</span>
-                                    <span className="text-accent-mint font-bold">-{currentOrder.discountAmount.toFixed(2)} €</span>
+                                    <span className="text-green-400 font-bold">-{currentOrder.discountAmount.toFixed(2)} €</span>
                                 </div>
                             )}
                         </div>
                     )}
                     <div className="mt-4 pt-4 border-t border-gray-700 flex justify-between items-center">
                         <span className="text-gray-400 font-medium">Total {currentOrder.discountAmount > 0 ? 'après réduction' : 'de la commande'}:</span>
-                        <span className="text-accent-mint font-bold text-xl">{currentOrder.totalPrice.toFixed(2)} €</span>
+                        <span className="text-green-400 font-bold text-xl">{currentOrder.totalPrice.toFixed(2)} €</span>
                     </div>
                     {currentOrder.refundedAmount > 0 && (
                         <div className="mt-2 flex justify-between items-center text-sm">
@@ -883,7 +936,7 @@ const OrderManagementPage: React.FC = () => {
                                             <td className="py-2">
                                                 {item.product.name}
                                                 {variantInfo && (
-                                                    <span className="ml-2 text-xs text-accent-mint">
+                                                    <span className="ml-2 text-xs text-green-400">
                                                         ({variantInfo.name})
                                                     </span>
                                                 )}
@@ -907,7 +960,7 @@ const OrderManagementPage: React.FC = () => {
                                                                     <>
                                                                         {hasProductDiscount && <span className="text-red-400 line-through text-xs mr-1">{item.price.toFixed(2)} €</span>}
                                                                         {!hasProductDiscount && <span className="text-gray-500 line-through text-xs mr-1">{item.price.toFixed(2)} €</span>}
-                                                                        <span className="text-accent-mint">{effectivePrice.toFixed(2)} €</span>
+                                                                        <span className="text-green-400">{effectivePrice.toFixed(2)} €</span>
                                                                     </>
                                                                 ) : (
                                                                     <span className="text-red-400">{item.price.toFixed(2)} €</span>
@@ -929,7 +982,7 @@ const OrderManagementPage: React.FC = () => {
                                                 />
                                                 <button
                                                     onClick={() => toggleRefundItem(item.id, availableRefund)}
-                                                    className={`p-1 rounded ${refundSelection[item.id] > 0 ? 'text-accent-mint' : 'text-gray-500'}`}
+                                                    className={`p-1 rounded ${refundSelection[item.id] > 0 ? 'text-green-400' : 'text-gray-500'}`}
                                                 >
                                                     {refundSelection[item.id] > 0 ? <CheckSquare size={18} /> : <Square size={18} />}
                                                 </button>
@@ -990,7 +1043,7 @@ const OrderManagementPage: React.FC = () => {
                         <button
                             key={status}
                             onClick={() => handleInscriptionPaymentStatusChange(status)}
-                            className={`py-2 px-4 rounded border ${currentInscription?.paymentStatus === status ? 'bg-accent-mint text-darker-bg border-accent-mint font-bold' : 'bg-dark-bg border-gray-600 text-gray-400 hover:bg-gray-700'}`}
+                            className={`py-2 px-4 rounded border ${currentInscription?.paymentStatus === status ? 'bg-green-400 text-darker-bg border-green-400 font-bold' : 'bg-dark-bg border-gray-600 text-gray-400 hover:bg-gray-700'}`}
                         >
                              {status === 'PENDING' ? 'En attente' :
                               status === 'PAID' ? 'Payé' : 'Remboursé'}
@@ -1025,7 +1078,7 @@ const OrderManagementPage: React.FC = () => {
                               <span className="text-white font-medium">
                                 {eventOption?.name || option.name || 'Option'}
                               </span>
-                              <span className="text-accent-mint font-bold">
+                              <span className="text-green-400 font-bold">
                                 {option.price > 0 ? `+${option.price} €` : 'Gratuit'}
                               </span>
                             </div>
@@ -1113,6 +1166,57 @@ const OrderManagementPage: React.FC = () => {
         cancelText="Annuler"
         variant="danger"
       />
+
+      {/* Cash Refund Choice Modal */}
+      <Modal
+        isOpen={cashRefundModal.isOpen}
+        onClose={() => setCashRefundModal({ isOpen: false, itemsToRefund: [], refundAmount: 0 })}
+        title="Annulation / Remboursement"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-300">
+            Cette commande a été payée en espèces/CB. Que souhaitez-vous faire ?
+          </p>
+          <p className="text-lg font-bold text-white">
+            Montant : {cashRefundModal.refundAmount.toFixed(2)} €
+          </p>
+
+          <div className="space-y-3 pt-4">
+            <button
+              onClick={() => handleCashRefund(false)}
+              className="w-full py-3 px-4 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-lg transition-colors"
+            >
+              Annuler la commande
+            </button>
+            <p className="text-xs text-gray-500 text-center">
+              La commande sera annulée sans remboursement sur le solde ADIIL.
+              Utilisez cette option si le client n'a pas encore payé ou si vous lui rendez l'argent en main propre.
+            </p>
+
+            <div className="border-t border-gray-700 pt-3">
+              <button
+                onClick={() => handleCashRefund(true)}
+                className="w-full py-3 px-4 bg-green-400 hover:bg-white text-darker-bg font-bold rounded-lg transition-colors"
+              >
+                Rembourser sur le solde ADIIL
+              </button>
+              <p className="text-xs text-gray-500 text-center mt-2">
+                Le montant sera crédité sur le solde ADIIL du client.
+                Utilisez cette option s'il y a eu un problème et que le client a déjà payé.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-4 border-t border-gray-700">
+            <button
+              onClick={() => setCashRefundModal({ isOpen: false, itemsToRefund: [], refundAmount: 0 })}
+              className="px-4 py-2 text-gray-300 hover:text-white"
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

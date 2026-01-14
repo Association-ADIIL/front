@@ -348,28 +348,40 @@ const EventManagementPage: React.FC = () => {
 
   return (
     <div>
+      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <h1 className="text-2xl sm:text-4xl font-bold text-accent-mint font-koulen">GESTION DES EVENEMENTS</h1>
-        <button onClick={handleOpenCreate} className="bg-accent-mint text-darker-bg font-bold py-2 px-4 rounded hover:bg-white transition-colors flex items-center">
-          <Plus size={20} className="mr-2" /> Creer un evenement
+        <div className="flex items-center gap-4">
+          <div className="w-1 h-12 bg-purple-500 rounded-full hidden sm:block" />
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 text-[10px] font-bold rounded-full uppercase tracking-wide">Gestion</span>
+            </div>
+            <h1 className="text-2xl sm:text-4xl font-bold text-white font-koulen">EVENEMENTS</h1>
+          </div>
+        </div>
+        <button
+          onClick={handleOpenCreate}
+          className="bg-purple-500 hover:bg-purple-400 text-white font-bold py-2.5 px-5 rounded-xl transition-all flex items-center gap-2 hover:shadow-lg hover:shadow-purple-500/20"
+        >
+          <Plus size={18} /> Creer
         </button>
       </div>
 
       {/* Search bar */}
       <div className="mb-6">
         <div className="relative max-w-md">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
           <input
             type="text"
             placeholder="Rechercher un evenement..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-dark-bg border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-accent-mint focus:outline-none transition-colors"
+            className="w-full pl-11 pr-4 py-3 bg-darker-bg border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:border-purple-500/50 focus:outline-none transition-colors"
           />
         </div>
         {searchQuery && (
-          <p className="text-sm text-gray-400 mt-2">
-            {filteredEvents.length} evenement(s) trouve(s)
+          <p className="text-xs text-gray-500 mt-2 ml-1">
+            <span className="text-purple-400 font-bold">{filteredEvents.length}</span> evenement(s) trouve(s)
           </p>
         )}
       </div>
@@ -398,7 +410,7 @@ const EventManagementPage: React.FC = () => {
                     </button>
                     <button
                       onClick={() => handleExportCsv(event.id, event.title)}
-                      className="p-2 text-accent-mint hover:bg-green-900/20 rounded"
+                      className="p-2 text-purple-400 hover:bg-green-900/20 rounded"
                       title="Exporter les participants (CSV)"
                     >
                       <Download size={18} />
@@ -439,14 +451,14 @@ const EventManagementPage: React.FC = () => {
               <div className="flex justify-between text-sm items-center">
                 <span className="text-gray-400">
                   Inscrits: {event.registeredPeople}{isUnlimited ? '' : ` / ${event.totalPlaces}`}
-                  {isUnlimited && <span className="text-accent-mint ml-1">(illimite)</span>}
+                  {isUnlimited && <span className="text-purple-400 ml-1">(illimite)</span>}
                 </span>
                 <span className={`text-xs font-bold px-2 py-1 rounded ${!isFull ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
                     {event.status === 'OPEN' && !isFull ? 'Ouvert' : 'Complet/Ferme'}
                 </span>
               </div>
               {event.formFields && (event.formFields as any[]).length > 0 && (
-                <div className="text-xs text-accent-mint flex items-center gap-1">
+                <div className="text-xs text-purple-400 flex items-center gap-1">
                   <span className="font-bold">{(event.formFields as any[]).length}</span> champ(s) personnalisé(s)
                 </div>
               )}
@@ -530,6 +542,7 @@ const EventManagementPage: React.FC = () => {
                   label="Image de couverture"
                   aspectRatio="16:9"
                   onCleanup={handleImageCleanup}
+                  accentColor="purple"
                 />
             </div>
 
@@ -595,7 +608,7 @@ const EventManagementPage: React.FC = () => {
                         type="checkbox"
                         checked={newField.required}
                         onChange={(e) => setNewField(prev => ({ ...prev, required: e.target.checked }))}
-                        className="mr-2 h-4 w-4 accent-accent-mint"
+                        className="mr-2 h-4 w-4 accent-purple-400"
                       />
                       <span className="text-sm text-white">Champ requis</span>
                     </label>
@@ -631,7 +644,7 @@ const EventManagementPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleAddFormField}
-                  className="mt-3 bg-accent-mint text-darker-bg font-bold py-2 px-4 rounded hover:bg-white transition-colors text-sm"
+                  className="mt-3 bg-purple-400 text-darker-bg font-bold py-2 px-4 rounded hover:bg-white transition-colors text-sm"
                 >
                   Ajouter ce champ
                 </button>
@@ -640,7 +653,7 @@ const EventManagementPage: React.FC = () => {
           </div>
           <div className="flex justify-end pt-4">
               <button type="button" onClick={handleCloseModal} className="mr-4 px-4 py-2 text-gray-300 hover:text-white">Annuler</button>
-              <button type="submit" className="bg-accent-mint text-darker-bg font-bold py-2 px-6 rounded hover:bg-white transition-colors">Enregistrer</button>
+              <button type="submit" className="bg-purple-400 text-darker-bg font-bold py-2 px-6 rounded hover:bg-white transition-colors">Enregistrer</button>
           </div>
         </form>
       </Modal>
@@ -652,7 +665,7 @@ const EventManagementPage: React.FC = () => {
         title="Confirmer la suppression"
       >
         <div className="text-center">
-            <p className="mb-6 text-lg">Êtes-vous sûr de vouloir supprimer l'événement <span className="font-bold text-accent-mint">{eventToDelete?.title}</span> ?</p>
+            <p className="mb-6 text-lg">Êtes-vous sûr de vouloir supprimer l'événement <span className="font-bold text-purple-400">{eventToDelete?.title}</span> ?</p>
             <div className="flex justify-center space-x-4">
                 <button onClick={() => setIsDeleteModalOpen(false)} className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500">Annuler</button>
                 <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-500">Supprimer</button>
@@ -686,7 +699,7 @@ const EventManagementPage: React.FC = () => {
                   <p className="text-xs text-gray-400">Payees</p>
                 </div>
                 <div className="bg-dark-bg rounded-lg p-3 text-center">
-                  <p className="text-2xl font-bold text-accent-mint">
+                  <p className="text-2xl font-bold text-purple-400">
                     {inscriptions.reduce((sum, i) => sum + i.quantity, 0)}
                   </p>
                   <p className="text-xs text-gray-400">Places</p>

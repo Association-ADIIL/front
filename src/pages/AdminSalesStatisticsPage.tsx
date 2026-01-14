@@ -166,62 +166,71 @@ const AdminSalesStatisticsPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="w-10 h-10 border-2 border-accent-mint border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-10 h-10 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl sm:text-4xl font-bold font-koulen text-accent-mint mb-2">STATISTIQUES DE VENTE</h1>
-        <p className="text-gray-400">Vue d'ensemble des revenus et des ventes</p>
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
+        <div className="flex items-center gap-4">
+          <div className="w-1 h-12 bg-emerald-500 rounded-full hidden sm:block" />
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded-full uppercase tracking-wide">Finances</span>
+            </div>
+            <h1 className="text-2xl sm:text-4xl font-bold font-koulen text-white">STATISTIQUES</h1>
+            <p className="text-gray-500 text-sm mt-1">Vue d'ensemble des revenus et des ventes</p>
+          </div>
+        </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {/* Total Revenue */}
-        <div className="bg-darker-bg p-6 rounded-2xl border border-gray-800">
+        <div className="bg-darker-bg p-5 rounded-2xl border border-gray-800 hover:border-emerald-500/30 transition-all group">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-accent-mint/10 rounded-xl">
-              <DollarSign className="text-accent-mint" size={24} />
+            <div className="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
+              <DollarSign className="text-emerald-400" size={22} />
             </div>
           </div>
-          <h3 className="text-gray-400 text-sm mb-1">Revenu Total</h3>
-          <p className="text-2xl font-bold text-white">{stats.totalRevenue.toFixed(2)} EUR</p>
+          <p className="text-xs text-gray-500 mb-1">Revenu Total</p>
+          <h3 className="text-3xl font-koulen text-emerald-400">{stats.totalRevenue.toFixed(2)}€</h3>
         </div>
 
         {/* Revenue This Month */}
-        <div className="bg-darker-bg p-6 rounded-2xl border border-gray-800">
+        <div className="bg-darker-bg p-5 rounded-2xl border border-gray-800 hover:border-orange-500/30 transition-all group">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-orange-500/10 rounded-xl">
-              <TrendingUp className="text-orange-400" size={24} />
+            <div className="w-12 h-12 bg-orange-500/10 rounded-xl flex items-center justify-center group-hover:bg-orange-500/20 transition-colors">
+              <TrendingUp className="text-orange-400" size={22} />
             </div>
           </div>
-          <h3 className="text-gray-400 text-sm mb-1">Revenu ce mois</h3>
-          <p className="text-2xl font-bold text-white">{stats.revenueThisMonth.toFixed(2)} EUR</p>
+          <p className="text-xs text-gray-500 mb-1">Revenu ce mois</p>
+          <h3 className="text-3xl font-koulen text-orange-400">{stats.revenueThisMonth.toFixed(2)}€</h3>
         </div>
 
         {/* Revenue This Year */}
-        <div className="bg-darker-bg p-6 rounded-2xl border border-gray-800">
+        <div className="bg-darker-bg p-5 rounded-2xl border border-gray-800 hover:border-purple-500/30 transition-all group">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-purple-500/10 rounded-xl">
-              <Calendar className="text-purple-400" size={24} />
+            <div className="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center group-hover:bg-purple-500/20 transition-colors">
+              <Calendar className="text-purple-400" size={22} />
             </div>
           </div>
-          <h3 className="text-gray-400 text-sm mb-1">Revenu cette annee</h3>
-          <p className="text-2xl font-bold text-white">{stats.revenueThisYear.toFixed(2)} EUR</p>
+          <p className="text-xs text-gray-500 mb-1">Revenu cette annee</p>
+          <h3 className="text-3xl font-koulen text-purple-400">{stats.revenueThisYear.toFixed(2)}€</h3>
         </div>
 
         {/* Total Transactions */}
-        <div className="bg-darker-bg p-6 rounded-2xl border border-gray-800">
+        <div className="bg-darker-bg p-5 rounded-2xl border border-gray-800 hover:border-blue-500/30 transition-all group">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-blue-500/10 rounded-xl">
-              <Users className="text-blue-500" size={24} />
+            <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
+              <Users className="text-blue-400" size={22} />
             </div>
           </div>
-          <h3 className="text-gray-400 text-sm mb-1">Transactions</h3>
-          <p className="text-2xl font-bold text-white">{stats.totalOrders + stats.totalInscriptions}</p>
+          <p className="text-xs text-gray-500 mb-1">Transactions</p>
+          <h3 className="text-3xl font-koulen text-blue-400">{stats.totalOrders + stats.totalInscriptions}</h3>
         </div>
       </div>
 
@@ -230,7 +239,7 @@ const AdminSalesStatisticsPage: React.FC = () => {
         {/* Orders Stats */}
         <div className="bg-darker-bg p-6 rounded-2xl border border-gray-800">
           <div className="flex items-center gap-3 mb-4">
-            <ShoppingBag className="text-accent-mint" size={24} />
+            <ShoppingBag className="text-emerald-400" size={24} />
             <h2 className="text-xl font-bold text-white">Commandes Boutique</h2>
           </div>
           <div className="space-y-3">

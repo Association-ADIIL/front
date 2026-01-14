@@ -399,13 +399,22 @@ const FileManagementPage: React.FC = () => {
 
   return (
     <div>
+      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <h1 className="text-2xl sm:text-4xl font-bold text-accent-mint font-koulen">GESTION DES FICHIERS</h1>
+        <div className="flex items-center gap-4">
+          <div className="w-1 h-12 bg-amber-500 rounded-full hidden sm:block" />
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 text-[10px] font-bold rounded-full uppercase tracking-wide">Systeme</span>
+            </div>
+            <h1 className="text-2xl sm:text-4xl font-bold text-white font-koulen">FICHIERS</h1>
+          </div>
+        </div>
         <button
           onClick={() => setIsCreateFolderModalOpen(true)}
-          className="bg-accent-mint text-darker-bg font-bold py-2 px-4 rounded hover:bg-white transition-colors flex items-center gap-2"
+          className="bg-amber-500 hover:bg-amber-400 text-white font-bold py-2.5 px-5 rounded-xl transition-all flex items-center gap-2 hover:shadow-lg hover:shadow-amber-500/20"
         >
-          <FolderPlus size={20} />
+          <FolderPlus size={18} />
           <span className="hidden sm:inline">Nouveau dossier</span><span className="sm:hidden">Dossier</span>
         </button>
       </div>
@@ -414,7 +423,7 @@ const FileManagementPage: React.FC = () => {
       <div className="flex items-center gap-2 mb-6 text-sm">
         <button
           onClick={() => setCurrentFolder('documents')}
-          className="flex items-center gap-1 text-accent-mint hover:text-white transition-colors"
+          className="flex items-center gap-1 text-amber-400 hover:text-white transition-colors"
         >
           <Home size={16} />
           Racine
@@ -424,7 +433,7 @@ const FileManagementPage: React.FC = () => {
             <ChevronRight size={16} className="text-gray-600" />
             <button
               onClick={() => setCurrentFolder(crumb.path)}
-              className="text-accent-mint hover:text-white transition-colors"
+              className="text-amber-400 hover:text-white transition-colors"
             >
               {crumb.name}
             </button>
@@ -436,7 +445,7 @@ const FileManagementPage: React.FC = () => {
       <div
         className={`card p-6 mb-8 text-center border-2 border-dashed transition-all ${
           isDragging
-            ? 'border-accent-mint bg-accent-mint/10'
+            ? 'border-amber-400 bg-amber-400/10'
             : 'border-gray-700'
         } ${isUploading ? 'opacity-50' : ''}`}
         onDragEnter={handleDragEnter}
@@ -458,7 +467,7 @@ const FileManagementPage: React.FC = () => {
             isUploading ? 'cursor-not-allowed' : ''
           }`}
         >
-          <Upload size={36} className="text-accent-mint mb-3" />
+          <Upload size={36} className="text-amber-400 mb-3" />
           <p className="text-lg font-bold mb-1">
             {isUploading ? 'Upload en cours...' : isDragging ? 'Déposez vos fichiers ici' : 'Cliquez ou glissez vos fichiers ici'}
           </p>
@@ -476,11 +485,11 @@ const FileManagementPage: React.FC = () => {
             {childFolders.map((folder) => (
               <div
                 key={folder.path}
-                className="card p-4 flex items-center justify-between group cursor-pointer hover:border-accent-mint transition-colors"
+                className="card p-4 flex items-center justify-between group cursor-pointer hover:border-amber-400 transition-colors"
                 onClick={() => setCurrentFolder(folder.path)}
               >
                 <div className="flex items-center gap-3 flex-grow">
-                  <Folder size={32} className="text-accent-mint" />
+                  <Folder size={32} className="text-amber-400" />
                   <div>
                     <p className="font-medium">{folder.name}</p>
                     <p className="text-xs text-gray-500">{folder.fileCount} fichier(s)</p>
@@ -505,7 +514,7 @@ const FileManagementPage: React.FC = () => {
       {isLoadingFiles ? (
         <div className="card p-12 text-center">
           <div className="flex items-center justify-center gap-3">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-mint"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-400"></div>
             <p className="text-gray-400">Chargement des fichiers...</p>
           </div>
         </div>
@@ -526,7 +535,7 @@ const FileManagementPage: React.FC = () => {
                     </div>
                   ) : (
                     <div className="w-full h-32 bg-dark-bg rounded mb-3 flex items-center justify-center">
-                      <File size={64} className="text-accent-mint" />
+                      <File size={64} className="text-amber-400" />
                     </div>
                   )}
 
@@ -536,7 +545,7 @@ const FileManagementPage: React.FC = () => {
                   </p>
                   <div className="text-xs text-gray-500 mb-3 space-y-1">
                     <p>{file.uploadedAt.toLocaleDateString()} {file.uploadedAt.toLocaleTimeString()}</p>
-                    <p className="font-medium text-accent-mint">{formatFileSize(file.size)}</p>
+                    <p className="font-medium text-amber-400">{formatFileSize(file.size)}</p>
                     {file.uploaderName && (
                       <p className="text-gray-400">Par {file.uploaderName}</p>
                     )}
@@ -547,7 +556,7 @@ const FileManagementPage: React.FC = () => {
                     <button
                       onClick={() => handleCopyUrl(file)}
                       disabled={isLoading}
-                      className="bg-accent-mint/20 text-accent-mint font-bold py-2 px-2 rounded hover:bg-accent-mint/30 transition-colors flex items-center justify-center disabled:opacity-50"
+                      className="bg-amber-400/20 text-amber-400 font-bold py-2 px-2 rounded hover:bg-amber-400/30 transition-colors flex items-center justify-center disabled:opacity-50"
                       title="Copier l'URL"
                     >
                       {isLoading ? (
@@ -644,7 +653,7 @@ const FileManagementPage: React.FC = () => {
             </button>
             <button
               type="submit"
-              className="bg-accent-mint text-darker-bg font-bold py-2 px-6 rounded hover:bg-white transition-colors"
+              className="bg-amber-400 text-darker-bg font-bold py-2 px-6 rounded hover:bg-white transition-colors"
             >
               Créer
             </button>
@@ -666,7 +675,7 @@ const FileManagementPage: React.FC = () => {
             Fichier: <span className="text-white font-medium">{fileToMove?.name}</span>
           </p>
           <p className="text-sm text-gray-400 mb-4">
-            Dossier actuel: <span className="text-accent-mint">{fileToMove?.folder}</span>
+            Dossier actuel: <span className="text-amber-400">{fileToMove?.folder}</span>
           </p>
 
           <div>
@@ -679,12 +688,12 @@ const FileManagementPage: React.FC = () => {
                   className={`w-full text-left p-3 rounded border transition-colors ${
                     folder === fileToMove?.folder
                       ? 'bg-gray-800 border-gray-700 cursor-not-allowed opacity-50'
-                      : 'bg-dark-bg border-gray-700 hover:border-accent-mint hover:bg-accent-mint/10'
+                      : 'bg-dark-bg border-gray-700 hover:border-amber-400 hover:bg-amber-400/10'
                   }`}
                   disabled={folder === fileToMove?.folder}
                 >
                   <div className="flex items-center gap-2">
-                    <Folder size={18} className="text-accent-mint" />
+                    <Folder size={18} className="text-amber-400" />
                     <span>{folder}</span>
                   </div>
                 </button>
@@ -745,7 +754,7 @@ const FileManagementPage: React.FC = () => {
             </button>
             <button
               type="submit"
-              className="bg-accent-mint text-darker-bg font-bold py-2 px-6 rounded hover:bg-white transition-colors"
+              className="bg-amber-400 text-darker-bg font-bold py-2 px-6 rounded hover:bg-white transition-colors"
             >
               Renommer
             </button>

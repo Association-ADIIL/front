@@ -130,7 +130,7 @@ const AdminDashboardPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-accent-mint"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-red-400"></div>
       </div>
     );
   }
@@ -138,346 +138,372 @@ const AdminDashboardPage: React.FC = () => {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl sm:text-4xl font-bold text-accent-mint mb-2 font-koulen">TABLEAU DE BORD</h1>
-        <p className="text-gray-400">Vue d'ensemble de l'activité du BDE ADIIL</p>
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-1 h-12 bg-red-500 rounded-full hidden sm:block" />
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-[10px] font-bold rounded-full uppercase tracking-wide">Admin</span>
+            </div>
+            <h1 className="text-2xl sm:text-4xl font-bold text-white font-koulen">TABLEAU DE BORD</h1>
+            <p className="text-gray-500 text-sm mt-1">Vue d'ensemble de l'activite du BDE ADIIL</p>
+          </div>
+        </div>
       </div>
 
       {/* Quick Actions - Hidden on mobile */}
       <div className="hidden md:grid grid-cols-2 lg:grid-cols-5 gap-4">
         <button
           onClick={() => navigate('/admin/events')}
-          className="bg-gradient-to-br from-purple-600/20 to-purple-900/20 border border-purple-600/30 hover:border-purple-500 p-4 rounded-lg transition-all group"
+          className="bg-darker-bg border border-gray-800 hover:border-purple-500/50 p-4 rounded-2xl transition-all group hover:-translate-y-1 hover:shadow-lg hover:shadow-purple-500/10"
         >
-          <div className="flex items-center justify-between mb-2">
-            <Calendar className="text-purple-400" size={24} />
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center group-hover:bg-purple-500/20 transition-colors">
+              <Calendar className="text-purple-400" size={20} />
+            </div>
             <Plus className="text-purple-400 opacity-0 group-hover:opacity-100 transition-opacity" size={18} />
           </div>
-          <h3 className="text-base font-bold text-white mb-1">Nouvel Événement</h3>
-          <p className="text-xs text-gray-400">Créer un événement</p>
+          <h3 className="text-sm font-bold text-white mb-0.5 text-left">Nouvel Evenement</h3>
+          <p className="text-xs text-gray-500 text-left">Creer un evenement</p>
         </button>
 
         <button
           onClick={() => navigate('/admin/products')}
-          className="bg-gradient-to-br from-orange-600/20 to-orange-900/20 border border-orange-600/30 hover:border-orange-500 p-4 rounded-lg transition-all group"
+          className="bg-darker-bg border border-gray-800 hover:border-orange-500/50 p-4 rounded-2xl transition-all group hover:-translate-y-1 hover:shadow-lg hover:shadow-orange-500/10"
         >
-          <div className="flex items-center justify-between mb-2">
-            <ShoppingBag className="text-orange-400" size={24} />
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 bg-orange-500/10 rounded-xl flex items-center justify-center group-hover:bg-orange-500/20 transition-colors">
+              <ShoppingBag className="text-orange-400" size={20} />
+            </div>
             <Plus className="text-orange-400 opacity-0 group-hover:opacity-100 transition-opacity" size={18} />
           </div>
-          <h3 className="text-base font-bold text-white mb-1">Nouveau Produit</h3>
-          <p className="text-xs text-gray-400">Ajouter à la boutique</p>
+          <h3 className="text-sm font-bold text-white mb-0.5 text-left">Nouveau Produit</h3>
+          <p className="text-xs text-gray-500 text-left">Ajouter a la boutique</p>
         </button>
 
         <button
           onClick={() => setIsAddBalanceModalOpen(true)}
-          className="bg-gradient-to-br from-cyan-600/20 to-cyan-900/20 border border-cyan-600/30 hover:border-cyan-500 p-4 rounded-lg transition-all group"
+          className="bg-darker-bg border border-gray-800 hover:border-cyan-500/50 p-4 rounded-2xl transition-all group hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/10"
         >
-          <div className="flex items-center justify-between mb-2">
-            <Wallet className="text-cyan-400" size={24} />
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 bg-cyan-500/10 rounded-xl flex items-center justify-center group-hover:bg-cyan-500/20 transition-colors">
+              <Wallet className="text-cyan-400" size={20} />
+            </div>
             <Plus className="text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity" size={18} />
           </div>
-          <h3 className="text-base font-bold text-white mb-1">Recharger Solde</h3>
-          <p className="text-xs text-gray-400">Ajouter du crédit</p>
+          <h3 className="text-sm font-bold text-white mb-0.5 text-left">Recharger Solde</h3>
+          <p className="text-xs text-gray-500 text-left">Ajouter du credit</p>
         </button>
 
         <button
           onClick={() => navigate('/admin/users')}
-          className="bg-gradient-to-br from-blue-600/20 to-blue-900/20 border border-blue-600/30 hover:border-blue-500 p-4 rounded-lg transition-all group"
+          className="bg-darker-bg border border-gray-800 hover:border-blue-500/50 p-4 rounded-2xl transition-all group hover:-translate-y-1 hover:shadow-lg hover:shadow-blue-500/10"
         >
-          <div className="flex items-center justify-between mb-2">
-            <Users className="text-blue-400" size={24} />
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
+              <Users className="text-blue-400" size={20} />
+            </div>
             <ArrowRight className="text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" size={18} />
           </div>
-          <h3 className="text-base font-bold text-white mb-1">Utilisateurs</h3>
-          <p className="text-xs text-gray-400">Gérer les comptes</p>
+          <h3 className="text-sm font-bold text-white mb-0.5 text-left">Utilisateurs</h3>
+          <p className="text-xs text-gray-500 text-left">Gerer les comptes</p>
         </button>
 
         <button
           onClick={() => navigate('/admin/orders')}
-          className="bg-gradient-to-br from-green-600/20 to-green-900/20 border border-green-600/30 hover:border-green-500 p-4 rounded-lg transition-all group"
+          className="bg-darker-bg border border-gray-800 hover:border-green-500/50 p-4 rounded-2xl transition-all group hover:-translate-y-1 hover:shadow-lg hover:shadow-green-500/10"
         >
-          <div className="flex items-center justify-between mb-2">
-            <TrendingUp className="text-accent-mint" size={24} />
-            <ArrowRight className="text-accent-mint opacity-0 group-hover:opacity-100 transition-opacity" size={18} />
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center group-hover:bg-green-500/20 transition-colors">
+              <TrendingUp className="text-green-400" size={20} />
+            </div>
+            <ArrowRight className="text-green-400 opacity-0 group-hover:opacity-100 transition-opacity" size={18} />
           </div>
-          <h3 className="text-base font-bold text-white mb-1">Commandes</h3>
-          <p className="text-xs text-gray-400">Voir toutes les ventes</p>
+          <h3 className="text-sm font-bold text-white mb-0.5 text-left">Commandes</h3>
+          <p className="text-xs text-gray-500 text-left">Voir toutes les ventes</p>
         </button>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Users */}
-        <div className="bg-darker-bg rounded-2xl p-6 border border-gray-800">
+        <div className="bg-darker-bg rounded-2xl p-5 border border-gray-800 hover:border-blue-500/30 transition-all group">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-blue-900/20 rounded-xl">
-              <Users className="text-blue-400" size={24} />
+            <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
+              <Users className="text-blue-400" size={22} />
             </div>
-            <span className="text-xs text-green-400 font-bold">+{stats.newUsersThisMonth} ce mois</span>
+            <span className="text-[10px] text-green-400 font-bold bg-green-500/10 px-2 py-1 rounded-full">+{stats.newUsersThisMonth} ce mois</span>
           </div>
-          <h3 className="text-2xl font-bold mb-1">{stats.totalUsers}</h3>
-          <p className="text-sm text-gray-400">Utilisateurs inscrits</p>
+          <h3 className="text-3xl font-koulen text-white mb-1">{stats.totalUsers}</h3>
+          <p className="text-xs text-gray-500">Utilisateurs inscrits</p>
         </div>
 
         {/* Events */}
-        <div className="bg-darker-bg rounded-2xl p-6 border border-gray-800">
+        <div className="bg-darker-bg rounded-2xl p-5 border border-gray-800 hover:border-purple-500/30 transition-all group">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-purple-900/20 rounded-xl">
-              <Calendar className="text-purple-400" size={24} />
+            <div className="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center group-hover:bg-purple-500/20 transition-colors">
+              <Calendar className="text-purple-400" size={22} />
             </div>
-            <span className="text-xs text-purple-400 font-bold">{stats.upcomingEvents} a venir</span>
+            <span className="text-[10px] text-purple-400 font-bold bg-purple-500/10 px-2 py-1 rounded-full">{stats.upcomingEvents} a venir</span>
           </div>
-          <h3 className="text-2xl font-bold mb-1">{stats.totalEvents}</h3>
-          <p className="text-sm text-gray-400">Evenements crees</p>
+          <h3 className="text-3xl font-koulen text-white mb-1">{stats.totalEvents}</h3>
+          <p className="text-xs text-gray-500">Evenements crees</p>
         </div>
 
         {/* Orders */}
-        <div className="bg-darker-bg rounded-2xl p-6 border border-gray-800">
+        <div className="bg-darker-bg rounded-2xl p-5 border border-gray-800 hover:border-orange-500/30 transition-all group">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-orange-900/20 rounded-xl">
-              <ShoppingBag className="text-orange-400" size={24} />
+            <div className="w-12 h-12 bg-orange-500/10 rounded-xl flex items-center justify-center group-hover:bg-orange-500/20 transition-colors">
+              <ShoppingBag className="text-orange-400" size={22} />
             </div>
             {stats.ordersToCollectCount > 0 && (
-              <span className="text-xs text-yellow-400 font-bold flex items-center gap-1">
-                <Clock size={12} />
+              <span className="text-[10px] text-yellow-400 font-bold bg-yellow-500/10 px-2 py-1 rounded-full flex items-center gap-1">
+                <Clock size={10} />
                 {stats.ordersToCollectCount} a recuperer
               </span>
             )}
           </div>
-          <h3 className="text-2xl font-bold mb-1">{stats.totalOrders}</h3>
-          <p className="text-sm text-gray-400">Commandes totales</p>
+          <h3 className="text-3xl font-koulen text-white mb-1">{stats.totalOrders}</h3>
+          <p className="text-xs text-gray-500">Commandes totales</p>
         </div>
 
         {/* Revenue */}
-        <div className="bg-darker-bg rounded-2xl p-6 border border-gray-800">
+        <div className="bg-darker-bg rounded-2xl p-5 border border-gray-800 hover:border-green-500/30 transition-all group">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-green-900/20 rounded-xl">
-              <TrendingUp className="text-accent-mint" size={24} />
+            <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center group-hover:bg-green-500/20 transition-colors">
+              <TrendingUp className="text-green-400" size={22} />
             </div>
-            <span className="text-xs text-accent-mint font-bold">{stats.revenueThisMonth.toFixed(2)}€ ce mois</span>
+            <span className="text-[10px] text-green-400 font-bold bg-green-500/10 px-2 py-1 rounded-full">{stats.revenueThisMonth.toFixed(2)}€ ce mois</span>
           </div>
-          <h3 className="text-2xl font-bold text-accent-mint mb-1">{stats.totalRevenue.toFixed(2)} €</h3>
-          <p className="text-sm text-gray-400">Chiffre d'affaires total</p>
+          <h3 className="text-3xl font-koulen text-green-400 mb-1">{stats.totalRevenue.toFixed(2)} €</h3>
+          <p className="text-xs text-gray-500">Chiffre d'affaires total</p>
         </div>
       </div>
 
       {/* Balance Stats */}
       {balanceStats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Total Balance */}
-          <div className="bg-darker-bg rounded-2xl p-6 border border-gray-800">
+          <div className="bg-darker-bg rounded-2xl p-5 border border-gray-800 hover:border-purple-500/30 transition-all group">
             <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-purple-900/20 rounded-xl">
-                <Wallet className="text-purple-400" size={24} />
+              <div className="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center group-hover:bg-purple-500/20 transition-colors">
+                <Wallet className="text-purple-400" size={22} />
               </div>
             </div>
-            <h3 className="text-2xl font-bold text-purple-400 mb-1">{balanceStats.totalBalance.toFixed(2)} €</h3>
-            <p className="text-sm text-gray-400">Solde total ADIIL</p>
+            <h3 className="text-3xl font-koulen text-purple-400 mb-1">{balanceStats.totalBalance.toFixed(2)} €</h3>
+            <p className="text-xs text-gray-500">Solde total ADIIL</p>
           </div>
 
           {/* Total Recharged */}
-          <div className="bg-darker-bg rounded-2xl p-6 border border-gray-800">
+          <div className="bg-darker-bg rounded-2xl p-5 border border-gray-800 hover:border-cyan-500/30 transition-all group">
             <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-cyan-900/20 rounded-xl">
-                <CreditCard className="text-cyan-400" size={24} />
+              <div className="w-12 h-12 bg-cyan-500/10 rounded-xl flex items-center justify-center group-hover:bg-cyan-500/20 transition-colors">
+                <CreditCard className="text-cyan-400" size={22} />
               </div>
-              <span className="text-xs text-cyan-400 font-bold">{balanceStats.rechargedThisMonth.toFixed(2)}€ ce mois</span>
+              <span className="text-[10px] text-cyan-400 font-bold bg-cyan-500/10 px-2 py-1 rounded-full">{balanceStats.rechargedThisMonth.toFixed(2)}€ ce mois</span>
             </div>
-            <h3 className="text-2xl font-bold text-cyan-400 mb-1">{balanceStats.totalRecharged.toFixed(2)} €</h3>
-            <p className="text-sm text-gray-400">Total recharge</p>
+            <h3 className="text-3xl font-koulen text-cyan-400 mb-1">{balanceStats.totalRecharged.toFixed(2)} €</h3>
+            <p className="text-xs text-gray-500">Total recharge</p>
           </div>
 
           {/* Recharges Count */}
-          <div className="bg-darker-bg rounded-2xl p-6 border border-gray-800">
+          <div className="bg-darker-bg rounded-2xl p-5 border border-gray-800 hover:border-pink-500/30 transition-all group">
             <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-pink-900/20 rounded-xl">
-                <TrendingUp className="text-pink-400" size={24} />
+              <div className="w-12 h-12 bg-pink-500/10 rounded-xl flex items-center justify-center group-hover:bg-pink-500/20 transition-colors">
+                <TrendingUp className="text-pink-400" size={22} />
               </div>
-              <span className="text-xs text-pink-400 font-bold">{balanceStats.rechargesThisMonth} ce mois</span>
+              <span className="text-[10px] text-pink-400 font-bold bg-pink-500/10 px-2 py-1 rounded-full">{balanceStats.rechargesThisMonth} ce mois</span>
             </div>
-            <h3 className="text-2xl font-bold text-pink-400 mb-1">{balanceStats.totalRecharges}</h3>
-            <p className="text-sm text-gray-400">Recharges effectuees</p>
+            <h3 className="text-3xl font-koulen text-pink-400 mb-1">{balanceStats.totalRecharges}</h3>
+            <p className="text-xs text-gray-500">Recharges effectuees</p>
           </div>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Upcoming Events */}
-        <div className="bg-darker-bg rounded-2xl p-6 border border-gray-800">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <CalendarCheck className="text-accent-mint" size={20} />
-              Événements à venir
-            </h2>
+        <div className="bg-darker-bg rounded-2xl border border-gray-800 overflow-hidden">
+          <div className="flex items-center justify-between p-5 border-b border-gray-800">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center">
+                <CalendarCheck className="text-purple-400" size={18} />
+              </div>
+              <h2 className="font-bold text-white">Evenements a venir</h2>
+            </div>
             <button
               onClick={() => navigate('/admin/events')}
-              className="text-sm text-accent-mint hover:underline"
+              className="text-xs text-gray-400 hover:text-purple-400 transition-colors"
             >
-              Voir tout
+              Voir tout →
             </button>
           </div>
-          {upcomingEvents.length === 0 ? (
-            <p className="text-gray-500 italic py-4">Aucun événement à venir</p>
-          ) : (
-            <div className="space-y-3">
-              {upcomingEvents.map(event => (
-                <div
-                  key={event.id}
-                  className="flex items-start gap-3 p-3 bg-dark-bg rounded-lg hover:bg-gray-800 transition-colors cursor-pointer"
-                  onClick={() => navigate('/admin/events')}
-                >
-                  <div className="flex-shrink-0 w-12 h-12 bg-purple-900/30 rounded-lg flex flex-col items-center justify-center">
-                    <span className="text-xs text-purple-400 font-bold">
-                      {new Date(event.date).toLocaleDateString('fr-FR', { day: 'numeric' })}
-                    </span>
-                    <span className="text-xs text-purple-400">
-                      {new Date(event.date).toLocaleDateString('fr-FR', { month: 'short' })}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-bold text-sm truncate">{event.title}</h4>
-                    <p className="text-xs text-gray-400 truncate">{event.location}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${
-                        event.status === 'FULL' ? 'bg-red-900/30 text-red-400' :
-                        event.status === 'OPEN' ? 'bg-green-900/30 text-green-400' :
-                        'bg-gray-700 text-gray-400'
-                      }`}>
-                        {event.status === 'FULL' ? 'Complet' :
-                         event.status === 'OPEN' ? 'Ouvert' : 'Fermé'}
+          <div className="p-4">
+            {upcomingEvents.length === 0 ? (
+              <p className="text-gray-500 italic py-4 text-center text-sm">Aucun evenement a venir</p>
+            ) : (
+              <div className="space-y-2">
+                {upcomingEvents.map(event => (
+                  <div
+                    key={event.id}
+                    className="flex items-start gap-3 p-3 bg-dark-bg rounded-xl hover:bg-dark-bg/70 border border-transparent hover:border-purple-500/20 transition-all cursor-pointer group"
+                    onClick={() => navigate('/admin/events')}
+                  >
+                    <div className="flex-shrink-0 w-12 h-12 bg-purple-500/10 rounded-xl flex flex-col items-center justify-center group-hover:bg-purple-500/20 transition-colors">
+                      <span className="text-sm text-purple-400 font-bold leading-none">
+                        {new Date(event.date).toLocaleDateString('fr-FR', { day: 'numeric' })}
                       </span>
-                      <span className="text-xs text-gray-500">
-                        {event.registeredPeople || 0}/{event.totalPlaces} inscrits
+                      <span className="text-[10px] text-purple-400/70 uppercase">
+                        {new Date(event.date).toLocaleDateString('fr-FR', { month: 'short' })}
                       </span>
                     </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-sm truncate text-white group-hover:text-purple-400 transition-colors">{event.title}</h4>
+                      <p className="text-xs text-gray-500 truncate">{event.location}</p>
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                          event.status === 'FULL' ? 'bg-red-500/20 text-red-400' :
+                          event.status === 'OPEN' ? 'bg-green-500/20 text-green-400' :
+                          'bg-gray-700 text-gray-400'
+                        }`}>
+                          {event.status === 'FULL' ? 'Complet' :
+                           event.status === 'OPEN' ? 'Ouvert' : 'Ferme'}
+                        </span>
+                        <span className="text-[10px] text-gray-500">
+                          {event.registeredPeople || 0}/{event.totalPlaces}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Recent Inscriptions */}
-        <div className="bg-darker-bg rounded-2xl p-6 border border-gray-800">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <CalendarCheck className="text-accent-mint" size={20} />
-              Dernières inscriptions
-            </h2>
+        <div className="bg-darker-bg rounded-2xl border border-gray-800 overflow-hidden">
+          <div className="flex items-center justify-between p-5 border-b border-gray-800">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center">
+                <CalendarCheck className="text-green-400" size={18} />
+              </div>
+              <h2 className="font-bold text-white">Dernieres inscriptions</h2>
+            </div>
             <button
               onClick={() => navigate('/admin/orders')}
-              className="text-sm text-accent-mint hover:underline"
+              className="text-xs text-gray-400 hover:text-green-400 transition-colors"
             >
-              Voir tout
+              Voir tout →
             </button>
           </div>
-          {recentInscriptions.length === 0 ? (
-            <p className="text-gray-500 italic py-4">Aucune inscription</p>
-          ) : (
-            <div className="space-y-2">
-              {recentInscriptions.map(inscription => (
-                <div
-                  key={inscription.id}
-                  className="flex items-center justify-between p-3 bg-dark-bg rounded-lg hover:bg-gray-800 transition-colors cursor-pointer"
-                  onClick={() => navigate('/admin/orders')}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-2 h-2 rounded-full ${
-                      inscription.paymentStatus === 'PAID' ? 'bg-green-400' :
-                      inscription.paymentStatus === 'PENDING' ? 'bg-yellow-400' :
-                      inscription.paymentStatus === 'REFUNDED' ? 'bg-purple-400' :
-                      'bg-red-400'
-                    }`} />
-                    <div>
-                      <p className="text-sm font-bold">{inscription.event?.title || 'Événement'}</p>
-                      <p className="text-xs text-gray-400">
-                        {inscription.user?.firstName} {inscription.user?.lastName} - {inscription.quantity} place{inscription.quantity > 1 ? 's' : ''}
+          <div className="p-4">
+            {recentInscriptions.length === 0 ? (
+              <p className="text-gray-500 italic py-4 text-center text-sm">Aucune inscription</p>
+            ) : (
+              <div className="space-y-2">
+                {recentInscriptions.map(inscription => (
+                  <div
+                    key={inscription.id}
+                    className="flex items-center justify-between p-3 bg-dark-bg rounded-xl hover:bg-dark-bg/70 border border-transparent hover:border-green-500/20 transition-all cursor-pointer group"
+                    onClick={() => navigate('/admin/orders')}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-2.5 h-2.5 rounded-full ${
+                        inscription.paymentStatus === 'PAID' ? 'bg-green-400' :
+                        inscription.paymentStatus === 'PENDING' ? 'bg-yellow-400' :
+                        inscription.paymentStatus === 'REFUNDED' ? 'bg-purple-400' :
+                        'bg-red-400'
+                      }`} />
+                      <div>
+                        <p className="text-sm font-bold text-white group-hover:text-green-400 transition-colors">{inscription.event?.title || 'Evenement'}</p>
+                        <p className="text-xs text-gray-500">
+                          {inscription.user?.firstName} {inscription.user?.lastName} • {inscription.quantity} place{inscription.quantity > 1 ? 's' : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-green-400">{inscription.totalPrice.toFixed(2)} €</p>
+                      <p className="text-[10px] text-gray-500">
+                        {new Date(inscription.createdAt).toLocaleDateString('fr-FR')}
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-accent-mint">{inscription.totalPrice.toFixed(2)} €</p>
-                    <p className="text-xs text-gray-400">
-                      {new Date(inscription.createdAt).toLocaleDateString('fr-FR')}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Orders to Collect Section */}
       {ordersToCollect.length > 0 && (
-        <div className="bg-darker-bg rounded-2xl p-6 border border-gray-800">
-          <h2 className="text-xl font-bold flex items-center gap-2 mb-4">
-            <ShoppingBag className="text-accent-mint" size={20} />
-            Commandes en attente de récupération
-          </h2>
-          <div className="space-y-3">
+        <div className="bg-darker-bg rounded-2xl border border-gray-800 overflow-hidden">
+          <div className="flex items-center justify-between p-5 border-b border-gray-800 bg-yellow-500/5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-yellow-500/20 rounded-xl flex items-center justify-center">
+                <ShoppingBag className="text-yellow-400" size={18} />
+              </div>
+              <div>
+                <h2 className="font-bold text-white">Commandes a recuperer</h2>
+                <p className="text-xs text-yellow-400">{ordersToCollect.length} en attente</p>
+              </div>
+            </div>
+          </div>
+          <div className="p-4 space-y-3">
             {ordersToCollect.map(order => (
-              <div key={order.id} className="flex flex-col p-4 bg-dark-bg rounded-lg border border-gray-700 gap-4">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <span className="font-bold text-white">#{order.id}</span>
-                      <span className="text-gray-400">- {order.user ? `${order.user.firstName} ${order.user.lastName}` : 'Client Inconnu'}</span>
-                      {order.paymentMethod === 'CASH_CB' && (
-                        <span className="hidden md:inline px-2 py-0.5 rounded-full bg-yellow-900/50 text-yellow-200 text-xs font-bold border border-yellow-700">
-                          Paiement Sur Place
-                        </span>
-                      )}
+              <div key={order.id} className="bg-dark-bg rounded-xl border border-gray-800 overflow-hidden hover:border-yellow-500/30 transition-all">
+                <div className="p-4">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <span className="font-mono text-xs bg-darker-bg px-2 py-0.5 rounded text-gray-400">#{order.id.toString().padStart(6, '0')}</span>
+                        <span className="text-white font-medium">{order.user ? `${order.user.firstName} ${order.user.lastName}` : 'Client Inconnu'}</span>
+                        {order.paymentMethod === 'CASH_CB' && (
+                          <span className="px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 text-[10px] font-bold">
+                            Paiement sur place
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {order.items.length} article(s) • <span className="text-green-400 font-medium">{order.totalPrice.toFixed(2)} €</span>
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-400">
-                      {order.items.length} article(s) • Total: {order.totalPrice.toFixed(2)} €
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-center md:items-end gap-2">
-                    {order.paymentMethod === 'CASH_CB' && (
-                      <span className="md:hidden px-2 py-0.5 rounded-full bg-yellow-900/50 text-yellow-200 text-xs font-bold border border-yellow-700">
-                        Paiement Sur Place
-                      </span>
-                    )}
                     <button
                       onClick={() => setConfirmOrderId(order.id)}
-                      className="px-4 py-2 bg-accent-mint hover:bg-accent-mint/80 text-darker-bg font-bold rounded-lg transition-colors flex items-center gap-2"
+                      className="px-4 py-2.5 bg-green-500 hover:bg-green-400 text-darker-bg font-bold rounded-xl transition-colors flex items-center gap-2 text-sm"
                     >
-                      <CheckCircle size={18} />
-                      Valider Récupération
+                      <CheckCircle size={16} />
+                      Valider
                     </button>
                   </div>
                 </div>
 
                 {/* Order Items Detail */}
-                <div className="bg-darker-bg p-3 rounded-md border border-gray-700">
-                  <p className="font-bold text-gray-300 mb-2 text-sm">Détail de la commande:</p>
-                  <ul className="space-y-2">
+                <div className="border-t border-gray-800 bg-darker-bg/50 p-3">
+                  <ul className="space-y-1.5">
                     {order.items.map((item) => {
                       const hasProductDiscount = item.originalPrice && item.originalPrice > item.price;
                       const originalTotal = hasProductDiscount ? item.originalPrice! * item.quantity : null;
                       const itemTotal = item.price * item.quantity;
 
                       return (
-                        <li key={item.id} className="flex justify-between text-sm">
+                        <li key={item.id} className="flex justify-between text-xs">
                           <span className="text-gray-400">
-                            {item.product.name}
+                            <span className="text-white">{item.quantity}x</span> {item.product.name}
                             {item.variantId && item.product.variants && (
-                              <span className="text-accent-mint ml-2">
+                              <span className="text-gray-500 ml-1">
                                 ({(item.product.variants as any[]).find((v: any) => String(v.id) === String(item.variantId))?.name})
                               </span>
                             )}
-                            <span className="text-gray-500 ml-2">x{item.quantity}</span>
                           </span>
                           <span className="text-right">
                             {hasProductDiscount ? (
                               <>
-                                <span className="text-gray-500 line-through text-xs mr-1">{originalTotal!.toFixed(2)} €</span>
-                                <span className="text-red-400 font-medium">{itemTotal.toFixed(2)} €</span>
+                                <span className="text-gray-600 line-through mr-1">{originalTotal!.toFixed(2)}€</span>
+                                <span className="text-red-400 font-medium">{itemTotal.toFixed(2)}€</span>
                               </>
                             ) : (
-                              <span className="text-white font-medium">{itemTotal.toFixed(2)} €</span>
+                              <span className="text-gray-300 font-medium">{itemTotal.toFixed(2)}€</span>
                             )}
                           </span>
                         </li>
