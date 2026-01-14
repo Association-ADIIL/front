@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { type Product } from '../api/products';
+import { logger } from '../utils/logger';
 
 interface CartItem {
   product: Product;
@@ -32,7 +33,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         setItems(JSON.parse(savedCart));
       } catch (error) {
-        console.error('Failed to parse cart from localStorage:', error);
+        logger.error('Failed to parse cart from localStorage', error);
       }
     }
     setIsLoaded(true);

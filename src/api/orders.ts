@@ -127,10 +127,14 @@ export const updatePaymentStatus = async (id: number, paymentStatus: string): Pr
   });
 };
 
-export const refundOrderItems = async (id: number, items: { orderItemId: number; quantity: number }[]): Promise<any> => {
+export const refundOrderItems = async (
+  id: number,
+  items: { orderItemId: number; quantity: number }[],
+  options?: { refundToBalance?: boolean; cancelOnly?: boolean }
+): Promise<any> => {
   return fetchJson(`/orders/${id}/refund-items`, {
     method: 'POST',
-    body: JSON.stringify({ items }),
+    body: JSON.stringify({ items, ...options }),
   });
 };
 
