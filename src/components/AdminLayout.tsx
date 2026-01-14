@@ -224,8 +224,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         lg:translate-x-0
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        {/* Sidebar background decoration */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {/* Sidebar background decoration - fixed so it doesn't scroll */}
+        <div className="fixed bottom-0 left-0 w-72 h-72 overflow-hidden pointer-events-none">
           <div className={`absolute -bottom-20 -left-20 w-[200px] h-[200px] ${activeColors.bg} rounded-full blur-[80px]`} />
         </div>
 
