@@ -10,6 +10,8 @@ import CGUPage from './pages/CGUPage';
 import ConfidentialitePage from './pages/ConfidentialitePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import EventsPage from './pages/EventsPage';
 import EventDetailPage from './pages/EventDetailPage';
 import ShopPage from './pages/ShopPage';
@@ -102,6 +104,8 @@ function App() {
                         <Route path="/confidentialite" element={<ConfidentialitePage />} />
                         <Route path="/login" element={<LoginPage />} />
                         <Route path="/register" element={<RegisterPage />} />
+                        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                        <Route path="/reset-password" element={<ResetPasswordPage />} />
                         <Route path="/events" element={<EventsPage />} />
                         <Route path="/events/:id" element={<EventDetailPage />} />
                         <Route path="/shop" element={<ShopPage />} />

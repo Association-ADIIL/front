@@ -51,9 +51,9 @@ const parseErrorResponse = async (response: Response): Promise<{ message: string
 /**
  * Handle common error responses
  */
-const handleErrorResponse = (response: Response, errorMessage: string, errorCode?: string): never => {
-  // Handle unauthorized
-  if (response.status === 401 || response.status === 403) {
+const handleErrorResponse = (response: Response, errorMessage: string, errorCode?: string, skipUnauthorizedCallback?: boolean): never => {
+  // Handle unauthorized (but not for login/register attempts)
+  if ((response.status === 401 || response.status === 403) && !skipUnauthorizedCallback) {
     if (onUnauthorized) {
       onUnauthorized();
     }
@@ -67,11 +67,15 @@ const handleErrorResponse = (response: Response, errorMessage: string, errorCode
   throw new ApiError(errorMessage, response.status, errorCode);
 };
 
+interface FetchOptions extends RequestInit {
+  skipUnauthorizedCallback?: boolean;
+}
+
 /**
  * Main fetch function with authentication and error handling
  * Uses HttpOnly cookies for authentication (with localStorage fallback during migration)
  */
-export const fetchJson = async <T = unknown>(endpoint: string, options: RequestInit = {}): Promise<T> => {
+export const fetchJson = async <T = unknown>(endpoint: string, options: FetchOptions = {}): Promise<T> => {
   const token = getAuthToken();
   const csrfToken = getCsrfToken();
 
@@ -104,7 +108,7 @@ export const fetchJson = async <T = unknown>(endpoint: string, options: RequestI
   if (!response.ok) {
     const { message, code } = await parseErrorResponse(response);
     logger.apiError(endpoint, response.status, message);
-    handleErrorResponse(response, message, code);
+    handleErrorResponse(response, message, code, options.skipUnauthorizedCallback);
   }
 
   try {

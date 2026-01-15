@@ -70,7 +70,11 @@ const RegisterPage: React.FC = () => {
         studentGroup: formData.type === 'STUDENT' ? formData.studentGroup : undefined
       });
     } catch (err: any) {
-      setError(err.message || 'Echec de l\'inscription.');
+      if (err.code === 'EMAIL_EXISTS' || err.message?.includes('existe déjà')) {
+        setError('EMAIL_EXISTS');
+      } else {
+        setError(err.message || 'Echec de l\'inscription.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -92,12 +96,6 @@ const RegisterPage: React.FC = () => {
 
         {/* Form Card */}
         <div className="bg-darker-bg rounded-2xl border border-gray-800 p-8">
-          {error && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
-              <p className="text-red-400 text-sm text-center font-montserrat">{error}</p>
-            </div>
-          )}
-
           <form className="space-y-5" onSubmit={handleSubmit}>
             {/* Name fields */}
             <div className="grid grid-cols-2 gap-4">
@@ -260,6 +258,25 @@ const RegisterPage: React.FC = () => {
                 Politique de Confidentialité
               </Link>.
             </p>
+
+            {error && (
+              <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+                {error === 'EMAIL_EXISTS' ? (
+                  <p className="text-red-400 text-sm text-center font-montserrat">
+                    Un compte existe déjà avec cette adresse email.{' '}
+                    <Link to="/login" className="text-accent-mint font-bold hover:underline">
+                      Se connecter
+                    </Link>
+                    {' '}ou{' '}
+                    <Link to="/forgot-password" className="text-accent-mint font-bold hover:underline">
+                      mot de passe oublié ?
+                    </Link>
+                  </p>
+                ) : (
+                  <p className="text-red-400 text-sm text-center font-montserrat">{error}</p>
+                )}
+              </div>
+            )}
 
             <button
               type="submit"

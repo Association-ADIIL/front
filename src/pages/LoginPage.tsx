@@ -41,12 +41,6 @@ const LoginPage: React.FC = () => {
 
         {/* Form Card */}
         <div className="bg-darker-bg rounded-2xl border border-gray-800 p-8">
-          {error && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
-              <p className="text-red-400 text-sm text-center font-montserrat">{error}</p>
-            </div>
-          )}
-
           <form className="space-y-5" onSubmit={handleSubmit}>
             <div>
               <label htmlFor="email" className="block text-sm font-semibold text-gray-400 mb-2 uppercase tracking-wide">
@@ -82,7 +76,18 @@ const LoginPage: React.FC = () => {
                   required
                 />
               </div>
+              <div className="mt-2 text-right">
+                <Link to="/forgot-password" className="text-sm text-gray-500 hover:text-accent-mint transition-colors">
+                  Mot de passe oublié ?
+                </Link>
+              </div>
             </div>
+
+            {error && (
+              <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+                <p className="text-red-400 text-sm text-center font-montserrat">{error}</p>
+              </div>
+            )}
 
             <button
               type="submit"

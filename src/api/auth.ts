@@ -36,6 +36,7 @@ export const login = async (credentials: LoginCredentials): Promise<AuthResponse
   return fetchJson('/auth/login', {
     method: 'POST',
     body: JSON.stringify(credentials),
+    skipUnauthorizedCallback: true, // Don't trigger "session expired" on failed login
   });
 };
 
@@ -70,5 +71,21 @@ export const updateProfile = async (data: { studentGroup?: string | null }): Pro
   return fetchJson('/auth/me', {
     method: 'PUT',
     body: JSON.stringify(data),
+  });
+};
+
+// Request password reset
+export const forgotPassword = async (email: string): Promise<{ message: string }> => {
+  return fetchJson('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+};
+
+// Reset password with token
+export const resetPassword = async (token: string, password: string): Promise<{ message: string }> => {
+  return fetchJson('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ token, password }),
   });
 };
