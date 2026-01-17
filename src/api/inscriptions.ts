@@ -148,6 +148,13 @@ export const refundInscription = async (id: number): Promise<Inscription> => {
   });
 };
 
+export const adminUnregisterInscription = async (id: number, withRefund: boolean): Promise<{ message: string; refunded: boolean }> => {
+  return fetchJson(`/inscriptions/${id}/admin`, {
+    method: 'DELETE',
+    body: JSON.stringify({ withRefund }),
+  });
+};
+
 export const exportEventInscriptionsCsv = async (eventId: number): Promise<Blob> => {
   const token = localStorage.getItem('token');
 

@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { logger } from '../utils/logger';
 import { getAllEvents, deleteEvent, createEvent, updateEvent, type Event, type EventFormData, type EventFormField } from '../api/events';
-import { Edit2, Trash2, Plus, Calendar, MapPin, Download, X, Search, Users, ChevronDown, ChevronUp } from 'lucide-react';
+import { Edit2, Trash2, Plus, Calendar, MapPin, Download, X, Search, Users, ChevronDown, ChevronUp, UserMinus } from 'lucide-react';
 import Modal from '../components/Modal';
-import { exportEventInscriptionsCsv, getAllInscriptions, type Inscription } from '../api/inscriptions';
+import { exportEventInscriptionsCsv, getAllInscriptions, adminUnregisterInscription, type Inscription } from '../api/inscriptions';
 import ImageUpload from '../components/ImageUpload';
 import NumberInput from '../components/NumberInput';
 import { deleteImage } from '../api/upload';
@@ -28,6 +28,11 @@ const EventManagementPage: React.FC = () => {
   const [inscriptions, setInscriptions] = useState<Inscription[]>([]);
   const [loadingInscriptions, setLoadingInscriptions] = useState(false);
   const [expandedInscriptions, setExpandedInscriptions] = useState<Set<number>>(new Set());
+
+  // Unregister modal state
+  const [isUnregisterModalOpen, setIsUnregisterModalOpen] = useState(false);
+  const [inscriptionToUnregister, setInscriptionToUnregister] = useState<Inscription | null>(null);
+  const [unregisterLoading, setUnregisterLoading] = useState(false);
 
   const [formData, setFormData] = useState<EventFormData>({
     title: '',
@@ -153,6 +158,36 @@ const EventManagementPage: React.FC = () => {
       }
       return next;
     });
+  };
+
+  const handleOpenUnregister = (inscription: Inscription, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setInscriptionToUnregister(inscription);
+    setIsUnregisterModalOpen(true);
+  };
+
+  const handleUnregister = async (withRefund: boolean) => {
+    if (!inscriptionToUnregister || !selectedEventForInscriptions) return;
+
+    setUnregisterLoading(true);
+    try {
+      await adminUnregisterInscription(inscriptionToUnregister.id, withRefund);
+      addNotification('success', withRefund ? 'Inscription supprimee et remboursee' : 'Inscription supprimee');
+      setIsUnregisterModalOpen(false);
+      setInscriptionToUnregister(null);
+
+      // Refresh inscriptions list
+      const data = await getAllInscriptions({ eventId: selectedEventForInscriptions.id });
+      setInscriptions(data);
+
+      // Refresh events to update registered count
+      fetchEvents();
+    } catch (error) {
+      logger.error('Failed to unregister', error);
+      addNotification('error', 'Erreur lors de la desinscription');
+    } finally {
+      setUnregisterLoading(false);
+    }
   };
 
   const getFormFieldLabel = (fieldId: number): string => {
@@ -673,6 +708,82 @@ const EventManagementPage: React.FC = () => {
         </div>
       </Modal>
 
+      {/* Unregister Confirmation Modal */}
+      <Modal
+        isOpen={isUnregisterModalOpen}
+        onClose={() => {
+          setIsUnregisterModalOpen(false);
+          setInscriptionToUnregister(null);
+        }}
+        title="Desinscrire un participant"
+      >
+        {inscriptionToUnregister && (
+          <div className="space-y-4">
+            <p className="text-gray-300">
+              Voulez-vous desinscrire <span className="font-bold text-white capitalize">{inscriptionToUnregister.user?.firstName} {inscriptionToUnregister.user?.lastName}</span> ?
+            </p>
+
+            <div className="bg-dark-bg rounded-lg p-4 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">Places:</span>
+                <span className="text-white">{inscriptionToUnregister.quantity}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">Montant:</span>
+                <span className="text-white">{inscriptionToUnregister.totalPrice.toFixed(2)}€</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">Statut:</span>
+                {getPaymentStatusBadge(inscriptionToUnregister.paymentStatus)}
+              </div>
+            </div>
+
+            {inscriptionToUnregister.paymentStatus === 'PAID' && inscriptionToUnregister.totalPrice > 0 ? (
+              <div className="space-y-3">
+                <p className="text-sm text-yellow-400">
+                  Cette inscription a ete payee. Choisissez une option :
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={() => handleUnregister(true)}
+                    disabled={unregisterLoading}
+                    className="flex-1 px-4 py-3 bg-green-600 hover:bg-green-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                  >
+                    {unregisterLoading ? 'Traitement...' : 'Desinscrire avec remboursement'}
+                  </button>
+                  <button
+                    onClick={() => handleUnregister(false)}
+                    disabled={unregisterLoading}
+                    className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                  >
+                    {unregisterLoading ? 'Traitement...' : 'Desinscrire sans remboursement'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => {
+                    setIsUnregisterModalOpen(false);
+                    setInscriptionToUnregister(null);
+                  }}
+                  className="px-4 py-2 text-gray-300 hover:text-white transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={() => handleUnregister(false)}
+                  disabled={unregisterLoading}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                >
+                  {unregisterLoading ? 'Traitement...' : 'Confirmer la desinscription'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+
       {/* Inscriptions Modal */}
       <Modal
         isOpen={isInscriptionsModalOpen}
@@ -733,11 +844,20 @@ const EventManagementPage: React.FC = () => {
                             <span>{new Date(inscription.createdAt).toLocaleDateString('fr-FR')}</span>
                           </div>
                         </div>
-                        {hasDetails && (
-                          <div className="text-gray-400 ml-2">
-                            {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                          </div>
-                        )}
+                        <div className="flex items-center gap-2 ml-2">
+                          <button
+                            onClick={(e) => handleOpenUnregister(inscription, e)}
+                            className="p-1.5 text-red-400 hover:bg-red-900/20 rounded transition-colors"
+                            title="Desinscrire"
+                          >
+                            <UserMinus size={18} />
+                          </button>
+                          {hasDetails && (
+                            <div className="text-gray-400">
+                              {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
 
