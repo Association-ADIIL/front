@@ -716,6 +716,7 @@ const EventManagementPage: React.FC = () => {
           setInscriptionToUnregister(null);
         }}
         title="Desinscrire un participant"
+        zIndex={1100}
       >
         {inscriptionToUnregister && (
           <div className="space-y-4">

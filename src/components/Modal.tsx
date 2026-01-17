@@ -6,9 +6,10 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  zIndex?: number;
 }
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
+const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, zIndex = 1000 }) => {
   // Lock body scroll when modal is open
   useEffect(() => {
     if (isOpen) {
@@ -25,7 +26,8 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
 
   return (
     <div
-      className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+      className="fixed inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+      style={{ zIndex }}
       onClick={onClose}
     >
       <div
