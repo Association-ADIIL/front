@@ -5,7 +5,11 @@ import SEO from '../components/SEO';
 const CGUPage: React.FC = () => {
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <SEO title="Conditions Generales d'Utilisation" url="/cgu" />
+      <SEO
+        title="Conditions Generales d'Utilisation"
+        description="CGU de l'ADIIL - Conditions Generales d'Utilisation du site adiil.fr. Regles d'utilisation pour les etudiants de l'IUT de Laval."
+        url="/cgu"
+      />
       <h1 className="text-4xl font-bold text-accent-mint mb-8">Conditions Générales d'Utilisation</h1>
 
       {/* Préambule */}

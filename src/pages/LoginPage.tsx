@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { Mail, Lock, LogIn, ArrowRight } from 'lucide-react';
+import SEO from '../components/SEO';
 
 const LoginPage: React.FC = () => {
-  useDocumentTitle('Connexion');
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -27,6 +26,11 @@ const LoginPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-dark-bg flex items-center justify-center p-4">
+      <SEO
+        title="Connexion"
+        description="Connectez-vous a votre compte ADIIL pour acceder aux evenements, a la boutique et a votre solde. IUT de Laval."
+        url="/login"
+      />
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">

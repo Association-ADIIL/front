@@ -5,7 +5,11 @@ import SEO from '../components/SEO';
 const LegalPage: React.FC = () => {
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <SEO title="Mentions Legales" url="/legal" />
+      <SEO
+        title="Mentions Legales"
+        description="Mentions legales du site ADIIL - Association des Etudiants en Informatique de l'IUT de Laval. Informations sur l'editeur et l'hebergeur."
+        url="/legal"
+      />
       <h1 className="text-4xl font-bold text-accent-mint mb-8">Mentions Légales</h1>
 
       {/* Éditeur du site */}

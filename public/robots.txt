@@ -1,13 +1,13 @@
 # Robots.txt pour ADIIL - Bureau des Etudiants IUT de Laval
 # Association Etudiante du Departement Informatique
+# https://adiil.fr
 
+# Tous les robots
 User-agent: *
-Allow: /
-
-# Pages publiques principales
 Allow: /
 Allow: /about
 Allow: /events
+Allow: /events/*
 Allow: /shop
 Allow: /legal
 Allow: /cgv
@@ -15,8 +15,9 @@ Allow: /cgu
 Allow: /confidentialite
 Allow: /login
 Allow: /register
+Allow: /forgot-password
 
-# Bloquer les pages privees et admin
+# Pages privees et admin
 Disallow: /admin
 Disallow: /admin/*
 Disallow: /my-account
@@ -26,13 +27,56 @@ Disallow: /payment
 Disallow: /payment/*
 Disallow: /order-pickup
 Disallow: /order-pickup/*
+Disallow: /reset-password
 
-# Bloquer les fichiers techniques
+# Fichiers techniques
 Disallow: /assets/*.js$
 Disallow: /assets/*.css$
+Disallow: /assets/*.map$
+
+# API
+Disallow: /api/
+
+# Google
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 1
+
+# Google Images
+User-agent: Googlebot-Image
+Allow: /
+Allow: /og-image.png
+Allow: /favicon.svg
+
+# Bing
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 2
+
+# Autres bots importants
+User-agent: DuckDuckBot
+Allow: /
+Crawl-delay: 2
+
+User-agent: Slurp
+Allow: /
+Crawl-delay: 2
+
+# Bloquer les bots malveillants connus
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
 
 # Sitemap
 Sitemap: https://adiil.fr/sitemap.xml
 
-# Crawl-delay pour eviter la surcharge (optionnel)
-Crawl-delay: 1
+# Host
+Host: https://adiil.fr

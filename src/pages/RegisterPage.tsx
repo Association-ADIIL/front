@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { Mail, Lock, User, Users, UserPlus, ArrowRight, GraduationCap } from 'lucide-react';
+import SEO from '../components/SEO';
 
 const STUDENT_GROUPS = [
   { value: 'G11A', label: '11A' },
@@ -26,7 +26,6 @@ const ACCOUNT_TYPES = [
 ];
 
 const RegisterPage: React.FC = () => {
-  useDocumentTitle('Inscription');
   const { register } = useAuth();
   const [formData, setFormData] = useState({
     firstName: '',
@@ -82,6 +81,11 @@ const RegisterPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-dark-bg flex items-center justify-center p-4 py-12">
+      <SEO
+        title="Inscription"
+        description="Creez votre compte ADIIL pour acceder aux evenements, a la boutique et rejoindre la communaute etudiante de l'IUT de Laval."
+        url="/register"
+      />
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">

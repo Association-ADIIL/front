@@ -162,7 +162,8 @@ const ShopPage: React.FC = () => {
     <div className="min-h-screen">
       <SEO
         title="Boutique"
-        description="Boutique ADIIL - Snacks, boissons et goodies pour les etudiants de l'IUT de Laval. Departement Informatique."
+        description="Boutique ADIIL - Snacks, boissons et goodies pour les etudiants de l'IUT de Laval. Departement Informatique. Prix etudiants."
+        keywords="boutique ADIIL, snacks, boissons, goodies, IUT Laval, BDE, prix etudiants, cafeteria"
         url="/shop"
       />
       {/* Header Section */}

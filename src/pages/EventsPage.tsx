@@ -52,6 +52,7 @@ const EventsPage: React.FC = () => {
       <SEO
         title="Evenements"
         description="Decouvrez les evenements organises par l'ADIIL a l'IUT de Laval. Soirees, sorties, tournois et activites pour les etudiants du Departement Informatique."
+        keywords="evenements etudiants, ADIIL, IUT Laval, soirees, sorties, tournois, BDE informatique, vie etudiante"
         url="/events"
       />
       {/* Header Section */}

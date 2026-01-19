@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { Mail, ArrowLeft, Send, CheckCircle } from 'lucide-react';
 import { forgotPassword } from '../api/auth';
+import SEO from '../components/SEO';
 
 const ForgotPasswordPage: React.FC = () => {
-  useDocumentTitle('Mot de passe oublié');
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -28,6 +27,12 @@ const ForgotPasswordPage: React.FC = () => {
   if (isSuccess) {
     return (
       <div className="min-h-screen bg-dark-bg flex items-center justify-center p-4">
+        <SEO
+          title="Mot de passe oublie"
+          description="Reinitialiser votre mot de passe ADIIL. Email envoye avec les instructions."
+          url="/forgot-password"
+          noindex={true}
+        />
         <div className="w-full max-w-md">
           {/* Header */}
           <div className="text-center mb-8">
@@ -63,6 +68,12 @@ const ForgotPasswordPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-dark-bg flex items-center justify-center p-4">
+      <SEO
+        title="Mot de passe oublie"
+        description="Mot de passe oublie ? Reinitialiser votre mot de passe ADIIL pour acceder a votre compte. IUT de Laval."
+        url="/forgot-password"
+        noindex={true}
+      />
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">

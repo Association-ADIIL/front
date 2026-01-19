@@ -2,33 +2,134 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://ui-avatars.com" />
+
+    <!-- Favicon & Icons -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#77F1BE" />
+    <meta name="msapplication-TileColor" content="#0A0A0A" />
 
     <!-- SEO Meta Tags -->
     <title>ADIIL - Association Etudiante | IUT de Laval Departement Informatique</title>
     <meta name="description" content="ADIIL, l'Association Des Etudiants en Informatique de l'IUT de Laval. Evenements, boutique et vie etudiante du Departement Informatique. Rejoignez le Bureau des Etudiants !" />
-    <meta name="keywords" content="ADIIL, IUT de Laval, Association Etudiante, Departement Informatique, Bureau des Etudiants, BDE Laval, IUT Informatique Laval, vie etudiante" />
+    <meta name="keywords" content="ADIIL, IUT de Laval, Association Etudiante, Departement Informatique, Bureau des Etudiants, BDE Laval, IUT Informatique Laval, vie etudiante, evenements etudiants, boutique BDE, snacks, boissons" />
     <meta name="author" content="ADIIL - Association Des IUT Informatique Laval" />
-    <meta name="robots" content="index, follow" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
     <link rel="canonical" href="https://adiil.fr/" />
+
+    <!-- Language -->
+    <meta http-equiv="content-language" content="fr" />
+    <meta name="language" content="French" />
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://adiil.fr/" />
     <meta property="og:title" content="ADIIL - Association Etudiante | IUT de Laval" />
     <meta property="og:description" content="Association Des Etudiants en Informatique de l'IUT de Laval. Evenements, boutique et vie etudiante du Departement Informatique." />
+    <meta property="og:image" content="https://adiil.fr/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="ADIIL - Association Etudiante IUT de Laval" />
     <meta property="og:locale" content="fr_FR" />
     <meta property="og:site_name" content="ADIIL" />
 
-    <!-- Twitter -->
+    <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://adiil.fr/" />
     <meta name="twitter:title" content="ADIIL - Association Etudiante | IUT de Laval" />
     <meta name="twitter:description" content="Association Des Etudiants en Informatique de l'IUT de Laval. Evenements, boutique et vie etudiante." />
+    <meta name="twitter:image" content="https://adiil.fr/og-image.png" />
+    <meta name="twitter:image:alt" content="ADIIL - Association Etudiante IUT de Laval" />
 
     <!-- Geo Tags -->
     <meta name="geo.region" content="FR-53" />
     <meta name="geo.placename" content="Laval" />
+    <meta name="geo.position" content="48.0733;-0.7689" />
+    <meta name="ICBM" content="48.0733, -0.7689" />
+
+    <!-- Mobile App Meta -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="ADIIL" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="ADIIL" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "ADIIL",
+      "alternateName": "Association Des IUT Informatique Laval",
+      "url": "https://adiil.fr",
+      "logo": "https://adiil.fr/favicon.svg",
+      "description": "ADIIL, l'Association Des Etudiants en Informatique de l'IUT de Laval. Evenements, boutique et vie etudiante du Departement Informatique.",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "IUT de Laval - Departement Informatique",
+        "addressLocality": "Laval",
+        "addressRegion": "Mayenne",
+        "postalCode": "53000",
+        "addressCountry": "FR"
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": 48.0733,
+        "longitude": -0.7689
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer service",
+        "availableLanguage": "French"
+      },
+      "sameAs": []
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "ADIIL",
+      "url": "https://adiil.fr",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://adiil.fr/shop?q={search_term_string}"
+        },
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "EducationalOrganization",
+      "name": "ADIIL - Bureau des Etudiants",
+      "description": "Association etudiante du departement Informatique de l'IUT de Laval",
+      "parentOrganization": {
+        "@type": "CollegeOrUniversity",
+        "name": "IUT de Laval - Le Mans Universite"
+      },
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Laval",
+        "addressRegion": "Mayenne",
+        "postalCode": "53000",
+        "addressCountry": "FR"
+      }
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>

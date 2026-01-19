@@ -89,9 +89,15 @@ const EventDetailPage: React.FC = () => {
     <div className="min-h-screen bg-dark-bg">
       <SEO
         title={event.title}
-        description={`${event.description.slice(0, 150)}... Evenement ADIIL a l'IUT de Laval.`}
+        description={`${event.description.slice(0, 150).replace(/\s+/g, ' ').trim()}... Evenement organise par l'ADIIL a l'IUT de Laval.`}
+        keywords={`${event.title}, ADIIL, evenement etudiant, IUT Laval, ${event.location}`}
         url={`/events/${event.id}`}
-        type="article"
+        type="event"
+        image={event.coverImage || undefined}
+        imageAlt={`${event.title} - Evenement ADIIL`}
+        eventDate={event.date}
+        eventLocation={event.location}
+        eventPrice={event.price}
       />
       {/* Hero Image */}
       <div className="relative h-[50vh] md:h-[60vh] overflow-hidden">

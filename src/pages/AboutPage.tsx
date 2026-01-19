@@ -84,6 +84,7 @@ const AboutPage: React.FC = () => {
       <SEO
         title="A propos - L'equipe ADIIL"
         description="Decouvrez l'equipe de l'ADIIL, l'Association des Etudiants en Informatique de l'IUT de Laval. Bureau des Etudiants du Departement Informatique."
+        keywords="equipe ADIIL, bureau BDE, IUT Laval, association etudiante, departement informatique, membres bureau"
         url="/about"
       />
       {/* Hero Section */}
