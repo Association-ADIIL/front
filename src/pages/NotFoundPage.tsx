@@ -111,7 +111,7 @@ const NotFoundPage: React.FC = () => {
         </div>
 
         {/* Quick links */}
-        <div className="pt-8 border-t border-gray-800">
+        <div className="pt-8 pb-16 border-t border-gray-800">
           <p className="text-gray-500 text-sm mb-4">Ou explore ces pages :</p>
           <div className="flex flex-wrap justify-center gap-3">
             <Link
