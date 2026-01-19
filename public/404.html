@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>404 - Page non trouvee | ADIIL</title>
+  <meta name="description" content="La page que vous recherchez n'existe pas sur le site ADIIL.">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Koulen&family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Montserrat', sans-serif;
+      background-color: #0F0F0F;
+      color: white;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Background effects */
+    .bg-glow-1 {
+      position: absolute;
+      top: -10rem;
+      right: -10rem;
+      width: 600px;
+      height: 600px;
+      background: rgba(119, 241, 190, 0.05);
+      border-radius: 50%;
+      filter: blur(120px);
+    }
+
+    .bg-glow-2 {
+      position: absolute;
+      bottom: -5rem;
+      left: -10rem;
+      width: 400px;
+      height: 400px;
+      background: rgba(239, 68, 68, 0.05);
+      border-radius: 50%;
+      filter: blur(100px);
+    }
+
+    .diagonal-pattern {
+      position: absolute;
+      inset: 0;
+      opacity: 0.02;
+      background-image: repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 40px,
+        rgba(119, 241, 190, 0.5) 40px,
+        rgba(119, 241, 190, 0.5) 41px
+      );
+    }
+
+    .container {
+      position: relative;
+      z-index: 10;
+      text-align: center;
+      padding: 1rem;
+      max-width: 600px;
+    }
+
+    /* 404 Title */
+    .title-404 {
+      font-family: 'Koulen', sans-serif;
+      font-size: clamp(8rem, 20vw, 14rem);
+      line-height: 1;
+      background: linear-gradient(to bottom, #77F1BE, rgba(119, 241, 190, 0.3));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 2rem;
+      position: relative;
+    }
+
+    .title-404::after {
+      content: '404';
+      position: absolute;
+      inset: 0;
+      color: rgba(119, 241, 190, 0.1);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.1; }
+      50% { opacity: 0.2; }
+    }
+
+    /* Terminal */
+    .terminal {
+      background: #1E1E1E;
+      border: 1px solid #374151;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      text-align: left;
+      font-family: monospace;
+    }
+
+    .terminal-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding-bottom: 0.75rem;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid #374151;
+    }
+
+    .terminal-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .terminal-dot.red { background: #ef4444; }
+    .terminal-dot.yellow { background: #eab308; }
+    .terminal-dot.green { background: #22c55e; }
+
+    .terminal-title {
+      margin-left: 0.5rem;
+      color: #6b7280;
+      font-size: 0.75rem;
+    }
+
+    .terminal-line {
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .terminal-prompt { color: #77F1BE; }
+    .terminal-path { color: white; }
+    .terminal-error { color: #f87171; }
+    .terminal-cursor {
+      display: inline-block;
+      animation: blink 1s step-end infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    /* Message */
+    .message-title {
+      font-family: 'Koulen', sans-serif;
+      font-size: 1.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .accent { color: #77F1BE; }
+
+    .message-text {
+      color: #9ca3af;
+      margin-bottom: 2rem;
+    }
+
+    /* Buttons */
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 3rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      border-radius: 12px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: all 0.3s ease;
+    }
+
+    .btn-primary {
+      background: #77F1BE;
+      color: #0F0F0F;
+    }
+
+    .btn-primary:hover {
+      background: white;
+      box-shadow: 0 0 30px rgba(119, 241, 190, 0.3);
+    }
+
+    .btn-secondary {
+      background: #1E1E1E;
+      color: white;
+      border: 1px solid #374151;
+    }
+
+    .btn-secondary:hover {
+      border-color: rgba(119, 241, 190, 0.5);
+      background: rgba(119, 241, 190, 0.05);
+    }
+
+    /* Quick links */
+    .quick-links {
+      padding-top: 2rem;
+      border-top: 1px solid #374151;
+    }
+
+    .quick-links-title {
+      color: #6b7280;
+      font-size: 0.875rem;
+      margin-bottom: 1rem;
+    }
+
+    .quick-links-list {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.75rem;
+    }
+
+    .quick-link {
+      padding: 0.5rem 1rem;
+      background: #1E1E1E;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      color: #9ca3af;
+      text-decoration: none;
+      font-size: 0.875rem;
+      transition: all 0.3s ease;
+    }
+
+    .quick-link:hover {
+      color: #77F1BE;
+      border-color: rgba(119, 241, 190, 0.3);
+    }
+
+    /* SVG Icons */
+    .icon {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-glow-1"></div>
+  <div class="bg-glow-2"></div>
+  <div class="diagonal-pattern"></div>
+
+  <div class="container">
+    <h1 class="title-404">404</h1>
+
+    <div class="terminal">
+      <div class="terminal-header">
+        <div class="terminal-dot red"></div>
+        <div class="terminal-dot yellow"></div>
+        <div class="terminal-dot green"></div>
+        <span class="terminal-title">terminal</span>
+      </div>
+      <div class="terminal-line">
+        <span class="terminal-prompt">$</span>
+        <span style="color: #9ca3af;"> cd</span>
+        <span class="terminal-path" id="path"></span>
+      </div>
+      <div class="terminal-line terminal-error">
+        bash: cd: page introuvable
+      </div>
+      <div class="terminal-line">
+        <span class="terminal-prompt">$</span>
+        <span class="terminal-cursor">_</span>
+      </div>
+    </div>
+
+    <h2 class="message-title">OUPS, <span class="accent">PAGE INTROUVABLE</span></h2>
+    <p class="message-text">
+      La page que tu cherches n'existe pas ou a ete deplacee.<br>
+      Pas de panique, retourne a l'accueil !
+    </p>
+
+    <div class="buttons">
+      <a href="/" class="btn btn-primary">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        Retour a l'accueil
+      </a>
+      <a href="javascript:history.back()" class="btn btn-secondary">
+        <svg class="icon" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        Page precedente
+      </a>
+    </div>
+
+    <div class="quick-links">
+      <p class="quick-links-title">Ou explore ces pages :</p>
+      <div class="quick-links-list">
+        <a href="/events" class="quick-link">Evenements</a>
+        <a href="/shop" class="quick-link">Boutique</a>
+        <a href="/about" class="quick-link">A propos</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('path').textContent = ' ' + window.location.pathname;
+  </script>
+</body>
+</html>

@@ -20,6 +20,7 @@ import BalancePage from './pages/BalancePage';
 import MyAccountPage from './pages/MyAccountPage';
 import PaymentCallbackPage from './pages/PaymentCallbackPage';
 import OrderPickupPage from './pages/OrderPickupPage';
+import NotFoundPage from './pages/NotFoundPage';
 import AdminLayout from './components/AdminLayout';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider, useNotification } from './context/NotificationContext';
@@ -114,7 +115,7 @@ function App() {
                         <Route path="/my-account" element={<MyAccountPage />} />
                         <Route path="/payment/callback" element={<PaymentCallbackPage />} />
                         <Route path="/order-pickup/:id" element={<OrderPickupPage />} />
-                        <Route path="*" element={<div className="min-h-screen flex items-center justify-center"><div className="text-center"><h1 className="text-4xl font-bold mb-4">404 - Page non trouvée</h1><p className="text-gray-400">La page que vous recherchez n'existe pas.</p></div></div>} />
+                        <Route path="*" element={<NotFoundPage />} />
                       </Routes>
                     </main>
                     <Footer />
