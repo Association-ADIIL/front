@@ -34,6 +34,7 @@ const PAYMENT_METHOD_OPTIONS = [
   { value: 'PAYPAL', label: 'PayPal' },
   { value: 'CASH_CB', label: 'Espèces/CB' },
   { value: 'FREE', label: 'Gratuit' },
+  { value: 'BALANCE', label: 'Solde ADIIL' },
 ];
 
 const OrderManagementPage: React.FC = () => {
@@ -604,31 +605,36 @@ const OrderManagementPage: React.FC = () => {
                        order.paymentMethod === 'BALANCE' ? 'Solde ADIIL' : order.paymentMethod}
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm">
-                      {order.discountAmount > 0 && order.originalPrice ? (
+                      {order.discountAmount > 0.01 && order.originalPrice ? (
                         <div>
                           <span className="text-gray-500 line-through text-xs block">{order.originalPrice.toFixed(2)} €</span>
                           <span className="font-bold text-green-400">{order.totalPrice.toFixed(2)} €</span>
-                          <div className="text-xs mt-0.5 space-y-0.5">
-                            {order.productDiscountAmount && order.productDiscountAmount > 0 && (
-                              <span className="text-red-400 flex items-center gap-1">
-                                <Gift size={10} />
-                                Articles: -{order.productDiscountAmount.toFixed(2)}€
-                              </span>
-                            )}
-                            {order.cartDiscountAmount && order.cartDiscountAmount > 0 && (
-                              <span className="text-green-400 flex items-center gap-1">
-                                <Gift size={10} />
-                                Panier: -{order.cartDiscountAmount.toFixed(2)}€
-                              </span>
-                            )}
-                            {(!order.productDiscountAmount || order.productDiscountAmount === 0) &&
-                             (!order.cartDiscountAmount || order.cartDiscountAmount === 0) && (
-                              <span className="text-green-400 flex items-center gap-1">
-                                <Gift size={10} />
-                                -{order.discountAmount.toFixed(2)}€
-                              </span>
-                            )}
-                          </div>
+                          {(Number(order.productDiscountAmount) > 0.01 ||
+                            Number(order.cartDiscountAmount) > 0.01 ||
+                            (order.discountAmount > 0.01 && !Number(order.productDiscountAmount) && !Number(order.cartDiscountAmount))) && (
+                            <div className="text-xs mt-0.5 space-y-0.5">
+                              {Number(order.productDiscountAmount) > 0.01 && (
+                                <span className="text-red-400 flex items-center gap-1">
+                                  <Gift size={10} />
+                                  Articles: -{order.productDiscountAmount!.toFixed(2)}€
+                                </span>
+                              )}
+                              {Number(order.cartDiscountAmount) > 0.01 && (
+                                <span className="text-green-400 flex items-center gap-1">
+                                  <Gift size={10} />
+                                  Panier: -{order.cartDiscountAmount!.toFixed(2)}€
+                                </span>
+                              )}
+                              {Number(order.productDiscountAmount) <= 0.01 &&
+                               Number(order.cartDiscountAmount) <= 0.01 &&
+                               order.discountAmount > 0.01 && (
+                                <span className="text-green-400 flex items-center gap-1">
+                                  <Gift size={10} />
+                                  -{order.discountAmount.toFixed(2)}€
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <span className="font-bold text-green-400">{order.totalPrice.toFixed(2)} €</span>

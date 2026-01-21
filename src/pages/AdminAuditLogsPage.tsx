@@ -1,12 +1,28 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { logger } from '../utils/logger';
 import { getRecentAuditLogs } from '../api/auditLogs';
-import { FileText, User, Calendar, Filter, Eye, Search, X } from 'lucide-react';
+import { FileText, User, Calendar, Filter, Eye, Search, X, Plus, Pencil, Trash2, CreditCard, RefreshCw, XCircle, UserPlus, Package, Clock } from 'lucide-react';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const ITEMS_PER_PAGE = 50;
+
+// Format relative time
+const formatRelativeTime = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return "À l'instant";
+  if (diffMins < 60) return `Il y a ${diffMins} min`;
+  if (diffHours < 24) return `Il y a ${diffHours}h`;
+  if (diffDays < 7) return `Il y a ${diffDays}j`;
+  return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+};
 
 interface AuditLog {
   id: number;
@@ -176,6 +192,33 @@ const AdminAuditLogsPage: React.FC = () => {
     return labels[entityType] || entityType;
   };
 
+  const getActionIcon = (action: string) => {
+    switch (action) {
+      case 'CREATE':
+        return <Plus size={14} />;
+      case 'UPDATE':
+        return <Pencil size={14} />;
+      case 'DELETE':
+        return <Trash2 size={14} />;
+      case 'CONFIRM_PAYMENT':
+        return <CreditCard size={14} />;
+      case 'REFUND':
+        return <RefreshCw size={14} />;
+      case 'CANCEL':
+        return <XCircle size={14} />;
+      case 'MANUAL_INSCRIPTION':
+        return <UserPlus size={14} />;
+      case 'MARK_COLLECTED':
+        return <Package size={14} />;
+      case 'BALANCE_RECHARGE':
+        return <CreditCard size={14} />;
+      case 'BALANCE_PURCHASE':
+        return <Package size={14} />;
+      default:
+        return <FileText size={14} />;
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -312,13 +355,14 @@ const AdminAuditLogsPage: React.FC = () => {
                 paginatedLogs.map((log) => (
                   <tr key={log.id} className="hover:bg-dark-bg/50 transition-colors">
                     <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-300">
-                      <div className="flex items-center gap-1 sm:gap-2">
-                        <Calendar size={14} className="text-gray-500 hidden sm:block" />
-                        <span className="text-xs sm:text-sm">
-                          {new Date(log.createdAt).toLocaleDateString('fr-FR', {
+                      <div className="flex flex-col">
+                        <span className="text-white font-medium text-xs sm:text-sm">
+                          {formatRelativeTime(log.createdAt)}
+                        </span>
+                        <span className="text-[10px] text-gray-500 hidden sm:block">
+                          {new Date(log.createdAt).toLocaleString('fr-FR', {
                             day: '2-digit',
                             month: '2-digit',
-                            year: '2-digit',
                             hour: '2-digit',
                             minute: '2-digit'
                           })}
@@ -334,14 +378,18 @@ const AdminAuditLogsPage: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${getActionBadgeColor(log.action)}`}>
-                        {formatActionLabel(log.action)}
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${getActionBadgeColor(log.action)}`}>
+                        {getActionIcon(log.action)}
+                        <span className="hidden sm:inline">{formatActionLabel(log.action)}</span>
                       </span>
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap hidden sm:table-cell">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${getEntityTypeBadgeColor(log.entityType)}`}>
-                        {formatEntityTypeLabel(log.entityType)}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border w-fit ${getEntityTypeBadgeColor(log.entityType)}`}>
+                          {formatEntityTypeLabel(log.entityType)}
+                        </span>
+                        <span className="text-[10px] text-gray-500">ID: {log.entityId}</span>
+                      </div>
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
@@ -415,23 +463,40 @@ const AdminAuditLogsPage: React.FC = () => {
             </div>
 
             <div className="border-t border-gray-700 pt-4">
-              <h3 className="text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
+              <h3 className="text-sm font-medium text-gray-400 mb-3 flex items-center gap-2">
                 <FileText size={16} className="text-gray-400" />
-                Details Techniques
+                Détails de l'action
               </h3>
-              <div className="bg-dark-bg rounded-xl p-4 border border-gray-700 overflow-x-auto">
-                <pre className="text-sm text-gray-300 font-mono whitespace-pre-wrap break-all">
-                  {(() => {
-                    if (!selectedLog.details) return 'Aucun detail supplementaire disponible.';
-                    try {
-                      const parsed = JSON.parse(selectedLog.details);
-                      return JSON.stringify(parsed, null, 2);
-                    } catch (e) {
-                      return selectedLog.details;
-                    }
-                  })()}
-                </pre>
-              </div>
+              {(() => {
+                if (!selectedLog.details) {
+                  return (
+                    <p className="text-gray-500 text-sm italic">Aucun détail supplémentaire disponible.</p>
+                  );
+                }
+                try {
+                  const parsed = JSON.parse(selectedLog.details);
+                  return (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {Object.entries(parsed).map(([key, value]) => (
+                        <div key={key} className="bg-dark-bg rounded-lg p-3 border border-gray-700">
+                          <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
+                          <p className="text-white font-medium text-sm break-all">
+                            {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                } catch (e) {
+                  return (
+                    <div className="bg-dark-bg rounded-xl p-4 border border-gray-700 overflow-x-auto">
+                      <pre className="text-sm text-gray-300 font-mono whitespace-pre-wrap break-all">
+                        {selectedLog.details}
+                      </pre>
+                    </div>
+                  );
+                }
+              })()}
             </div>
           </div>
         )}

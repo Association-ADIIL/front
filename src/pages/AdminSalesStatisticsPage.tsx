@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { logger } from '../utils/logger';
 import { getAllOrders, type Order } from '../api/orders';
 import { getAllInscriptions, type Inscription } from '../api/inscriptions';
-import { TrendingUp, DollarSign, ShoppingBag, Calendar, Users } from 'lucide-react';
+import { TrendingUp, DollarSign, ShoppingBag, Calendar, Users, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import {
   LineChart,
   Line,
@@ -23,6 +23,7 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle';
 interface Stats {
   totalRevenue: number;
   revenueThisMonth: number;
+  revenueLastMonth: number;
   revenueThisYear: number;
   totalOrders: number;
   totalInscriptions: number;
@@ -30,11 +31,46 @@ interface Stats {
   averageInscriptionValue: number;
 }
 
+// Custom tooltip component for better styling
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-darker-bg border border-gray-700 rounded-xl p-3 shadow-xl">
+        <p className="text-white font-medium mb-2">{label}</p>
+        {payload.map((entry: any, index: number) => (
+          <p key={index} className="text-sm" style={{ color: entry.color }}>
+            {entry.name}: <span className="font-bold">{entry.value.toFixed(2)} €</span>
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
+// Custom legend component
+const CustomLegend = ({ payload }: any) => {
+  return (
+    <div className="flex flex-wrap justify-center gap-4 mt-4">
+      {payload.map((entry: any, index: number) => (
+        <div key={index} className="flex items-center gap-2">
+          <div
+            className="w-3 h-3 rounded-full"
+            style={{ backgroundColor: entry.color }}
+          />
+          <span className="text-gray-300 text-sm">{entry.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const AdminSalesStatisticsPage: React.FC = () => {
   useDocumentTitle('Admin - Statistiques');
   const [stats, setStats] = useState<Stats>({
     totalRevenue: 0,
     revenueThisMonth: 0,
+    revenueLastMonth: 0,
     revenueThisYear: 0,
     totalOrders: 0,
     totalInscriptions: 0,
@@ -62,6 +98,8 @@ const AdminSalesStatisticsPage: React.FC = () => {
         // Calculate stats
         const now = new Date();
         const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const firstDayOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastDayOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
         const firstDayOfYear = new Date(now.getFullYear(), 0, 1);
 
         // Orders revenue
@@ -69,6 +107,11 @@ const AdminSalesStatisticsPage: React.FC = () => {
         const ordersRevenue = paidOrders.reduce((sum, o) => sum + o.totalPrice, 0);
         const ordersThisMonth = paidOrders.filter(o => new Date(o.createdAt) >= firstDayOfMonth);
         const ordersRevenueThisMonth = ordersThisMonth.reduce((sum, o) => sum + o.totalPrice, 0);
+        const ordersLastMonth = paidOrders.filter(o => {
+          const date = new Date(o.createdAt);
+          return date >= firstDayOfLastMonth && date <= lastDayOfLastMonth;
+        });
+        const ordersRevenueLastMonth = ordersLastMonth.reduce((sum, o) => sum + o.totalPrice, 0);
         const ordersThisYear = paidOrders.filter(o => new Date(o.createdAt) >= firstDayOfYear);
         const ordersRevenueThisYear = ordersThisYear.reduce((sum, o) => sum + o.totalPrice, 0);
 
@@ -77,12 +120,18 @@ const AdminSalesStatisticsPage: React.FC = () => {
         const inscriptionsRevenue = paidInscriptions.reduce((sum, i) => sum + i.totalPrice, 0);
         const inscriptionsThisMonth = paidInscriptions.filter(i => new Date(i.createdAt) >= firstDayOfMonth);
         const inscriptionsRevenueThisMonth = inscriptionsThisMonth.reduce((sum, i) => sum + i.totalPrice, 0);
+        const inscriptionsLastMonth = paidInscriptions.filter(i => {
+          const date = new Date(i.createdAt);
+          return date >= firstDayOfLastMonth && date <= lastDayOfLastMonth;
+        });
+        const inscriptionsRevenueLastMonth = inscriptionsLastMonth.reduce((sum, i) => sum + i.totalPrice, 0);
         const inscriptionsThisYear = paidInscriptions.filter(i => new Date(i.createdAt) >= firstDayOfYear);
         const inscriptionsRevenueThisYear = inscriptionsThisYear.reduce((sum, i) => sum + i.totalPrice, 0);
 
         setStats({
           totalRevenue: ordersRevenue + inscriptionsRevenue,
           revenueThisMonth: ordersRevenueThisMonth + inscriptionsRevenueThisMonth,
+          revenueLastMonth: ordersRevenueLastMonth + inscriptionsRevenueLastMonth,
           revenueThisYear: ordersRevenueThisYear + inscriptionsRevenueThisYear,
           totalOrders: paidOrders.length,
           totalInscriptions: paidInscriptions.length,
@@ -97,20 +146,20 @@ const AdminSalesStatisticsPage: React.FC = () => {
         for (let i = 5; i >= 0; i--) {
           const date = new Date();
           date.setMonth(date.getMonth() - i);
-          const monthKey = date.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' });
+          const monthKey = date.toLocaleDateString('fr-FR', { month: 'short' });
           months.push(monthKey);
           monthlyRevenue[monthKey] = { orders: 0, inscriptions: 0 };
         }
 
         paidOrders.forEach(order => {
-          const monthKey = new Date(order.createdAt).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' });
+          const monthKey = new Date(order.createdAt).toLocaleDateString('fr-FR', { month: 'short' });
           if (monthlyRevenue[monthKey]) {
             monthlyRevenue[monthKey].orders += order.totalPrice;
           }
         });
 
         paidInscriptions.forEach(inscription => {
-          const monthKey = new Date(inscription.createdAt).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' });
+          const monthKey = new Date(inscription.createdAt).toLocaleDateString('fr-FR', { month: 'short' });
           if (monthlyRevenue[monthKey]) {
             monthlyRevenue[monthKey].inscriptions += inscription.totalPrice;
           }
@@ -131,25 +180,35 @@ const AdminSalesStatisticsPage: React.FC = () => {
           { name: 'Inscriptions', value: Math.round(inscriptionsRevenue * 100) / 100, color: '#FF6B9D' },
         ]);
 
-        // Payment method data
+        // Payment method data (exclude FREE as it doesn't represent actual revenue)
         const paymentMethods: { [key: string]: number } = {};
         [...paidOrders, ...paidInscriptions].forEach(item => {
           const method = item.paymentMethod;
+          if (method === 'FREE') return; // Skip free transactions
           paymentMethods[method] = (paymentMethods[method] || 0) + item.totalPrice;
         });
 
         const methodLabels: { [key: string]: string } = {
           PAYPAL: 'PayPal',
           HELLOASSO: 'HelloAsso',
-          CASH_CB: 'Especes/CB',
+          CASH_CB: 'Espèces/CB',
           FREE: 'Gratuit',
-          BALANCE: 'Solde ADIIL',
+          BALANCE: 'Solde',
+        };
+
+        const methodColors: { [key: string]: string } = {
+          PAYPAL: '#0070ba',
+          HELLOASSO: '#49D38A',
+          CASH_CB: '#F59E0B',
+          FREE: '#8B5CF6',
+          BALANCE: '#77F1BE',
         };
 
         setPaymentMethodData(
           Object.entries(paymentMethods).map(([method, amount]) => ({
             method: methodLabels[method] || method,
             montant: Math.round(amount * 100) / 100,
+            fill: methodColors[method] || '#77F1BE',
           }))
         );
 
@@ -163,6 +222,12 @@ const AdminSalesStatisticsPage: React.FC = () => {
     fetchData();
   }, []);
 
+  // Calculate month-over-month change
+  const monthChange = stats.revenueLastMonth > 0
+    ? ((stats.revenueThisMonth - stats.revenueLastMonth) / stats.revenueLastMonth) * 100
+    : 0;
+  const isPositiveChange = monthChange >= 0;
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -172,9 +237,9 @@ const AdminSalesStatisticsPage: React.FC = () => {
   }
 
   return (
-    <div>
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="w-1 h-12 bg-emerald-500 rounded-full hidden sm:block" />
           <div>
@@ -188,155 +253,260 @@ const AdminSalesStatisticsPage: React.FC = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Total Revenue */}
-        <div className="bg-darker-bg p-5 rounded-2xl border border-gray-800 hover:border-emerald-500/30 transition-all group">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
-              <DollarSign className="text-emerald-400" size={22} />
+        <div className="bg-darker-bg p-4 sm:p-5 rounded-2xl border border-gray-800 hover:border-emerald-500/30 transition-all group">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
+              <DollarSign className="text-emerald-400" size={20} />
             </div>
           </div>
-          <p className="text-xs text-gray-500 mb-1">Revenu Total</p>
-          <h3 className="text-3xl font-koulen text-emerald-400">{stats.totalRevenue.toFixed(2)}€</h3>
+          <p className="text-[10px] sm:text-xs text-gray-500 uppercase tracking-wider mb-1">Revenu Total</p>
+          <h3 className="text-xl sm:text-3xl font-koulen text-emerald-400">{stats.totalRevenue.toFixed(2)}€</h3>
         </div>
 
         {/* Revenue This Month */}
-        <div className="bg-darker-bg p-5 rounded-2xl border border-gray-800 hover:border-orange-500/30 transition-all group">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-orange-500/10 rounded-xl flex items-center justify-center group-hover:bg-orange-500/20 transition-colors">
-              <TrendingUp className="text-orange-400" size={22} />
+        <div className="bg-darker-bg p-4 sm:p-5 rounded-2xl border border-gray-800 hover:border-orange-500/30 transition-all group">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-500/10 rounded-xl flex items-center justify-center group-hover:bg-orange-500/20 transition-colors">
+              <TrendingUp className="text-orange-400" size={20} />
             </div>
+            {stats.revenueLastMonth > 0 && (
+              <div className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${isPositiveChange ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                {isPositiveChange ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+                <span className="font-medium">{Math.abs(monthChange).toFixed(0)}%</span>
+              </div>
+            )}
           </div>
-          <p className="text-xs text-gray-500 mb-1">Revenu ce mois</p>
-          <h3 className="text-3xl font-koulen text-orange-400">{stats.revenueThisMonth.toFixed(2)}€</h3>
+          <p className="text-[10px] sm:text-xs text-gray-500 uppercase tracking-wider mb-1">Ce mois</p>
+          <h3 className="text-xl sm:text-3xl font-koulen text-orange-400">{stats.revenueThisMonth.toFixed(2)}€</h3>
         </div>
 
         {/* Revenue This Year */}
-        <div className="bg-darker-bg p-5 rounded-2xl border border-gray-800 hover:border-purple-500/30 transition-all group">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center group-hover:bg-purple-500/20 transition-colors">
-              <Calendar className="text-purple-400" size={22} />
+        <div className="bg-darker-bg p-4 sm:p-5 rounded-2xl border border-gray-800 hover:border-purple-500/30 transition-all group">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-500/10 rounded-xl flex items-center justify-center group-hover:bg-purple-500/20 transition-colors">
+              <Calendar className="text-purple-400" size={20} />
             </div>
           </div>
-          <p className="text-xs text-gray-500 mb-1">Revenu cette annee</p>
-          <h3 className="text-3xl font-koulen text-purple-400">{stats.revenueThisYear.toFixed(2)}€</h3>
+          <p className="text-[10px] sm:text-xs text-gray-500 uppercase tracking-wider mb-1">Cette année</p>
+          <h3 className="text-xl sm:text-3xl font-koulen text-purple-400">{stats.revenueThisYear.toFixed(2)}€</h3>
         </div>
 
         {/* Total Transactions */}
-        <div className="bg-darker-bg p-5 rounded-2xl border border-gray-800 hover:border-blue-500/30 transition-all group">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
-              <Users className="text-blue-400" size={22} />
+        <div className="bg-darker-bg p-4 sm:p-5 rounded-2xl border border-gray-800 hover:border-blue-500/30 transition-all group">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500/10 rounded-xl flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
+              <Users className="text-blue-400" size={20} />
             </div>
           </div>
-          <p className="text-xs text-gray-500 mb-1">Transactions</p>
-          <h3 className="text-3xl font-koulen text-blue-400">{stats.totalOrders + stats.totalInscriptions}</h3>
+          <p className="text-[10px] sm:text-xs text-gray-500 uppercase tracking-wider mb-1">Transactions</p>
+          <h3 className="text-xl sm:text-3xl font-koulen text-blue-400">{stats.totalOrders + stats.totalInscriptions}</h3>
         </div>
       </div>
 
       {/* Detailed Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Orders Stats */}
-        <div className="bg-darker-bg p-6 rounded-2xl border border-gray-800">
+        <div className="bg-darker-bg p-4 sm:p-6 rounded-2xl border border-gray-800">
           <div className="flex items-center gap-3 mb-4">
-            <ShoppingBag className="text-emerald-400" size={24} />
-            <h2 className="text-xl font-bold text-white">Commandes Boutique</h2>
+            <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center">
+              <ShoppingBag className="text-emerald-400" size={20} />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-white">Commandes Boutique</h2>
+              <p className="text-xs text-gray-500">Ventes de produits</p>
+            </div>
           </div>
           <div className="space-y-3">
-            <div className="flex justify-between items-center py-2 border-b border-gray-800">
-              <span className="text-gray-400">Total des commandes</span>
-              <span className="text-white font-semibold">{stats.totalOrders}</span>
+            <div className="flex justify-between items-center py-3 px-4 bg-dark-bg rounded-xl">
+              <span className="text-gray-400 text-sm">Total des commandes</span>
+              <span className="text-white font-bold text-lg">{stats.totalOrders}</span>
             </div>
-            <div className="flex justify-between items-center py-2 border-b border-gray-800">
-              <span className="text-gray-400">Panier moyen</span>
-              <span className="text-white font-semibold">{stats.averageOrderValue.toFixed(2)} EUR</span>
+            <div className="flex justify-between items-center py-3 px-4 bg-dark-bg rounded-xl">
+              <span className="text-gray-400 text-sm">Panier moyen</span>
+              <span className="text-emerald-400 font-koulen text-xl">{stats.averageOrderValue.toFixed(2)} €</span>
             </div>
           </div>
         </div>
 
         {/* Inscriptions Stats */}
-        <div className="bg-darker-bg p-6 rounded-2xl border border-gray-800">
+        <div className="bg-darker-bg p-4 sm:p-6 rounded-2xl border border-gray-800">
           <div className="flex items-center gap-3 mb-4">
-            <Calendar className="text-pink-400" size={24} />
-            <h2 className="text-xl font-bold text-white">Inscriptions Evenements</h2>
+            <div className="w-10 h-10 bg-pink-500/10 rounded-xl flex items-center justify-center">
+              <Calendar className="text-pink-400" size={20} />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-white">Inscriptions Événements</h2>
+              <p className="text-xs text-gray-500">Billetterie et participations</p>
+            </div>
           </div>
           <div className="space-y-3">
-            <div className="flex justify-between items-center py-2 border-b border-gray-800">
-              <span className="text-gray-400">Total des inscriptions</span>
-              <span className="text-white font-semibold">{stats.totalInscriptions}</span>
+            <div className="flex justify-between items-center py-3 px-4 bg-dark-bg rounded-xl">
+              <span className="text-gray-400 text-sm">Total des inscriptions</span>
+              <span className="text-white font-bold text-lg">{stats.totalInscriptions}</span>
             </div>
-            <div className="flex justify-between items-center py-2 border-b border-gray-800">
-              <span className="text-gray-400">Prix moyen</span>
-              <span className="text-white font-semibold">{stats.averageInscriptionValue.toFixed(2)} EUR</span>
+            <div className="flex justify-between items-center py-3 px-4 bg-dark-bg rounded-xl">
+              <span className="text-gray-400 text-sm">Prix moyen</span>
+              <span className="text-pink-400 font-koulen text-xl">{stats.averageInscriptionValue.toFixed(2)} €</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Charts Section */}
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Monthly Revenue Trend */}
-        <div className="bg-darker-bg p-6 rounded-2xl border border-gray-800">
-          <h2 className="text-xl font-bold text-white mb-6">Evolution du Revenu (6 derniers mois)</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={monthlyData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="month" stroke="#9CA3AF" />
-              <YAxis stroke="#9CA3AF" />
-              <Tooltip
-                contentStyle={{ backgroundColor: '#0F0F0F', border: '1px solid #374151', borderRadius: '12px' }}
-                labelStyle={{ color: '#F3F4F6' }}
-              />
-              <Legend />
-              <Line type="monotone" dataKey="Commandes" stroke="#77F1BE" strokeWidth={2} />
-              <Line type="monotone" dataKey="Inscriptions" stroke="#FF6B9D" strokeWidth={2} />
-              <Line type="monotone" dataKey="Total" stroke="#9333EA" strokeWidth={3} strokeDasharray="5 5" />
-            </LineChart>
-          </ResponsiveContainer>
+        <div className="bg-darker-bg p-4 sm:p-6 rounded-2xl border border-gray-800">
+          <h2 className="text-lg sm:text-xl font-bold text-white mb-4 sm:mb-6">Évolution du Revenu</h2>
+          <div className="h-[250px] sm:h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={monthlyData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
+                <XAxis
+                  dataKey="month"
+                  stroke="#9CA3AF"
+                  tick={{ fill: '#9CA3AF', fontSize: 12 }}
+                  axisLine={{ stroke: '#374151' }}
+                  tickLine={false}
+                />
+                <YAxis
+                  stroke="#9CA3AF"
+                  tick={{ fill: '#9CA3AF', fontSize: 12 }}
+                  axisLine={{ stroke: '#374151' }}
+                  tickLine={false}
+                  tickFormatter={(value) => `${value}€`}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend content={<CustomLegend />} />
+                <Line
+                  type="monotone"
+                  dataKey="Commandes"
+                  stroke="#77F1BE"
+                  strokeWidth={2}
+                  dot={{ fill: '#77F1BE', strokeWidth: 0, r: 4 }}
+                  activeDot={{ r: 6, fill: '#77F1BE' }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="Inscriptions"
+                  stroke="#FF6B9D"
+                  strokeWidth={2}
+                  dot={{ fill: '#FF6B9D', strokeWidth: 0, r: 4 }}
+                  activeDot={{ r: 6, fill: '#FF6B9D' }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Revenue Source Pie Chart */}
-          <div className="bg-darker-bg p-6 rounded-2xl border border-gray-800">
-            <h2 className="text-xl font-bold text-white mb-6">Repartition du Revenu</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={revenueSourceData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, value, percent }) => `${name}: ${value}EUR (${((percent ?? 0) * 100).toFixed(0)}%)`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {revenueSourceData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#0F0F0F', border: '1px solid #374151', borderRadius: '12px' }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+          <div className="bg-darker-bg p-4 sm:p-6 rounded-2xl border border-gray-800">
+            <h2 className="text-lg sm:text-xl font-bold text-white mb-4 sm:mb-6">Répartition du Revenu</h2>
+            <div className="h-[250px] sm:h-[280px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={revenueSourceData}
+                    cx="50%"
+                    cy="45%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {revenueSourceData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-darker-bg border border-gray-700 rounded-xl p-3 shadow-xl">
+                            <p className="text-white font-medium">{data.name}</p>
+                            <p className="text-lg font-koulen" style={{ color: data.color }}>
+                              {data.value.toFixed(2)} €
+                            </p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            {/* Custom legend below */}
+            <div className="flex justify-center gap-6 mt-2">
+              {revenueSourceData.map((entry, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: entry.color }}
+                  />
+                  <span className="text-gray-300 text-sm">{entry.name}</span>
+                  <span className="text-gray-500 text-sm">({entry.value.toFixed(0)}€)</span>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Payment Methods Bar Chart */}
-          <div className="bg-darker-bg p-6 rounded-2xl border border-gray-800">
-            <h2 className="text-xl font-bold text-white mb-6">Methodes de Paiement</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={paymentMethodData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="method" stroke="#9CA3AF" />
-                <YAxis stroke="#9CA3AF" />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#0F0F0F', border: '1px solid #374151', borderRadius: '12px' }}
-                  labelStyle={{ color: '#F3F4F6' }}
-                />
-                <Bar dataKey="montant" fill="#77F1BE" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="bg-darker-bg p-4 sm:p-6 rounded-2xl border border-gray-800">
+            <h2 className="text-lg sm:text-xl font-bold text-white mb-4 sm:mb-6">Méthodes de Paiement</h2>
+            <div className="h-[250px] sm:h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={paymentMethodData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
+                  <XAxis
+                    dataKey="method"
+                    stroke="#9CA3AF"
+                    tick={{ fill: '#9CA3AF', fontSize: 11 }}
+                    axisLine={{ stroke: '#374151' }}
+                    tickLine={false}
+                    interval={0}
+                    angle={-15}
+                    textAnchor="end"
+                    height={50}
+                  />
+                  <YAxis
+                    stroke="#9CA3AF"
+                    tick={{ fill: '#9CA3AF', fontSize: 12 }}
+                    axisLine={{ stroke: '#374151' }}
+                    tickLine={false}
+                    tickFormatter={(value) => `${value}€`}
+                  />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-darker-bg border border-gray-700 rounded-xl p-3 shadow-xl">
+                            <p className="text-white font-medium">{data.method}</p>
+                            <p className="text-lg font-koulen text-emerald-400">
+                              {data.montant.toFixed(2)} €
+                            </p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Bar
+                    dataKey="montant"
+                    radius={[8, 8, 0, 0]}
+                    maxBarSize={60}
+                  >
+                    {paymentMethodData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
       </div>

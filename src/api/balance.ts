@@ -86,3 +86,8 @@ export const addBalanceManually = async (data: {
     body: JSON.stringify(data),
   });
 };
+
+// Admin: Get a specific user's balance
+export const getUserBalance = async (userId: string): Promise<{ balance: number }> => {
+  return fetchJson(`/balance/user/${userId}`);
+};

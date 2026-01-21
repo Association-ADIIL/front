@@ -15,6 +15,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import EventsPage from './pages/EventsPage';
 import EventDetailPage from './pages/EventDetailPage';
 import ShopPage from './pages/ShopPage';
+import ProductDetailPage from './pages/ProductDetailPage';
 import CartPage from './pages/CartPage';
 import BalancePage from './pages/BalancePage';
 import MyAccountPage from './pages/MyAccountPage';
@@ -110,6 +111,7 @@ function App() {
                         <Route path="/events" element={<EventsPage />} />
                         <Route path="/events/:id" element={<EventDetailPage />} />
                         <Route path="/shop" element={<ShopPage />} />
+                        <Route path="/shop/:id" element={<ProductDetailPage />} />
                         <Route path="/cart" element={<CartPage />} />
                         <Route path="/balance" element={<BalancePage />} />
                         <Route path="/my-account" element={<MyAccountPage />} />

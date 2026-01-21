@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { logger } from '../utils/logger';
-import { getAllProducts, deleteProduct, createProduct, updateProduct, type Product, type ProductFormData, type ProductVariant } from '../api/products';
+import { getAllProducts, deleteProduct, createProduct, updateProduct, type Product, type ProductFormData, type ProductVariant, type ProductImage } from '../api/products';
 import { getAllCategories, type Category } from '../api/categories';
-import { Edit2, Trash2, Plus, X, Search } from 'lucide-react';
+import { Edit2, Trash2, Plus, X, Search, Images } from 'lucide-react';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
 import ImageUpload from '../components/ImageUpload';
+import ProductImageGallery from '../components/ProductImageGallery';
 import NumberInput from '../components/NumberInput';
 import { deleteImage } from '../api/upload';
 import { useNotification } from '../context/NotificationContext';
@@ -43,6 +44,7 @@ const ProductManagementPage: React.FC = () => {
   });
 
   const [editingVariantId, setEditingVariantId] = useState<number | null>(null);
+  const [galleryImages, setGalleryImages] = useState<ProductImage[]>([]);
 
   const fetchProducts = async () => {
     try {
@@ -87,6 +89,7 @@ const ProductManagementPage: React.FC = () => {
       stock: undefined
     });
     setEditingVariantId(null);
+    setGalleryImages([]);
     setIsModalOpen(true);
   };
 
@@ -108,6 +111,7 @@ const ProductManagementPage: React.FC = () => {
       stock: undefined
     });
     setEditingVariantId(null);
+    setGalleryImages(product.images || []);
     setIsModalOpen(true);
   };
 
@@ -316,6 +320,12 @@ const ProductManagementPage: React.FC = () => {
                       {(product.variants as any[]).length} var.
                     </span>
                   )}
+                  {product.images && product.images.length > 0 && (
+                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 flex items-center gap-1">
+                      <Images size={10} />
+                      {product.images.length}
+                    </span>
+                  )}
                 </div>
                 <span className="text-lg font-koulen text-orange-400">{product.price}€</span>
               </div>
@@ -383,12 +393,30 @@ const ProductManagementPage: React.FC = () => {
                   value={formData.imageUrl || ''}
                   onChange={(url) => setFormData(prev => ({ ...prev, imageUrl: url || '' }))}
                   folder="products"
-                  label="Image du produit"
+                  label="Image principale"
                   aspectRatio="16:9"
                   onCleanup={handleImageCleanup}
                   accentColor="orange"
                 />
             </div>
+
+            {/* Gallery Images Section - Only for existing products */}
+            {currentProduct && (
+              <div className="border-t border-gray-700 pt-4 mt-4">
+                <ProductImageGallery
+                  productId={currentProduct.id}
+                  images={galleryImages}
+                  onImagesChange={setGalleryImages}
+                  accentColor="orange"
+                />
+              </div>
+            )}
+
+            {!currentProduct && (
+              <p className="text-xs text-gray-500 bg-dark-bg p-3 rounded-lg border border-gray-700">
+                Enregistrez d'abord le produit pour pouvoir ajouter des images supplementaires a la galerie.
+              </p>
+            )}
 
             {/* Product Variants Section */}
             <div className="border-t border-gray-700 pt-4 mt-4">

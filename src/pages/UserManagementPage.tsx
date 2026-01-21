@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { logger } from '../utils/logger';
 import { getAllUsers, deleteUser, createUser, updateUser } from '../api/users';
+import { getUserBalance } from '../api/balance';
 import { type User } from '../api/auth';
-import { Edit2, Trash2, Plus, User as UserIcon, Search } from 'lucide-react';
+import { Edit2, Trash2, Plus, User as UserIcon, Search, Eye, Mail, Calendar, CreditCard, Users, Loader } from 'lucide-react';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
@@ -20,6 +21,10 @@ const UserManagementPage: React.FC = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUserBalance, setSelectedUserBalance] = useState<number | null>(null);
+  const [loadingBalance, setLoadingBalance] = useState(false);
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -92,6 +97,25 @@ const UserManagementPage: React.FC = () => {
   const handleOpenDelete = (user: User) => {
     setUserToDelete(user);
     setIsDeleteModalOpen(true);
+  };
+
+  const handleOpenDetail = async (user: User) => {
+    setSelectedUser(user);
+    setSelectedUserBalance(null);
+    setIsDetailModalOpen(true);
+
+    if (!user.deletedAt) {
+      setLoadingBalance(true);
+      try {
+        const { balance } = await getUserBalance(user.id);
+        setSelectedUserBalance(balance);
+      } catch (error) {
+        logger.error('Failed to fetch user balance', error);
+        setSelectedUserBalance(0);
+      } finally {
+        setLoadingBalance(false);
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -223,12 +247,13 @@ const UserManagementPage: React.FC = () => {
                   {user.studentGroup || '-'}
                 </td>
                 <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <button onClick={() => handleOpenDetail(user)} className="text-gray-400 hover:text-white mr-3 sm:mr-4" title="Voir les détails"><Eye size={18} /></button>
                   {user.deletedAt ? (
-                    <span className="text-gray-500 text-xs">Aucune action</span>
+                    <span className="text-gray-500 text-xs">Supprimé</span>
                   ) : (
                     <>
-                      <button onClick={() => handleOpenEdit(user)} className="text-blue-400 hover:text-white mr-3 sm:mr-4"><Edit2 size={18} /></button>
-                      <button onClick={() => handleOpenDelete(user)} className="text-red-400 hover:text-red-300"><Trash2 size={18} /></button>
+                      <button onClick={() => handleOpenEdit(user)} className="text-blue-400 hover:text-white mr-3 sm:mr-4" title="Modifier"><Edit2 size={18} /></button>
+                      <button onClick={() => handleOpenDelete(user)} className="text-red-400 hover:text-red-300" title="Supprimer"><Trash2 size={18} /></button>
                     </>
                   )}
                 </td>
@@ -321,6 +346,132 @@ const UserManagementPage: React.FC = () => {
                 <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-500">Supprimer</button>
             </div>
         </div>
+      </Modal>
+
+      {/* User Detail Modal */}
+      <Modal
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        title="Détails de l'utilisateur"
+      >
+        {selectedUser && (
+          <div className="space-y-6">
+            {/* User header */}
+            <div className="flex items-center gap-4 pb-4 border-b border-gray-700">
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold ${
+                selectedUser.deletedAt ? 'bg-red-900/50 text-red-400' : 'bg-blue-500/20 text-blue-400'
+              }`}>
+                {selectedUser.firstName[0]}{selectedUser.lastName[0]}
+              </div>
+              <div>
+                <h3 className={`text-xl font-bold capitalize ${selectedUser.deletedAt ? 'text-gray-400 line-through' : 'text-white'}`}>
+                  {selectedUser.firstName} {selectedUser.lastName}
+                </h3>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                  selectedUser.deletedAt ? 'bg-red-900/50 text-red-300' :
+                  selectedUser.type.includes('ADMIN') ? 'bg-purple-900/50 text-purple-200' :
+                  selectedUser.type === 'PROFESSOR' ? 'bg-blue-900/50 text-blue-200' :
+                  'bg-green-900/50 text-green-200'
+                }`}>
+                  {selectedUser.deletedAt ? 'SUPPRIMÉ' : selectedUser.type}
+                </span>
+              </div>
+            </div>
+
+            {/* Info grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Email */}
+              <div className="bg-dark-bg rounded-xl p-4 border border-gray-700">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
+                    <Mail size={18} className="text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wider">Email</p>
+                    <p className={`font-medium ${selectedUser.deletedAt ? 'text-gray-500' : 'text-white'}`}>
+                      {selectedUser.deletedAt ? 'Compte supprimé' : selectedUser.email}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Balance */}
+              <div className="bg-dark-bg rounded-xl p-4 border border-gray-700">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center">
+                    <CreditCard size={18} className="text-green-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wider">Solde</p>
+                    {selectedUser.deletedAt ? (
+                      <p className="text-gray-500 font-medium">N/A</p>
+                    ) : loadingBalance ? (
+                      <div className="flex items-center gap-2">
+                        <Loader size={14} className="animate-spin text-gray-400" />
+                        <span className="text-gray-400 text-sm">Chargement...</span>
+                      </div>
+                    ) : (
+                      <p className="text-green-400 font-koulen text-xl">{selectedUserBalance?.toFixed(2) ?? '0.00'} EUR</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Group */}
+              <div className="bg-dark-bg rounded-xl p-4 border border-gray-700">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-purple-500/10 rounded-lg flex items-center justify-center">
+                    <Users size={18} className="text-purple-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wider">Groupe TP</p>
+                    <p className="text-white font-medium">{selectedUser.studentGroup || 'Aucun'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Created at */}
+              <div className="bg-dark-bg rounded-xl p-4 border border-gray-700">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-orange-500/10 rounded-lg flex items-center justify-center">
+                    <Calendar size={18} className="text-orange-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wider">Inscrit le</p>
+                    <p className="text-white font-medium">
+                      {new Date(selectedUser.createdAt).toLocaleDateString('fr-FR', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric'
+                      })}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ID */}
+            <div className="text-center pt-4 border-t border-gray-700">
+              <p className="text-xs text-gray-500">ID Utilisateur: <span className="font-mono text-gray-400">{selectedUser.id}</span></p>
+            </div>
+
+            {/* Actions */}
+            {!selectedUser.deletedAt && (
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    setIsDetailModalOpen(false);
+                    handleOpenEdit(selectedUser);
+                  }}
+                  className="px-4 py-2 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-400 transition-colors flex items-center gap-2"
+                >
+                  <Edit2 size={16} />
+                  Modifier
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </Modal>
     </div>
   );

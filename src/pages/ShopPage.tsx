@@ -3,7 +3,7 @@ import { logger } from '../utils/logger';
 import { getAllProducts, type Product } from '../api/products';
 import { getAllCategories, type Category } from '../api/categories';
 import { getActiveProductPromotions, type ProductPromotionsMap } from '../api/promotions';
-import { ShoppingBag, Minus, Plus, ShoppingCart, Search, LogIn, X, Tag, Coffee } from 'lucide-react';
+import { ShoppingBag, Minus, Plus, ShoppingCart, Search, LogIn, X, Tag, Coffee, Eye } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useNotification } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
@@ -406,7 +406,7 @@ const ShopPage: React.FC = () => {
                           }`}
                         >
                           {/* Image */}
-                          <div className="aspect-square bg-gray-900 relative overflow-hidden">
+                          <Link to={`/shop/${product.id}`} className="aspect-square bg-gray-900 relative overflow-hidden block">
                             <img
                               src={product.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(product.name)}&background=1E1E1E&color=fff&size=200`}
                               alt={product.name}
@@ -414,6 +414,19 @@ const ShopPage: React.FC = () => {
                             />
                             {/* Gradient overlay */}
                             <div className="absolute inset-0 bg-gradient-to-t from-darker-bg/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                            {/* View details overlay */}
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className="px-3 py-2 bg-darker-bg/90 backdrop-blur-sm rounded-lg border border-accent-mint/50 flex items-center gap-2 text-accent-mint text-sm font-medium">
+                                <Eye size={14} />
+                                Voir détails
+                              </div>
+                            </div>
+                            {/* Multiple images indicator */}
+                            {product.images && product.images.length > 0 && (
+                              <div className="absolute bottom-2 left-2 px-2 py-1 bg-darker-bg/90 backdrop-blur-sm rounded-lg text-xs text-gray-300 border border-gray-700/50">
+                                +{product.images.length} photo{product.images.length > 1 ? 's' : ''}
+                              </div>
+                            )}
                             {/* Promotion badge */}
                             {hasPromotion && (
                               <div className="absolute top-2 left-2 bg-gradient-to-r from-red-500 to-red-600 text-white px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-lg">
@@ -432,11 +445,11 @@ const ShopPage: React.FC = () => {
                                 <span className="text-accent-mint font-koulen text-lg">{basePrice.toFixed(2)}€</span>
                               )}
                             </div>
-                          </div>
+                          </Link>
 
                           {/* Content */}
                           <div className="p-3 flex flex-col flex-1 border-t border-gray-800/50">
-                            <h3 className="font-bold text-white text-sm leading-tight mb-1 line-clamp-2 group-hover:text-accent-mint transition-colors">{product.name}</h3>
+                            <Link to={`/shop/${product.id}`} className="font-bold text-white text-sm leading-tight mb-1 line-clamp-2 group-hover:text-accent-mint transition-colors block hover:underline">{product.name}</Link>
                             {product.description && (
                               <p className="text-gray-500 text-xs line-clamp-2 mb-2">{product.description}</p>
                             )}

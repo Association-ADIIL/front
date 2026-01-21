@@ -1,4 +1,4 @@
-import { fetchJson } from './client';
+import { fetchJson, fetchFormData } from './client';
 import type { Category, Subcategory } from './categories';
 
 export interface ProductVariant {
@@ -6,6 +6,14 @@ export interface ProductVariant {
   name: string;
   priceModifier: number; // Price difference from base price (can be 0)
   stock?: number;
+}
+
+export interface ProductImage {
+  id: number;
+  url: string;
+  order: number;
+  productId: number;
+  createdAt: string;
 }
 
 export interface Product {
@@ -16,6 +24,7 @@ export interface Product {
   imageUrl?: string;
   active: boolean;
   variants?: ProductVariant[];
+  images?: ProductImage[];
   subcategoryId?: number;
   subcategory?: Subcategory & {
     category?: Category;
@@ -62,5 +71,28 @@ export const updateProduct = async (id: string, data: Partial<ProductFormData>):
 export const deleteProduct = async (id: string): Promise<void> => {
   return fetchJson(`/products/${id}`, {
     method: 'DELETE',
+  });
+};
+
+// Product Images API
+export const addProductImage = async (productId: string, file: File): Promise<ProductImage> => {
+  const formData = new FormData();
+  formData.append('image', file);
+  return fetchFormData(`/products/${productId}/images`, {
+    method: 'POST',
+    body: formData,
+  });
+};
+
+export const removeProductImage = async (productId: string, imageId: number): Promise<void> => {
+  return fetchJson(`/products/${productId}/images/${imageId}`, {
+    method: 'DELETE',
+  });
+};
+
+export const reorderProductImages = async (productId: string, imageIds: number[]): Promise<ProductImage[]> => {
+  return fetchJson(`/products/${productId}/images/reorder`, {
+    method: 'PUT',
+    body: JSON.stringify({ imageIds }),
   });
 };

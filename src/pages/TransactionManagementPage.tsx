@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { logger } from '../utils/logger';
 import { getAllTransactions, refreshTransactionStatus } from '../api/transactions';
 import type { Transaction, TransactionType, PaymentStatus, PaymentMethod } from '../api/transactions';
-import { Search, RefreshCw, CreditCard, ShoppingCart, Calendar, ExternalLink } from 'lucide-react';
+import { Search, RefreshCw, CreditCard, ShoppingCart, Calendar, Eye, Clock, CheckCircle, XCircle, AlertCircle, Wallet, Banknote, Gift, User, Hash, FileText } from 'lucide-react';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
@@ -13,7 +13,7 @@ const ITEMS_PER_PAGE = 50;
 const TYPE_LABELS: Record<TransactionType | 'BALANCE_CREDIT', string> = {
   ORDER: 'Commande',
   BALANCE_RECHARGE: 'Recharge',
-  BALANCE_CREDIT: 'Crédit ADIIL',
+  BALANCE_CREDIT: 'Crédit',
   INSCRIPTION: 'Inscription',
 };
 
@@ -28,7 +28,23 @@ const METHOD_LABELS: Record<PaymentMethod, string> = {
   PAYPAL: 'PayPal',
   CASH_CB: 'Espèces/CB',
   FREE: 'Gratuit',
-  BALANCE: 'Solde ADIIL',
+  BALANCE: 'Solde',
+};
+
+// Format relative time
+const formatRelativeTime = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return "À l'instant";
+  if (diffMins < 60) return `Il y a ${diffMins}min`;
+  if (diffHours < 24) return `Il y a ${diffHours}h`;
+  if (diffDays < 7) return `Il y a ${diffDays}j`;
+  return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
 };
 
 const TransactionManagementPage: React.FC = () => {
@@ -93,6 +109,22 @@ const TransactionManagementPage: React.FC = () => {
     return filteredTransactions.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredTransactions, currentPage]);
 
+  // Calculate stats
+  const stats = useMemo(() => {
+    const pending = transactions.filter(t => t.paymentStatus === 'PENDING');
+    const paid = transactions.filter(t => t.paymentStatus === 'PAID');
+    const refunded = transactions.filter(t => t.paymentStatus === 'REFUNDED');
+    const totalRevenue = paid.reduce((sum, t) => sum + (t.amount || 0), 0);
+
+    return {
+      total: transactions.length,
+      pending: pending.length,
+      paid: paid.length,
+      refunded: refunded.length,
+      totalRevenue,
+    };
+  }, [transactions]);
+
   const handleRefreshStatus = async (tx: Transaction) => {
     if (tx.paymentStatus === 'PAID') {
       addNotification('info', 'Cette transaction est déjà marquée comme payée');
@@ -114,10 +146,10 @@ const TransactionManagementPage: React.FC = () => {
       const result = await refreshTransactionStatus(tx.type, tx.entityId);
 
       if (result.updated) {
-        addNotification('success', `Statut mis à jour: ${result.status} (Provider: ${result.providerStatus})`);
+        addNotification('success', `Statut mis à jour: ${result.status}`);
         fetchTransactions();
       } else {
-        addNotification('info', `Aucun changement. Statut provider: ${result.providerStatus || 'N/A'}`);
+        addNotification('info', `Aucun changement. Statut: ${result.providerStatus || 'N/A'}`);
       }
     } catch (error) {
       logger.error('Failed to refresh status', error);
@@ -145,12 +177,15 @@ const TransactionManagementPage: React.FC = () => {
   const formatAmount = (amount: number | undefined | null, bonus?: number) => {
     const safeAmount = amount ?? 0;
     if (bonus && bonus > 0) {
-      return `${safeAmount.toFixed(2)}€ (+${bonus.toFixed(2)}€)`;
+      return (
+        <span>
+          {safeAmount.toFixed(2)}€ <span className="text-green-400">(+{bonus.toFixed(2)}€)</span>
+        </span>
+      );
     }
     return `${safeAmount.toFixed(2)}€`;
   };
 
-  // Helper to determine display type (detect admin credits)
   const getDisplayType = (tx: Transaction): TransactionType | 'BALANCE_CREDIT' => {
     if (tx.type === 'BALANCE_RECHARGE' && tx.paymentTransactionId?.startsWith('ADMIN_')) {
       return 'BALANCE_CREDIT';
@@ -158,40 +193,41 @@ const TransactionManagementPage: React.FC = () => {
     return tx.type;
   };
 
-  const getTypeIcon = (type: TransactionType | 'BALANCE_CREDIT') => {
+  const getTypeConfig = (type: TransactionType | 'BALANCE_CREDIT') => {
     switch (type) {
       case 'ORDER':
-        return <ShoppingCart size={16} />;
+        return { icon: ShoppingCart, bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/30' };
       case 'BALANCE_RECHARGE':
-        return <CreditCard size={16} />;
+        return { icon: CreditCard, bg: 'bg-purple-500/10', text: 'text-purple-400', border: 'border-purple-500/30' };
       case 'BALANCE_CREDIT':
-        return <CreditCard size={16} />;
+        return { icon: Gift, bg: 'bg-green-500/10', text: 'text-green-400', border: 'border-green-500/30' };
       case 'INSCRIPTION':
-        return <Calendar size={16} />;
+        return { icon: Calendar, bg: 'bg-cyan-500/10', text: 'text-cyan-400', border: 'border-cyan-500/30' };
     }
   };
 
-  const getStatusBadgeClass = (status: PaymentStatus) => {
+  const getStatusConfig = (status: PaymentStatus) => {
     switch (status) {
       case 'PAID':
-        return 'bg-green-900/50 text-green-200';
+        return { icon: CheckCircle, bg: 'bg-green-500/10', text: 'text-green-400', border: 'border-green-500/30' };
       case 'PENDING':
-        return 'bg-yellow-900/50 text-yellow-200';
+        return { icon: Clock, bg: 'bg-yellow-500/10', text: 'text-yellow-400', border: 'border-yellow-500/30' };
       case 'REFUNDED':
-        return 'bg-red-900/50 text-red-200';
+        return { icon: XCircle, bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/30' };
     }
   };
 
-  const getTypeBadgeClass = (type: TransactionType | 'BALANCE_CREDIT') => {
-    switch (type) {
-      case 'ORDER':
-        return 'bg-blue-900/50 text-blue-200';
-      case 'BALANCE_RECHARGE':
-        return 'bg-purple-900/50 text-purple-200';
-      case 'BALANCE_CREDIT':
-        return 'bg-green-900/50 text-green-200';
-      case 'INSCRIPTION':
-        return 'bg-cyan-900/50 text-cyan-200';
+  const getMethodIcon = (method: PaymentMethod) => {
+    switch (method) {
+      case 'PAYPAL':
+      case 'HELLOASSO':
+        return CreditCard;
+      case 'CASH_CB':
+        return Banknote;
+      case 'FREE':
+        return Gift;
+      case 'BALANCE':
+        return Wallet;
     }
   };
 
@@ -204,13 +240,17 @@ const TransactionManagementPage: React.FC = () => {
   };
 
   if (loading) {
-    return <div className="text-center p-8">Chargement...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-10 h-10 border-2 border-pink-400 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
   }
 
   return (
-    <div>
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="flex items-center gap-4">
           <div className="w-1 h-12 bg-pink-500 rounded-full hidden sm:block" />
           <div>
@@ -218,12 +258,78 @@ const TransactionManagementPage: React.FC = () => {
               <span className="px-2 py-0.5 bg-pink-500/20 text-pink-400 text-[10px] font-bold rounded-full uppercase tracking-wide">Finances</span>
             </div>
             <h1 className="text-2xl sm:text-4xl font-bold text-white font-koulen">TRANSACTIONS</h1>
+            <p className="text-gray-500 text-sm mt-1">Historique des paiements et recharges</p>
+          </div>
+        </div>
+        <button
+          onClick={fetchTransactions}
+          className="bg-pink-500 hover:bg-pink-400 text-white font-bold py-2.5 px-5 rounded-xl transition-all flex items-center gap-2 whitespace-nowrap hover:shadow-lg hover:shadow-pink-500/20"
+        >
+          <RefreshCw size={18} /> Actualiser
+        </button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+        <div className="bg-darker-bg p-4 rounded-2xl border border-gray-800">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gray-700/50 rounded-xl flex items-center justify-center">
+              <Hash size={18} className="text-gray-400" />
+            </div>
+            <div>
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider">Total</p>
+              <p className="text-xl font-koulen text-white">{stats.total}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-darker-bg p-4 rounded-2xl border border-gray-800">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-yellow-500/10 rounded-xl flex items-center justify-center">
+              <Clock size={18} className="text-yellow-400" />
+            </div>
+            <div>
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider">En attente</p>
+              <p className="text-xl font-koulen text-yellow-400">{stats.pending}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-darker-bg p-4 rounded-2xl border border-gray-800">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center">
+              <CheckCircle size={18} className="text-green-400" />
+            </div>
+            <div>
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider">Payées</p>
+              <p className="text-xl font-koulen text-green-400">{stats.paid}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-darker-bg p-4 rounded-2xl border border-gray-800">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-red-500/10 rounded-xl flex items-center justify-center">
+              <XCircle size={18} className="text-red-400" />
+            </div>
+            <div>
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider">Remboursées</p>
+              <p className="text-xl font-koulen text-red-400">{stats.refunded}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-darker-bg p-4 rounded-2xl border border-gray-800 col-span-2 lg:col-span-1">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center">
+              <Wallet size={18} className="text-emerald-400" />
+            </div>
+            <div>
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider">Revenu total</p>
+              <p className="text-xl font-koulen text-emerald-400">{stats.totalRevenue.toFixed(2)}€</p>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-darker-bg border border-gray-800 rounded-2xl p-4 mb-6">
+      <div className="bg-darker-bg border border-gray-800 rounded-2xl p-4">
         <div className="flex gap-3 flex-wrap">
           <div className="relative flex-grow md:flex-grow-0">
             <Search size={18} className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500" />
@@ -232,13 +338,13 @@ const TransactionManagementPage: React.FC = () => {
               placeholder="Rechercher..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="bg-dark-bg border border-gray-800 rounded-xl py-2.5 pl-11 pr-4 text-white placeholder-gray-500 focus:border-pink-500/50 focus:outline-none w-full md:w-48 transition-colors"
+              className="bg-dark-bg border border-gray-700 rounded-xl py-2.5 pl-11 pr-4 text-white placeholder-gray-500 focus:border-pink-500/50 focus:outline-none w-full md:w-56 transition-colors"
             />
           </div>
           <select
             value={typeFilter}
             onChange={e => setTypeFilter(e.target.value as TransactionType | '')}
-            className="bg-dark-bg border border-gray-800 rounded-xl py-2.5 px-4 text-white focus:border-pink-500/50 focus:outline-none transition-colors"
+            className="bg-dark-bg border border-gray-700 rounded-xl py-2.5 px-4 text-white focus:border-pink-500/50 focus:outline-none transition-colors"
           >
             <option value="">Tous types</option>
             <option value="ORDER">Commandes</option>
@@ -248,159 +354,134 @@ const TransactionManagementPage: React.FC = () => {
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value as PaymentStatus | '')}
-            className="bg-dark-bg border border-gray-800 rounded-xl py-2.5 px-4 text-white focus:border-pink-500/50 focus:outline-none transition-colors"
+            className="bg-dark-bg border border-gray-700 rounded-xl py-2.5 px-4 text-white focus:border-pink-500/50 focus:outline-none transition-colors"
           >
             <option value="">Tous statuts</option>
             <option value="PENDING">En attente</option>
-            <option value="PAID">Paye</option>
-            <option value="REFUNDED">Rembourse</option>
+            <option value="PAID">Payé</option>
+            <option value="REFUNDED">Remboursé</option>
           </select>
           <select
             value={methodFilter}
             onChange={e => setMethodFilter(e.target.value as PaymentMethod | '')}
-            className="bg-dark-bg border border-gray-800 rounded-xl py-2.5 px-4 text-white focus:border-pink-500/50 focus:outline-none transition-colors"
+            className="bg-dark-bg border border-gray-700 rounded-xl py-2.5 px-4 text-white focus:border-pink-500/50 focus:outline-none transition-colors"
           >
             <option value="">Toutes méthodes</option>
             <option value="HELLOASSO">HelloAsso</option>
             <option value="PAYPAL">PayPal</option>
             <option value="CASH_CB">Espèces/CB</option>
+            <option value="FREE">Gratuit</option>
+            <option value="BALANCE">Solde ADIIL</option>
           </select>
-          <button
-            onClick={fetchTransactions}
-            className="bg-pink-400 text-darker-bg font-bold py-2 px-4 rounded hover:bg-white transition-colors flex items-center whitespace-nowrap"
-          >
-            <RefreshCw size={18} className="mr-2" /> Actualiser
-          </button>
         </div>
       </div>
 
-      {/* Stats summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-darker-bg border border-gray-700 rounded-lg p-4">
-          <p className="text-gray-400 text-sm">Total</p>
-          <p className="text-2xl font-bold text-white">{transactions.length}</p>
-        </div>
-        <div className="bg-darker-bg border border-gray-700 rounded-lg p-4">
-          <p className="text-gray-400 text-sm">En attente</p>
-          <p className="text-2xl font-bold text-yellow-400">
-            {transactions.filter(t => t.paymentStatus === 'PENDING').length}
-          </p>
-        </div>
-        <div className="bg-darker-bg border border-gray-700 rounded-lg p-4">
-          <p className="text-gray-400 text-sm">Payées</p>
-          <p className="text-2xl font-bold text-green-400">
-            {transactions.filter(t => t.paymentStatus === 'PAID').length}
-          </p>
-        </div>
-        <div className="bg-darker-bg border border-gray-700 rounded-lg p-4">
-          <p className="text-gray-400 text-sm">Remboursées</p>
-          <p className="text-2xl font-bold text-red-400">
-            {transactions.filter(t => t.paymentStatus === 'REFUNDED').length}
-          </p>
-        </div>
-      </div>
-
-      <div className="bg-darker-bg border border-gray-700 rounded-lg overflow-hidden overflow-x-auto custom-scrollbar-x">
-        <table className="min-w-full divide-y divide-gray-700">
-          <thead className="bg-dark-bg">
-            <tr>
-              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                Type
-              </th>
-              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                Utilisateur
-              </th>
-              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">
-                Description
-              </th>
-              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                Montant
-              </th>
-              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden sm:table-cell">
-                Méthode
-              </th>
-              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                Statut
-              </th>
-              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
-                Date
-              </th>
-              <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-700">
-            {paginatedTransactions.length === 0 ? (
+      {/* Transactions Table */}
+      <div className="bg-darker-bg border border-gray-800 rounded-2xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full">
+            <thead className="bg-dark-bg border-b border-gray-800">
               <tr>
-                <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
-                  Aucune transaction trouvée
-                </td>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Type</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Utilisateur</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden lg:table-cell">Description</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Montant</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden md:table-cell">Méthode</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Statut</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:table-cell">Date</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
               </tr>
-            ) : (
-              paginatedTransactions.map(tx => {
-                const displayType = getDisplayType(tx);
-                return (
-                <tr key={tx.id} className="hover:bg-gray-800/50 transition-colors">
-                  <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 py-1 inline-flex items-center gap-1 text-xs leading-5 font-semibold rounded-full ${getTypeBadgeClass(displayType)}`}
-                    >
-                      {getTypeIcon(displayType)}
-                      <span className="hidden sm:inline">{TYPE_LABELS[displayType]}</span>
-                    </span>
-                  </td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-white capitalize">
-                      {tx.user.firstName} {tx.user.lastName}
-                    </div>
-                    <div className="text-xs text-gray-500">{tx.user.email}</div>
-                  </td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4 hidden md:table-cell">
-                    <div className="text-sm text-gray-300 max-w-xs truncate">{tx.description}</div>
-                  </td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-white">
-                      {formatAmount(tx.amount, tx.bonusAmount)}
-                    </div>
-                  </td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap hidden sm:table-cell">
-                    <span className="text-sm text-gray-300">{METHOD_LABELS[tx.paymentMethod]}</span>
-                  </td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(tx.paymentStatus)}`}
-                    >
-                      {STATUS_LABELS[tx.paymentStatus]}
-                    </span>
-                  </td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-400 hidden lg:table-cell">
-                    {formatDate(tx.createdAt)}
-                  </td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() => handleOpenDetail(tx)}
-                      className="text-pink-400 hover:text-white mr-2"
-                      title="Voir détails"
-                    >
-                      <ExternalLink size={18} />
-                    </button>
-                    {canRefresh(tx) && (
-                      <button
-                        onClick={() => handleRefreshStatus(tx)}
-                        disabled={refreshingId === tx.id}
-                        className={`text-blue-400 hover:text-blue-300 ${refreshingId === tx.id ? 'animate-spin' : ''}`}
-                        title="Rafraîchir le statut"
-                      >
-                        <RefreshCw size={18} />
-                      </button>
-                    )}
+            </thead>
+            <tbody className="divide-y divide-gray-800">
+              {paginatedTransactions.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-6 py-12 text-center">
+                    <AlertCircle size={40} className="mx-auto text-gray-600 mb-3" />
+                    <p className="text-gray-500">Aucune transaction trouvée</p>
                   </td>
                 </tr>
-              );})
-            )}
-          </tbody>
-        </table>
+              ) : (
+                paginatedTransactions.map(tx => {
+                  const displayType = getDisplayType(tx);
+                  const typeConfig = getTypeConfig(displayType);
+                  const statusConfig = getStatusConfig(tx.paymentStatus);
+                  const TypeIcon = typeConfig.icon;
+                  const StatusIcon = statusConfig.icon;
+                  const MethodIcon = getMethodIcon(tx.paymentMethod);
+
+                  return (
+                    <tr key={tx.id} className="hover:bg-dark-bg/50 transition-colors">
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className={`inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg ${typeConfig.bg} border ${typeConfig.border}`}>
+                          <TypeIcon size={14} className={typeConfig.text} />
+                          <span className={`text-xs font-medium ${typeConfig.text} hidden sm:inline`}>{TYPE_LABELS[displayType]}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-xs font-bold text-white">
+                            {tx.user.firstName[0]}{tx.user.lastName[0]}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-white capitalize">{tx.user.firstName} {tx.user.lastName}</p>
+                            <p className="text-xs text-gray-500 hidden sm:block">{tx.user.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 hidden lg:table-cell">
+                        <p className="text-sm text-gray-300 max-w-xs truncate">{tx.description}</p>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <p className="text-sm font-koulen text-white">{formatAmount(tx.amount, tx.bonusAmount)}</p>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap hidden md:table-cell">
+                        <div className="flex items-center gap-2">
+                          <MethodIcon size={14} className="text-gray-400" />
+                          <span className="text-sm text-gray-300">{METHOD_LABELS[tx.paymentMethod]}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full ${statusConfig.bg} border ${statusConfig.border}`}>
+                          <StatusIcon size={12} className={statusConfig.text} />
+                          <span className={`text-xs font-medium ${statusConfig.text}`}>{STATUS_LABELS[tx.paymentStatus]}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap hidden sm:table-cell">
+                        <div className="flex flex-col">
+                          <span className="text-sm text-white">{formatRelativeTime(tx.createdAt)}</span>
+                          <span className="text-[10px] text-gray-500">
+                            {new Date(tx.createdAt).toLocaleDateString('fr-FR')}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleOpenDetail(tx)}
+                            className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                            title="Voir détails"
+                          >
+                            <Eye size={16} />
+                          </button>
+                          {canRefresh(tx) && (
+                            <button
+                              onClick={() => handleRefreshStatus(tx)}
+                              disabled={refreshingId === tx.id}
+                              className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-colors disabled:opacity-50"
+                              title="Rafraîchir le statut"
+                            >
+                              <RefreshCw size={16} className={refreshingId === tx.id ? 'animate-spin' : ''} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <Pagination
@@ -417,79 +498,125 @@ const TransactionManagementPage: React.FC = () => {
         onClose={() => setIsDetailModalOpen(false)}
         title="Détails de la transaction"
       >
-        {selectedTransaction && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-gray-400 text-sm">Type</p>
-                <p className="text-white font-medium">{TYPE_LABELS[getDisplayType(selectedTransaction)]}</p>
+        {selectedTransaction && (() => {
+          const displayType = getDisplayType(selectedTransaction);
+          const typeConfig = getTypeConfig(displayType);
+          const statusConfig = getStatusConfig(selectedTransaction.paymentStatus);
+          const TypeIcon = typeConfig.icon;
+          const StatusIcon = statusConfig.icon;
+
+          return (
+            <div className="space-y-6">
+              {/* Header */}
+              <div className="flex items-center justify-between pb-4 border-b border-gray-700">
+                <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl ${typeConfig.bg} border ${typeConfig.border}`}>
+                  <TypeIcon size={18} className={typeConfig.text} />
+                  <span className={`font-medium ${typeConfig.text}`}>{TYPE_LABELS[displayType]}</span>
+                </div>
+                <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl ${statusConfig.bg} border ${statusConfig.border}`}>
+                  <StatusIcon size={18} className={statusConfig.text} />
+                  <span className={`font-medium ${statusConfig.text}`}>{STATUS_LABELS[selectedTransaction.paymentStatus]}</span>
+                </div>
               </div>
-              <div>
-                <p className="text-gray-400 text-sm">ID Entité</p>
-                <p className="text-white font-medium">#{selectedTransaction.entityId}</p>
-              </div>
-              <div>
-                <p className="text-gray-400 text-sm">Utilisateur</p>
-                <p className="text-white font-medium capitalize">
-                  {selectedTransaction.user.firstName} {selectedTransaction.user.lastName}
-                </p>
-                <p className="text-gray-500 text-sm">{selectedTransaction.user.email}</p>
-              </div>
-              <div>
-                <p className="text-gray-400 text-sm">Montant</p>
-                <p className="text-white font-medium">
+
+              {/* Amount */}
+              <div className="text-center py-4 bg-dark-bg rounded-xl border border-gray-700">
+                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Montant</p>
+                <p className="text-4xl font-koulen text-emerald-400">
                   {formatAmount(selectedTransaction.amount, selectedTransaction.bonusAmount)}
                 </p>
               </div>
-              <div>
-                <p className="text-gray-400 text-sm">Méthode de paiement</p>
-                <p className="text-white font-medium">{METHOD_LABELS[selectedTransaction.paymentMethod]}</p>
+
+              {/* Info Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-dark-bg rounded-xl p-4 border border-gray-700">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
+                      <User size={18} className="text-blue-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] text-gray-500 uppercase tracking-wider">Utilisateur</p>
+                      <p className="text-white font-medium capitalize truncate">
+                        {selectedTransaction.user.firstName} {selectedTransaction.user.lastName}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">{selectedTransaction.user.email}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-dark-bg rounded-xl p-4 border border-gray-700">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-purple-500/10 rounded-lg flex items-center justify-center">
+                      <CreditCard size={18} className="text-purple-400" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-500 uppercase tracking-wider">Méthode</p>
+                      <p className="text-white font-medium">{METHOD_LABELS[selectedTransaction.paymentMethod]}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-dark-bg rounded-xl p-4 border border-gray-700">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-orange-500/10 rounded-lg flex items-center justify-center">
+                      <Hash size={18} className="text-orange-400" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-500 uppercase tracking-wider">ID Entité</p>
+                      <p className="text-white font-medium">#{selectedTransaction.entityId}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-dark-bg rounded-xl p-4 border border-gray-700">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-cyan-500/10 rounded-lg flex items-center justify-center">
+                      <Calendar size={18} className="text-cyan-400" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-500 uppercase tracking-wider">Date</p>
+                      <p className="text-white font-medium">{formatDate(selectedTransaction.createdAt)}</p>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div>
-                <p className="text-gray-400 text-sm">Statut</p>
-                <span
-                  className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(selectedTransaction.paymentStatus)}`}
-                >
-                  {STATUS_LABELS[selectedTransaction.paymentStatus]}
-                </span>
-              </div>
-              <div className="col-span-2">
-                <p className="text-gray-400 text-sm">Description</p>
+
+              {/* Description */}
+              <div className="bg-dark-bg rounded-xl p-4 border border-gray-700">
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText size={16} className="text-gray-400" />
+                  <p className="text-xs text-gray-500 uppercase tracking-wider">Description</p>
+                </div>
                 <p className="text-white">{selectedTransaction.description}</p>
               </div>
-              <div className="col-span-2">
-                <p className="text-gray-400 text-sm">ID Transaction Provider</p>
-                <p className="text-white font-mono text-sm break-all">
-                  {selectedTransaction.paymentTransactionId || 'N/A'}
-                </p>
-              </div>
-              <div>
-                <p className="text-gray-400 text-sm">Créé le</p>
-                <p className="text-white">{formatDate(selectedTransaction.createdAt)}</p>
-              </div>
-              <div>
-                <p className="text-gray-400 text-sm">Mis à jour le</p>
-                <p className="text-white">{formatDate(selectedTransaction.updatedAt)}</p>
-              </div>
-            </div>
 
-            {canRefresh(selectedTransaction) && (
-              <div className="pt-4 border-t border-gray-700">
+              {/* Transaction ID */}
+              {selectedTransaction.paymentTransactionId && (
+                <div className="bg-dark-bg rounded-xl p-4 border border-gray-700">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">ID Transaction Provider</p>
+                  <p className="text-white font-mono text-sm break-all bg-darker-bg p-2 rounded-lg">
+                    {selectedTransaction.paymentTransactionId}
+                  </p>
+                </div>
+              )}
+
+              {/* Refresh Button */}
+              {canRefresh(selectedTransaction) && (
                 <button
                   onClick={() => {
                     handleRefreshStatus(selectedTransaction);
                     setIsDetailModalOpen(false);
                   }}
                   disabled={refreshingId === selectedTransaction.id}
-                  className="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-500 transition-colors flex items-center justify-center"
+                  className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center gap-2"
                 >
-                  <RefreshCw size={18} className={`mr-2 ${refreshingId === selectedTransaction.id ? 'animate-spin' : ''}`} />
+                  <RefreshCw size={18} className={refreshingId === selectedTransaction.id ? 'animate-spin' : ''} />
                   Rafraîchir le statut depuis le provider
                 </button>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          );
+        })()}
       </Modal>
     </div>
   );

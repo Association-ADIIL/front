@@ -120,6 +120,48 @@ export const fetchJson = async <T = unknown>(endpoint: string, options: FetchOpt
 };
 
 /**
+ * Fetch with FormData (for file uploads to specific endpoints)
+ */
+export const fetchFormData = async <T = unknown>(endpoint: string, options: FetchOptions = {}): Promise<T> => {
+  const token = getAuthToken();
+  const csrfToken = getCsrfToken();
+
+  const headers: HeadersInit = {
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
+    ...options.headers,
+  };
+
+  // Remove Content-Type to let browser set it with boundary for FormData
+  delete (headers as Record<string, string>)['Content-Type'];
+
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+      credentials: 'include',
+    });
+  } catch (error) {
+    logger.apiError(endpoint, 0, error);
+    throw new NetworkError('Impossible de contacter le serveur.');
+  }
+
+  if (!response.ok) {
+    const { message, code } = await parseErrorResponse(response);
+    logger.apiError(endpoint, response.status, message);
+    handleErrorResponse(response, message, code, options.skipUnauthorizedCallback);
+  }
+
+  try {
+    return await response.json() as T;
+  } catch {
+    return {} as T;
+  }
+};
+
+/**
  * Upload a file using multipart/form-data
  */
 export const uploadFile = async (
