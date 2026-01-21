@@ -147,3 +147,96 @@ export const getFiles = async (folder?: string): Promise<FileRecord[]> => {
   const data = await response.json();
   return data.files;
 };
+
+// ============ FILE SHARING ============
+
+export interface FileShare {
+  id: number;
+  token: string;
+  fileId: number;
+  expiresAt: string;
+  createdBy: number | null;
+  accessCount: number;
+  maxAccess: number | null;
+  lastAccessAt: string | null;
+  createdAt: string;
+}
+
+export interface CreateShareResponse {
+  shareId: number;
+  shareUrl: string;
+  token: string;
+  expiresAt: string;
+  maxAccess: number | null;
+}
+
+/**
+ * Create a shareable link for a file
+ * @param fileId - The ID of the file to share
+ * @param expiresIn - Expiration time in seconds (default: 24 hours)
+ * @param maxAccess - Maximum number of accesses (optional)
+ */
+export const createFileShare = async (
+  fileId: number,
+  expiresIn: number = 86400,
+  maxAccess?: number
+): Promise<CreateShareResponse> => {
+  const token = localStorage.getItem('token');
+
+  const response = await fetch(`${API_BASE_URL}/upload/share/${fileId}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ expiresIn, maxAccess }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Failed to create share link' }));
+    throw new Error(error.message || 'Failed to create share link');
+  }
+
+  return response.json();
+};
+
+/**
+ * Get all share links for a file
+ */
+export const getFileShares = async (fileId: number): Promise<FileShare[]> => {
+  const token = localStorage.getItem('token');
+
+  const response = await fetch(`${API_BASE_URL}/upload/share/${fileId}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Failed to fetch shares' }));
+    throw new Error(error.message || 'Failed to fetch shares');
+  }
+
+  const data = await response.json();
+  return data.shares;
+};
+
+/**
+ * Delete a share link
+ */
+export const deleteFileShare = async (shareId: number): Promise<void> => {
+  const token = localStorage.getItem('token');
+
+  const response = await fetch(`${API_BASE_URL}/upload/share/${shareId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Failed to delete share' }));
+    throw new Error(error.message || 'Failed to delete share');
+  }
+};

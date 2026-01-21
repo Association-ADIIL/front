@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Upload, X, Image as ImageIcon, Loader, GripVertical, Plus } from 'lucide-react';
+import { X, Loader, GripVertical, Plus } from 'lucide-react';
 import { addProductImage, removeProductImage, reorderProductImages, type ProductImage } from '../api/products';
 import { logger } from '../utils/logger';
 import { getErrorMessage } from '../types/errors';

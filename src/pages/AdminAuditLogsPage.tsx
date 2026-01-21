@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { logger } from '../utils/logger';
 import { getRecentAuditLogs } from '../api/auditLogs';
-import { FileText, User, Calendar, Filter, Eye, Search, X, Plus, Pencil, Trash2, CreditCard, RefreshCw, XCircle, UserPlus, Package, Clock } from 'lucide-react';
+import { FileText, User, Calendar, Filter, Eye, Search, X, Plus, Pencil, Trash2, CreditCard, RefreshCw, XCircle, UserPlus, Package } from 'lucide-react';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';

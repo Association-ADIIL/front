@@ -291,7 +291,6 @@ const ProductDetailPage: React.FC = () => {
                   <label className="block text-sm text-gray-400 mb-2">Variante</label>
                   <div className="flex flex-wrap gap-2">
                     {product.variants.map((v) => {
-                      const variantPrice = product.price + v.priceModifier;
                       return (
                         <button
                           key={v.id}
