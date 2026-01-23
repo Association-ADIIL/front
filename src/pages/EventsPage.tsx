@@ -195,7 +195,7 @@ const EventsPage: React.FC = () => {
                           <div className="absolute top-4 left-4 flex flex-wrap gap-2">
                             <span className="px-3 py-1.5 bg-accent-mint text-darker-bg text-xs font-bold rounded-lg flex items-center gap-1.5 shadow-lg">
                               <Calendar size={12} />
-                              {eventDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                              {eventDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} • {eventDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                             </span>
                             {isPassed && (
                               <span className="px-3 py-1.5 bg-gray-800/90 text-gray-300 text-xs font-bold rounded-lg border border-gray-700">

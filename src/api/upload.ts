@@ -240,3 +240,11 @@ export const deleteFileShare = async (shareId: number): Promise<void> => {
     throw new Error(error.message || 'Failed to delete share');
   }
 };
+
+/**
+ * Get the redirect URL for accessing a shared file (public, no auth required)
+ * Returns the API URL that will redirect to the actual file
+ */
+export const getSharedFileUrl = (shareToken: string): string => {
+  return `${API_BASE_URL}/share/${shareToken}`;
+};

@@ -179,7 +179,7 @@ const ProductDetailPage: React.FC = () => {
             {/* Image Gallery */}
             <div className="space-y-4">
               {/* Main Image */}
-              <div className="relative aspect-square rounded-2xl overflow-hidden bg-gray-900 border border-gray-800">
+              <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-gray-900 border border-gray-800">
                 <img
                   src={currentImage}
                   alt={product.name}

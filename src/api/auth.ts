@@ -7,6 +7,8 @@ export interface User {
   lastName: string;
   type: 'STUDENT' | 'PROFESSOR' | 'EXTERNAL' | 'ADMIN_BDE' | 'ADMIN_PROF';
   studentGroup?: string;
+  emailOnOrder?: boolean;
+  emailOnRecharge?: boolean;
   deletedAt?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -67,7 +69,11 @@ export const logout = async (): Promise<{ message: string }> => {
 };
 
 // Update own profile
-export const updateProfile = async (data: { studentGroup?: string | null }): Promise<{ message: string; user: User }> => {
+export const updateProfile = async (data: {
+  studentGroup?: string | null;
+  emailOnOrder?: boolean;
+  emailOnRecharge?: boolean;
+}): Promise<{ message: string; user: User }> => {
   return fetchJson('/auth/me', {
     method: 'PUT',
     body: JSON.stringify(data),

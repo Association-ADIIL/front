@@ -21,6 +21,7 @@ import BalancePage from './pages/BalancePage';
 import MyAccountPage from './pages/MyAccountPage';
 import PaymentCallbackPage from './pages/PaymentCallbackPage';
 import OrderPickupPage from './pages/OrderPickupPage';
+import ShareFilePage from './pages/ShareFilePage';
 import NotFoundPage from './pages/NotFoundPage';
 import AdminLayout from './components/AdminLayout';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -117,6 +118,7 @@ function App() {
                         <Route path="/my-account" element={<MyAccountPage />} />
                         <Route path="/payment/callback" element={<PaymentCallbackPage />} />
                         <Route path="/order-pickup/:id" element={<OrderPickupPage />} />
+                        <Route path="/share/:token" element={<ShareFilePage />} />
                         <Route path="*" element={<NotFoundPage />} />
                       </Routes>
                     </main>

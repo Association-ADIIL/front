@@ -24,7 +24,8 @@ import {
   AlertTriangle,
   Edit2,
   Check,
-  Loader2
+  Loader2,
+  Bell
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import BalanceDisplay from '../components/BalanceDisplay';
@@ -66,6 +67,9 @@ const MyAccountPage: React.FC = () => {
   const [isEditingGroup, setIsEditingGroup] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<string>('');
   const [isUpdatingGroup, setIsUpdatingGroup] = useState(false);
+  const [emailOnOrder, setEmailOnOrder] = useState(true);
+  const [emailOnRecharge, setEmailOnRecharge] = useState(true);
+  const [isUpdatingEmailPrefs, setIsUpdatingEmailPrefs] = useState(false);
 
   const handleUpdateGroup = async () => {
     if (!selectedGroup) return;
@@ -81,6 +85,32 @@ const MyAccountPage: React.FC = () => {
       addNotification('error', getErrorMessage(error));
     } finally {
       setIsUpdatingGroup(false);
+    }
+  };
+
+  const handleToggleEmailPreference = async (type: 'order' | 'recharge', value: boolean) => {
+    setIsUpdatingEmailPrefs(true);
+    try {
+      if (type === 'order') {
+        setEmailOnOrder(value);
+        await updateProfile({ emailOnOrder: value });
+      } else {
+        setEmailOnRecharge(value);
+        await updateProfile({ emailOnRecharge: value });
+      }
+      await refreshUser();
+      addNotification('success', 'Préférences email mises à jour');
+    } catch (error) {
+      // Revert on error
+      if (type === 'order') {
+        setEmailOnOrder(!value);
+      } else {
+        setEmailOnRecharge(!value);
+      }
+      logger.error('Failed to update email preference', error);
+      addNotification('error', getErrorMessage(error));
+    } finally {
+      setIsUpdatingEmailPrefs(false);
     }
   };
 
@@ -116,6 +146,14 @@ const MyAccountPage: React.FC = () => {
       fetchInscriptions();
     }
   }, [user, token, authLoading]);
+
+  // Initialize email preferences from user data
+  useEffect(() => {
+    if (user) {
+      setEmailOnOrder(user.emailOnOrder !== false);
+      setEmailOnRecharge(user.emailOnRecharge !== false);
+    }
+  }, [user]);
 
   if (authLoading) {
     return (
@@ -302,6 +340,60 @@ const MyAccountPage: React.FC = () => {
                       )}
                     </div>
                   )}
+                </div>
+              </div>
+
+              {/* Email Preferences Card */}
+              <div className="bg-darker-bg rounded-2xl border border-gray-800 p-6">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center">
+                    <Bell size={20} className="text-blue-400" />
+                  </div>
+                  <h2 className="text-lg font-bold text-white">Notifications email</h2>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Email on Order */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-white text-sm font-medium">Confirmation de commande</p>
+                      <p className="text-gray-500 text-xs">Recevoir un email à chaque commande</p>
+                    </div>
+                    <button
+                      onClick={() => handleToggleEmailPreference('order', !emailOnOrder)}
+                      disabled={isUpdatingEmailPrefs}
+                      className={`relative w-12 h-6 rounded-full transition-colors ${
+                        emailOnOrder ? 'bg-accent-mint' : 'bg-gray-700'
+                      } ${isUpdatingEmailPrefs ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                    >
+                      <span
+                        className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                          emailOnOrder ? 'left-7' : 'left-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Email on Recharge */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-white text-sm font-medium">Confirmation de rechargement</p>
+                      <p className="text-gray-500 text-xs">Recevoir un email à chaque rechargement</p>
+                    </div>
+                    <button
+                      onClick={() => handleToggleEmailPreference('recharge', !emailOnRecharge)}
+                      disabled={isUpdatingEmailPrefs}
+                      className={`relative w-12 h-6 rounded-full transition-colors ${
+                        emailOnRecharge ? 'bg-accent-mint' : 'bg-gray-700'
+                      } ${isUpdatingEmailPrefs ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                    >
+                      <span
+                        className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                          emailOnRecharge ? 'left-7' : 'left-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
                 </div>
               </div>
 

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { logger } from '../utils/logger';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getEventById, type Event } from '../api/events';
-import { Calendar, MapPin, ArrowLeft, Users, Clock, Share2, ChevronRight, LogIn } from 'lucide-react';
+import { Calendar, MapPin, ArrowLeft, Users, Clock, ChevronRight, LogIn } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import EventRegistrationModal from '../components/EventRegistrationModal';
@@ -39,22 +39,6 @@ const EventDetailPage: React.FC = () => {
 
     fetchEvent();
   }, [id]);
-
-  const handleShare = async () => {
-    if (navigator.share && event) {
-      try {
-        await navigator.share({
-          title: event.title,
-          text: event.description,
-          url: window.location.href,
-        });
-      } catch (err) {
-        logger.debug('Share cancelled');
-      }
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-    }
-  };
 
   if (loading) {
     return (
@@ -128,21 +112,13 @@ const EventDetailPage: React.FC = () => {
           <span className="text-sm font-medium">Retour</span>
         </Link>
 
-        {/* Share button */}
-        <button
-          onClick={handleShare}
-          className="absolute top-6 right-6 p-3 bg-darker-bg/90 backdrop-blur-md text-white rounded-xl border border-gray-700 hover:border-accent-mint hover:bg-darker-bg transition-all"
-        >
-          <Share2 size={18} />
-        </button>
-
         {/* Event title overlay */}
         <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12">
           <div className="container mx-auto">
             <div className="flex flex-wrap gap-2 mb-4">
               <span className="px-4 py-1.5 bg-accent-mint text-darker-bg text-sm font-bold rounded-lg flex items-center gap-2">
                 <Calendar size={14} />
-                {eventDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                {eventDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })} à {eventDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
               </span>
               {isPassed && (
                 <span className="px-4 py-1.5 bg-gray-700 text-gray-300 text-sm font-bold rounded-lg">
@@ -208,7 +184,7 @@ const EventDetailPage: React.FC = () => {
                   <div>
                     <p className="text-gray-500 text-xs uppercase tracking-wider">Date</p>
                     <p className="text-white font-medium font-montserrat">
-                      {eventDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                      {eventDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} à {eventDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
                 </div>
