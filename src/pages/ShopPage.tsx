@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { logger } from '../utils/logger';
-import { getAllProducts, type Product } from '../api/products';
+import { getAllProducts, type Product, type SelectedOption } from '../api/products';
 import { getAllCategories, type Category } from '../api/categories';
 import { getActiveProductPromotions, type ProductPromotionsMap } from '../api/promotions';
 import { ShoppingBag, Minus, Plus, ShoppingCart, Search, LogIn, X, Tag, Coffee, Eye } from 'lucide-react';
@@ -20,6 +20,8 @@ const ShopPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [quantities, setQuantities] = useState<{ [key: string]: number }>({});
   const [selectedVariants, setSelectedVariants] = useState<{ [key: string]: number | undefined }>({});
+  // For variant categories: { productId: { categoryId: optionId } }
+  const [selectedCategoryOptions, setSelectedCategoryOptions] = useState<{ [productId: string]: { [categoryId: number]: number } }>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<number | null>(null);
@@ -88,6 +90,46 @@ const ShopPage: React.FC = () => {
     }
 
     const quantity = quantities[product.id] || 1;
+
+    // New format: variant categories
+    if (product.variantCategories && product.variantCategories.length > 0) {
+      const productSelections = selectedCategoryOptions[product.id] || {};
+      const selectedOptions: SelectedOption[] = [];
+      const missingCategories: string[] = [];
+
+      for (const category of product.variantCategories) {
+        const selectedOptionId = productSelections[category.id];
+        if (!selectedOptionId) {
+          missingCategories.push(category.name);
+        } else {
+          const option = category.options.find(o => o.id === selectedOptionId);
+          if (option) {
+            selectedOptions.push({
+              categoryId: category.id,
+              categoryName: category.name,
+              optionId: option.id,
+              optionName: option.name,
+              priceModifier: option.priceModifier
+            });
+          }
+        }
+      }
+
+      if (missingCategories.length > 0) {
+        addNotification('error', `Veuillez sélectionner: ${missingCategories.join(', ')}`);
+        return;
+      }
+
+      // Build display text: "Taille: M, Couleur: Rouge"
+      const optionsText = selectedOptions.map(o => `${o.categoryName}: ${o.optionName}`).join(', ');
+      addToCart(product, quantity, undefined, selectedOptions);
+      addNotification('success', `${quantity}x ${product.name} (${optionsText}) ajouté au panier !`);
+      setQuantities(prev => ({ ...prev, [product.id]: 1 }));
+      setSelectedCategoryOptions(prev => ({ ...prev, [product.id]: {} }));
+      return;
+    }
+
+    // Legacy format: single variant
     const variantId = selectedVariants[product.id];
 
     if (product.variants && product.variants.length > 0 && !variantId) {
@@ -390,8 +432,28 @@ const ShopPage: React.FC = () => {
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                     {group.products.map((product) => {
                       const quantity = quantities[product.id] || 1;
-                      const variant = product.variants?.find(v => v.id === selectedVariants[product.id]);
-                      const basePrice = variant ? product.price + variant.priceModifier : product.price;
+
+                      // Calculate base price based on variant type
+                      let basePrice = product.price;
+                      if (product.variantCategories && product.variantCategories.length > 0) {
+                        // New format: sum modifiers from all selected options
+                        const productSelections = selectedCategoryOptions[product.id] || {};
+                        for (const category of product.variantCategories) {
+                          const selectedOptionId = productSelections[category.id];
+                          if (selectedOptionId) {
+                            const option = category.options.find(o => o.id === selectedOptionId);
+                            if (option) {
+                              basePrice += option.priceModifier;
+                            }
+                          }
+                        }
+                      } else if (product.variants) {
+                        // Legacy format: single variant
+                        const variant = product.variants.find(v => v.id === selectedVariants[product.id]);
+                        if (variant) {
+                          basePrice += variant.priceModifier;
+                        }
+                      }
                       const promotion = productPromotions[parseInt(product.id)];
                       const discountedPrice = promotion
                         ? Math.round(basePrice * (1 - promotion.discountPercent / 100) * 100) / 100
@@ -454,8 +516,35 @@ const ShopPage: React.FC = () => {
                               <p className="text-gray-500 text-xs line-clamp-2 mb-2">{product.description}</p>
                             )}
 
-                            {/* Variant selector */}
-                            {product.variants && product.variants.length > 0 && (
+                            {/* Variant category selectors (new format) */}
+                            {product.variantCategories && product.variantCategories.length > 0 && (
+                              <div className="space-y-1.5 mb-2">
+                                {product.variantCategories.map((category) => (
+                                  <select
+                                    key={category.id}
+                                    value={selectedCategoryOptions[product.id]?.[category.id] || ''}
+                                    onChange={(e) => setSelectedCategoryOptions(prev => ({
+                                      ...prev,
+                                      [product.id]: {
+                                        ...(prev[product.id] || {}),
+                                        [category.id]: e.target.value ? parseInt(e.target.value) : undefined
+                                      }
+                                    }))}
+                                    className="w-full bg-dark-bg border border-gray-700 rounded-lg p-1.5 text-white text-xs focus:border-accent-mint outline-none cursor-pointer hover:border-gray-600 transition-colors"
+                                  >
+                                    <option value="">{category.name}</option>
+                                    {category.options.map((opt) => (
+                                      <option key={opt.id} value={opt.id}>
+                                        {opt.name}{opt.priceModifier !== 0 ? ` (${opt.priceModifier > 0 ? '+' : ''}${opt.priceModifier.toFixed(2)}€)` : ''}
+                                      </option>
+                                    ))}
+                                  </select>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Legacy variant selector */}
+                            {(!product.variantCategories || product.variantCategories.length === 0) && product.variants && product.variants.length > 0 && (
                               <select
                                 value={selectedVariants[product.id] || ''}
                                 onChange={(e) => setSelectedVariants(prev => ({

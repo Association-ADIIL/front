@@ -1,8 +1,18 @@
 import { fetchJson } from './client';
 
+export interface SelectedOption {
+  categoryId: number;
+  categoryName: string;
+  optionId: number;
+  optionName: string;
+  priceModifier: number;
+}
+
 export interface OrderItem {
   productId: string;
   quantity: number;
+  variantId?: number; // Legacy: single variant
+  selectedOptions?: SelectedOption[]; // New: multi-category options
 }
 
 export interface Order {
@@ -37,7 +47,8 @@ export interface Order {
     originalPrice?: number | null; // Price before product discount
     price: number; // Final price after product discount
     refundedQuantity: number;
-    variantId?: number;
+    variantId?: number; // Legacy: single variant
+    variantSelection?: SelectedOption[]; // New: multi-category options
     product: {
       id: number;
       name: string;
@@ -159,6 +170,7 @@ export interface OrderPickupInfo {
     id: number;
     productName: string;
     variantName: string | null;
+    variantSelection?: SelectedOption[]; // New: detailed selection data
     quantity: number;
     refundedQuantity: number;
     originalPrice?: number | null; // Price before product discount (null if no product discount)

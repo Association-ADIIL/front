@@ -29,8 +29,19 @@ const CartPage: React.FC = () => {
 
   // Calculate total with product promotions
   const totalWithProductPromotions = items.reduce((sum, item) => {
-    const variant = item.product.variants?.find(v => v.id === item.variantId);
-    const basePrice = item.product.price + (variant?.priceModifier || 0);
+    let basePrice = item.product.price;
+    // New format: selectedOptions
+    if (item.selectedOptions && item.selectedOptions.length > 0) {
+      const totalModifier = item.selectedOptions.reduce((acc, opt) => acc + (opt.priceModifier || 0), 0);
+      basePrice += totalModifier;
+    }
+    // Legacy format: variantId
+    else if (item.variantId && item.product.variants) {
+      const variant = item.product.variants.find(v => v.id === item.variantId);
+      if (variant) {
+        basePrice += variant.priceModifier || 0;
+      }
+    }
     const promotion = productPromotions[parseInt(item.product.id)];
     const discountedPrice = promotion
       ? Math.round(basePrice * (1 - promotion.discountPercent / 100) * 100) / 100
@@ -111,15 +122,6 @@ const CartPage: React.FC = () => {
     }
   }, [user, totalWithProductPromotions]);
 
-  const handleUpdateQuantity = (productId: string, newQuantity: number, variantId?: number) => {
-    updateQuantity(productId, newQuantity, variantId);
-  };
-
-  const handleRemoveItem = (productId: string, variantId?: number) => {
-    removeFromCart(productId, variantId);
-    addNotification('info', 'Produit retiré du panier.');
-  };
-
   const handleCheckout = async () => {
     if (!user) {
       addNotification('error', 'Vous devez être connecté pour passer commande.');
@@ -143,6 +145,7 @@ const CartPage: React.FC = () => {
               productId: parseInt(item.product.id),
               quantity: item.quantity,
               variantId: item.variantId,
+              selectedOptions: item.selectedOptions,
             })),
             promotionId: discountInfo?.eligible ? discountInfo.promotionId : undefined,
           });
@@ -164,6 +167,8 @@ const CartPage: React.FC = () => {
         const orderItems: ApiOrderItem[] = items.map(item => ({
           productId: item.product.id,
           quantity: item.quantity,
+          variantId: item.variantId,
+          selectedOptions: item.selectedOptions,
         }));
 
         const returnUrl = `${window.location.origin}/payment/callback`;
@@ -209,6 +214,7 @@ const CartPage: React.FC = () => {
             productId: parseInt(item.product.id),
             quantity: item.quantity,
             variantId: item.variantId,
+            selectedOptions: item.selectedOptions,
           })),
           promotionId: discountInfo?.eligible ? discountInfo.promotionId : undefined,
         });
@@ -229,6 +235,8 @@ const CartPage: React.FC = () => {
       const orderItems: ApiOrderItem[] = items.map(item => ({
         productId: item.product.id,
         quantity: item.quantity,
+        variantId: item.variantId,
+        selectedOptions: item.selectedOptions,
       }));
 
       const returnUrl = `${window.location.origin}/payment/callback`;
@@ -319,14 +327,39 @@ const CartPage: React.FC = () => {
                 {/* Cart items */}
                 <div className="lg:col-span-3 space-y-3">
                   {items.map((cartItem) => {
-                    const variant = cartItem.product.variants?.find(v => v.id === cartItem.variantId);
-                    const basePrice = cartItem.product.price + (variant?.priceModifier || 0);
+                    // Calculate price based on variant type
+                    let basePrice = cartItem.product.price;
+                    let variantDisplay: string | null = null;
+
+                    // New format: selectedOptions
+                    if (cartItem.selectedOptions && cartItem.selectedOptions.length > 0) {
+                      const totalModifier = cartItem.selectedOptions.reduce((acc, opt) => acc + (opt.priceModifier || 0), 0);
+                      basePrice += totalModifier;
+                      // Build display: "Taille: M, Couleur: Rouge"
+                      variantDisplay = cartItem.selectedOptions.map(o => `${o.categoryName}: ${o.optionName}`).join(', ');
+                    }
+                    // Legacy format: variantId
+                    else if (cartItem.variantId && cartItem.product.variants) {
+                      const variant = cartItem.product.variants.find(v => v.id === cartItem.variantId);
+                      if (variant) {
+                        basePrice += variant.priceModifier || 0;
+                        variantDisplay = variant.name;
+                      }
+                    }
                     const promotion = productPromotions[parseInt(cartItem.product.id)];
                     const discountedPrice = promotion
                       ? Math.round(basePrice * (1 - promotion.discountPercent / 100) * 100) / 100
                       : basePrice;
                     const hasPromotion = !!promotion;
-                    const cartItemKey = `${cartItem.product.id}-${cartItem.variantId || 'no-variant'}`;
+                    // Generate unique key that accounts for selectedOptions
+                    let cartItemKey = cartItem.product.id;
+                    if (cartItem.selectedOptions && cartItem.selectedOptions.length > 0) {
+                      cartItemKey += '-' + cartItem.selectedOptions.map(o => `${o.categoryId}:${o.optionId}`).join('-');
+                    } else if (cartItem.variantId) {
+                      cartItemKey += '-' + cartItem.variantId;
+                    } else {
+                      cartItemKey += '-no-variant';
+                    }
 
                     return (
                       <div
@@ -354,8 +387,8 @@ const CartPage: React.FC = () => {
                           {/* Info */}
                           <div className="flex-1 min-w-0">
                             <h3 className="font-bold text-white text-sm truncate">{cartItem.product.name}</h3>
-                            {variant && (
-                              <span className="text-accent-mint text-xs">{variant.name}</span>
+                            {variantDisplay && (
+                              <span className="text-accent-mint text-xs">{variantDisplay}</span>
                             )}
                             {hasPromotion ? (
                               <div className="flex items-center gap-2 mt-1">
@@ -370,7 +403,7 @@ const CartPage: React.FC = () => {
                           {/* Quantity */}
                           <div className="flex items-center bg-dark-bg rounded-xl border border-gray-800">
                             <button
-                              onClick={() => handleUpdateQuantity(cartItem.product.id, cartItem.quantity - 1, cartItem.variantId)}
+                              onClick={() => updateQuantity(cartItem.product.id, cartItem.quantity - 1, cartItem.variantId, cartItem.selectedOptions)}
                               disabled={cartItem.quantity <= 1}
                               className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-accent-mint disabled:text-gray-700 transition-colors"
                             >
@@ -378,7 +411,7 @@ const CartPage: React.FC = () => {
                             </button>
                             <span className="w-8 text-center text-white font-bold text-sm">{cartItem.quantity}</span>
                             <button
-                              onClick={() => handleUpdateQuantity(cartItem.product.id, cartItem.quantity + 1, cartItem.variantId)}
+                              onClick={() => updateQuantity(cartItem.product.id, cartItem.quantity + 1, cartItem.variantId, cartItem.selectedOptions)}
                               className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-accent-mint transition-colors"
                             >
                               <Plus size={14} />
@@ -396,7 +429,7 @@ const CartPage: React.FC = () => {
                               <p className="font-bold text-white">{(basePrice * cartItem.quantity).toFixed(2)}€</p>
                             )}
                             <button
-                              onClick={() => handleRemoveItem(cartItem.product.id, cartItem.variantId)}
+                              onClick={() => removeFromCart(cartItem.product.id, cartItem.variantId, cartItem.selectedOptions)}
                               className="text-gray-500 hover:text-red-400 transition-colors p-1"
                             >
                               <Trash2 size={16} />
@@ -425,15 +458,31 @@ const CartPage: React.FC = () => {
                       {/* Items summary */}
                       <div className="space-y-2 mb-5">
                         {items.map((item) => {
-                          const variant = item.product.variants?.find(v => v.id === item.variantId);
-                          const basePrice = item.product.price + (variant?.priceModifier || 0);
+                          // Calculate base price
+                          let basePrice = item.product.price;
+                          if (item.selectedOptions && item.selectedOptions.length > 0) {
+                            const totalModifier = item.selectedOptions.reduce((acc, opt) => acc + (opt.priceModifier || 0), 0);
+                            basePrice += totalModifier;
+                          } else if (item.variantId && item.product.variants) {
+                            const variant = item.product.variants.find(v => v.id === item.variantId);
+                            if (variant) {
+                              basePrice += variant.priceModifier || 0;
+                            }
+                          }
                           const promotion = productPromotions[parseInt(item.product.id)];
                           const discountedPrice = promotion
                             ? Math.round(basePrice * (1 - promotion.discountPercent / 100) * 100) / 100
                             : basePrice;
                           const hasPromotion = !!promotion;
+                          // Generate unique key
+                          let itemKey = item.product.id;
+                          if (item.selectedOptions && item.selectedOptions.length > 0) {
+                            itemKey += '-' + item.selectedOptions.map(o => `${o.categoryId}:${o.optionId}`).join('-');
+                          } else if (item.variantId) {
+                            itemKey += '-' + item.variantId;
+                          }
                           return (
-                            <div key={`${item.product.id}-${item.variantId}`} className="flex justify-between text-sm">
+                            <div key={itemKey} className="flex justify-between text-sm">
                               <span className="text-gray-400 truncate max-w-[55%]">
                                 {item.quantity}x {item.product.name}
                               </span>

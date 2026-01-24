@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { logger } from '../utils/logger';
-import { getAllProducts, deleteProduct, createProduct, updateProduct, type Product, type ProductFormData, type ProductVariant, type ProductImage } from '../api/products';
+import { getAllProducts, deleteProduct, createProduct, updateProduct, type Product, type ProductFormData, type ProductVariant, type ProductImage, type VariantCategory, type VariantOption } from '../api/products';
 import { getAllCategories, type Category } from '../api/categories';
 import { Edit2, Trash2, Plus, X, Search, Images } from 'lucide-react';
 import Modal from '../components/Modal';
@@ -46,6 +46,12 @@ const ProductManagementPage: React.FC = () => {
   const [editingVariantId, setEditingVariantId] = useState<number | null>(null);
   const [galleryImages, setGalleryImages] = useState<ProductImage[]>([]);
 
+  // Variant categories state
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newOptionForCategory, setNewOptionForCategory] = useState<{ [categoryId: number]: { name: string; priceModifier: number } }>({});
+  const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
+  const [editingOptionId, setEditingOptionId] = useState<{ categoryId: number; optionId: number } | null>(null);
+
   const fetchProducts = async () => {
     try {
       const data = await getAllProducts();
@@ -81,6 +87,7 @@ const ProductManagementPage: React.FC = () => {
       imageUrl: '',
       active: true,
       variants: [],
+      variantCategories: [],
       subcategoryId: undefined
     });
     setNewVariant({
@@ -90,6 +97,10 @@ const ProductManagementPage: React.FC = () => {
     });
     setEditingVariantId(null);
     setGalleryImages([]);
+    setNewCategoryName('');
+    setNewOptionForCategory({});
+    setEditingCategoryId(null);
+    setEditingOptionId(null);
     setIsModalOpen(true);
   };
 
@@ -103,6 +114,7 @@ const ProductManagementPage: React.FC = () => {
       imageUrl: product.imageUrl || '',
       active: product.active,
       variants: product.variants || [],
+      variantCategories: product.variantCategories || [],
       subcategoryId: product.subcategoryId || undefined
     });
     setNewVariant({
@@ -112,6 +124,10 @@ const ProductManagementPage: React.FC = () => {
     });
     setEditingVariantId(null);
     setGalleryImages(product.images || []);
+    setNewCategoryName('');
+    setNewOptionForCategory({});
+    setEditingCategoryId(null);
+    setEditingOptionId(null);
     setIsModalOpen(true);
   };
 
@@ -220,6 +236,92 @@ const ProductManagementPage: React.FC = () => {
     }));
   };
 
+  // Variant Category handlers
+  const handleAddCategory = () => {
+    if (!newCategoryName.trim()) {
+      alert('Le nom de la catégorie est requis');
+      return;
+    }
+
+    const newCategory: VariantCategory = {
+      id: Date.now(),
+      name: newCategoryName.trim(),
+      options: []
+    };
+
+    setFormData(prev => ({
+      ...prev,
+      variantCategories: [...(prev.variantCategories || []), newCategory]
+    }));
+    setNewCategoryName('');
+  };
+
+  const handleRemoveCategory = (categoryId: number) => {
+    setFormData(prev => ({
+      ...prev,
+      variantCategories: (prev.variantCategories || []).filter(c => c.id !== categoryId)
+    }));
+  };
+
+  const handleUpdateCategoryName = (categoryId: number, name: string) => {
+    setFormData(prev => ({
+      ...prev,
+      variantCategories: (prev.variantCategories || []).map(c =>
+        c.id === categoryId ? { ...c, name } : c
+      )
+    }));
+  };
+
+  const handleAddOption = (categoryId: number) => {
+    const optionData = newOptionForCategory[categoryId];
+    if (!optionData?.name?.trim()) {
+      alert("Le nom de l'option est requis");
+      return;
+    }
+
+    const newOption: VariantOption = {
+      id: Date.now(),
+      name: optionData.name.trim(),
+      priceModifier: optionData.priceModifier || 0
+    };
+
+    setFormData(prev => ({
+      ...prev,
+      variantCategories: (prev.variantCategories || []).map(c =>
+        c.id === categoryId ? { ...c, options: [...c.options, newOption] } : c
+      )
+    }));
+
+    // Reset the input for this category
+    setNewOptionForCategory(prev => ({
+      ...prev,
+      [categoryId]: { name: '', priceModifier: 0 }
+    }));
+  };
+
+  const handleRemoveOption = (categoryId: number, optionId: number) => {
+    setFormData(prev => ({
+      ...prev,
+      variantCategories: (prev.variantCategories || []).map(c =>
+        c.id === categoryId ? { ...c, options: c.options.filter(o => o.id !== optionId) } : c
+      )
+    }));
+  };
+
+  const handleUpdateOption = (categoryId: number, optionId: number, field: keyof Omit<VariantOption, 'id'>, value: string | number) => {
+    setFormData(prev => ({
+      ...prev,
+      variantCategories: (prev.variantCategories || []).map(c =>
+        c.id === categoryId ? {
+          ...c,
+          options: c.options.map(o =>
+            o.id === optionId ? { ...o, [field]: value } : o
+          )
+        } : c
+      )
+    }));
+  };
+
   const [currentPage, setCurrentPage] = useState(1);
 
   // Reset pagination when search changes
@@ -315,7 +417,12 @@ const ProductManagementPage: React.FC = () => {
                       {product.subcategory.name}
                     </span>
                   )}
-                  {product.variants && (product.variants as any[]).length > 0 && (
+                  {product.variantCategories && (product.variantCategories as any[]).length > 0 && (
+                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-400">
+                      {(product.variantCategories as any[]).length} cat.
+                    </span>
+                  )}
+                  {product.variants && (product.variants as any[]).length > 0 && !(product.variantCategories && (product.variantCategories as any[]).length > 0) && (
                     <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400">
                       {(product.variants as any[]).length} var.
                     </span>
@@ -418,10 +525,175 @@ const ProductManagementPage: React.FC = () => {
               </p>
             )}
 
-            {/* Product Variants Section */}
+            {/* Variant Categories Section (New multi-level system) */}
             <div className="border-t border-gray-700 pt-4 mt-4">
-              <h3 className="text-lg font-bold text-white mb-3">Variantes / Formats</h3>
-              <p className="text-sm text-gray-400 mb-4">Ajoutez des variantes pour ce produit (ex: tailles S, M, L, XL ou formats Petit/Grand)</p>
+              <h3 className="text-lg font-bold text-white mb-3">Catégories de Variantes</h3>
+              <p className="text-sm text-gray-400 mb-4">Créez des catégories d'options (ex: Taille ET Couleur) avec modificateurs de prix</p>
+
+              {/* Existing categories */}
+              {formData.variantCategories && formData.variantCategories.length > 0 && (
+                <div className="space-y-4 mb-4">
+                  {formData.variantCategories.map((category) => (
+                    <div key={category.id} className="bg-dark-bg p-4 rounded-lg border border-gray-700">
+                      {/* Category header */}
+                      <div className="flex items-center justify-between mb-3">
+                        {editingCategoryId === category.id ? (
+                          <div className="flex-1 flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={category.name}
+                              onChange={(e) => handleUpdateCategoryName(category.id, e.target.value)}
+                              className="flex-1 bg-darker-bg border border-gray-600 rounded px-3 py-1.5 text-white"
+                              autoFocus
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setEditingCategoryId(null)}
+                              className="text-orange-400 hover:text-white text-sm font-medium"
+                            >
+                              OK
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-orange-400">{category.name}</span>
+                            <span className="text-xs text-gray-500">({category.options.length} options)</span>
+                            <button
+                              type="button"
+                              onClick={() => setEditingCategoryId(category.id)}
+                              className="text-blue-400 hover:text-blue-300 ml-2"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveCategory(category.id)}
+                          className="text-red-400 hover:text-red-300"
+                        >
+                          <X size={18} />
+                        </button>
+                      </div>
+
+                      {/* Options list */}
+                      {category.options.length > 0 && (
+                        <div className="space-y-2 mb-3">
+                          {category.options.map((option) => {
+                            const isEditing = editingOptionId?.categoryId === category.id && editingOptionId?.optionId === option.id;
+                            const finalPrice = formData.price + option.priceModifier;
+                            return (
+                              <div key={option.id} className="bg-darker-bg p-2 rounded border border-gray-700 flex items-center justify-between">
+                                {isEditing ? (
+                                  <div className="flex-1 grid grid-cols-2 gap-2">
+                                    <input
+                                      type="text"
+                                      value={option.name}
+                                      onChange={(e) => handleUpdateOption(category.id, option.id, 'name', e.target.value)}
+                                      className="bg-dark-bg border border-gray-600 rounded px-2 py-1 text-white text-sm"
+                                    />
+                                    <NumberInput
+                                      value={option.priceModifier}
+                                      onChange={(val) => handleUpdateOption(category.id, option.id, 'priceModifier', parseFloat(val) || 0)}
+                                      className="bg-dark-bg border border-gray-600 rounded px-2 py-1 text-white text-sm"
+                                    />
+                                  </div>
+                                ) : (
+                                  <div className="flex-1">
+                                    <span className="text-white">{option.name}</span>
+                                    <span className="text-gray-400 text-sm ml-2">
+                                      {option.priceModifier !== 0 && `(${option.priceModifier > 0 ? '+' : ''}${option.priceModifier.toFixed(2)} €)`}
+                                      <span className="text-gray-500 ml-1">→ {finalPrice.toFixed(2)} €</span>
+                                    </span>
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-1 ml-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingOptionId(isEditing ? null : { categoryId: category.id, optionId: option.id })}
+                                    className="text-blue-400 hover:text-blue-300 p-1"
+                                  >
+                                    <Edit2 size={14} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveOption(category.id, option.id)}
+                                    className="text-red-400 hover:text-red-300 p-1"
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Add new option to category */}
+                      <div className="flex gap-2 items-end">
+                        <div className="flex-1">
+                          <label className="block text-xs text-gray-400 mb-1">Nouvelle option</label>
+                          <input
+                            type="text"
+                            value={newOptionForCategory[category.id]?.name || ''}
+                            onChange={(e) => setNewOptionForCategory(prev => ({
+                              ...prev,
+                              [category.id]: { ...prev[category.id], name: e.target.value }
+                            }))}
+                            placeholder="Ex: S, M, L ou Rouge, Bleu"
+                            className="w-full bg-darker-bg border border-gray-600 rounded px-3 py-1.5 text-white text-sm"
+                          />
+                        </div>
+                        <div className="w-28">
+                          <label className="block text-xs text-gray-400 mb-1">Prix +/-</label>
+                          <NumberInput
+                            value={newOptionForCategory[category.id]?.priceModifier || 0}
+                            onChange={(val) => setNewOptionForCategory(prev => ({
+                              ...prev,
+                              [category.id]: { ...prev[category.id], priceModifier: parseFloat(val) || 0 }
+                            }))}
+                            className="w-full bg-darker-bg border border-gray-600 rounded px-3 py-1.5 text-white text-sm"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleAddOption(category.id)}
+                          className="px-3 py-1.5 bg-orange-400 text-darker-bg font-bold rounded hover:bg-white transition-colors text-sm"
+                        >
+                          <Plus size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add new category */}
+              <div className="bg-darker-bg p-4 rounded border border-gray-700">
+                <p className="text-sm font-bold text-white mb-3">Ajouter une catégorie</p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    placeholder="Ex: Taille, Couleur, Format"
+                    className="flex-1 bg-dark-bg border border-gray-600 rounded p-2 text-white text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCategory}
+                    className="bg-orange-400 text-darker-bg font-bold py-2 px-4 rounded hover:bg-white transition-colors text-sm flex items-center gap-1"
+                  >
+                    <Plus size={16} /> Ajouter
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Product Variants Section (Legacy) */}
+            <div className="border-t border-gray-700 pt-4 mt-4">
+              <h3 className="text-lg font-bold text-white mb-3">Variantes Simples (ancien système)</h3>
+              <p className="text-sm text-gray-400 mb-4">Pour une seule dimension de variantes (ex: tailles S, M, L, XL uniquement)</p>
 
               {/* Existing variants */}
               {formData.variants && formData.variants.length > 0 && (

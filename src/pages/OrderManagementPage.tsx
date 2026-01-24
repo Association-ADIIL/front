@@ -818,7 +818,12 @@ const OrderManagementPage: React.FC = () => {
                                         <div className="text-white font-medium">
                                             {item.product.name}
                                         </div>
-                                        {item.variantId && item.product.variants && (
+                                        {/* Variant display: new format (variantSelection) or legacy (variantId) */}
+                                        {item.variantSelection && (item.variantSelection as any[]).length > 0 ? (
+                                            <div className="text-green-400 text-sm mt-1">
+                                                {(item.variantSelection as any[]).map((opt: any) => `${opt.categoryName}: ${opt.optionName}`).join(', ')}
+                                            </div>
+                                        ) : item.variantId && item.product.variants && (
                                             <div className="text-green-400 text-sm mt-1">
                                                 {(item.product.variants as any[]).find((v: any) => String(v.id) === String(item.variantId))?.name}
                                             </div>
@@ -933,17 +938,24 @@ const OrderManagementPage: React.FC = () => {
                                     const availableRefund = item.quantity - (item.refundedQuantity || 0);
                                     if (availableRefund <= 0) return null;
 
-                                    // Find variant info if variantId exists (compare as strings to handle type mismatch)
-                                    const variantInfo = item.variantId && item.product.variants ?
-                                        (item.product.variants as any[]).find((v: any) => String(v.id) === String(item.variantId)) : null;
+                                    // Find variant info: new format (variantSelection) or legacy (variantId)
+                                    let variantDisplayText: string | null = null;
+                                    if (item.variantSelection && (item.variantSelection as any[]).length > 0) {
+                                        variantDisplayText = (item.variantSelection as any[]).map((opt: any) => `${opt.categoryName}: ${opt.optionName}`).join(', ');
+                                    } else if (item.variantId && item.product.variants) {
+                                        const variantInfo = (item.product.variants as any[]).find((v: any) => String(v.id) === String(item.variantId));
+                                        if (variantInfo) {
+                                            variantDisplayText = variantInfo.name;
+                                        }
+                                    }
 
                                     return (
                                         <tr key={item.id} className="border-b border-gray-700 last:border-0">
                                             <td className="py-2">
                                                 {item.product.name}
-                                                {variantInfo && (
+                                                {variantDisplayText && (
                                                     <span className="ml-2 text-xs text-green-400">
-                                                        ({variantInfo.name})
+                                                        ({variantDisplayText})
                                                     </span>
                                                 )}
                                             </td>

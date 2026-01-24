@@ -8,6 +8,28 @@ export interface ProductVariant {
   stock?: number;
 }
 
+// New: Variant category system for multiple option types (e.g., Size AND Color)
+export interface VariantOption {
+  id: number;
+  name: string;
+  priceModifier: number;
+}
+
+export interface VariantCategory {
+  id: number;
+  name: string;
+  options: VariantOption[];
+}
+
+// Selected option for cart/orders
+export interface SelectedOption {
+  categoryId: number;
+  categoryName: string;
+  optionId: number;
+  optionName: string;
+  priceModifier: number;
+}
+
 export interface ProductImage {
   id: number;
   url: string;
@@ -23,7 +45,8 @@ export interface Product {
   price: number;
   imageUrl?: string;
   active: boolean;
-  variants?: ProductVariant[];
+  variants?: ProductVariant[]; // Legacy: single-level variants
+  variantCategories?: VariantCategory[]; // New: multi-level variant categories
   images?: ProductImage[];
   subcategoryId?: number;
   subcategory?: Subcategory & {
@@ -33,6 +56,7 @@ export interface Product {
 
 export type ProductFormData = Omit<Product, 'id' | 'subcategory'> & {
   variants?: ProductVariant[];
+  variantCategories?: VariantCategory[];
   subcategoryId?: number | null;
 };
 

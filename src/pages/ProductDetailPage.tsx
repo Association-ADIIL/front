@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { logger } from '../utils/logger';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { getProductById, type Product } from '../api/products';
+import { getProductById, type Product, type SelectedOption } from '../api/products';
 import { getActiveProductPromotions, type ProductPromotionsMap } from '../api/promotions';
 import { ArrowLeft, Share2, ShoppingCart, Minus, Plus, Tag, ChevronLeft, ChevronRight, LogIn } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -21,6 +21,7 @@ const ProductDetailPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [selectedVariantId, setSelectedVariantId] = useState<number | undefined>(undefined);
+  const [selectedCategoryOptions, setSelectedCategoryOptions] = useState<{ [categoryId: number]: number }>({});
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
@@ -70,6 +71,41 @@ const ProductDetailPage: React.FC = () => {
 
     if (!product) return;
 
+    // New format: variant categories
+    if (product.variantCategories && product.variantCategories.length > 0) {
+      const selectedOptions: SelectedOption[] = [];
+      const missingCategories: string[] = [];
+
+      for (const category of product.variantCategories) {
+        const selectedOptionId = selectedCategoryOptions[category.id];
+        if (!selectedOptionId) {
+          missingCategories.push(category.name);
+        } else {
+          const option = category.options.find(o => o.id === selectedOptionId);
+          if (option) {
+            selectedOptions.push({
+              categoryId: category.id,
+              categoryName: category.name,
+              optionId: option.id,
+              optionName: option.name,
+              priceModifier: option.priceModifier
+            });
+          }
+        }
+      }
+
+      if (missingCategories.length > 0) {
+        addNotification('error', `Veuillez sélectionner: ${missingCategories.join(', ')}`);
+        return;
+      }
+
+      const optionsText = selectedOptions.map(o => `${o.categoryName}: ${o.optionName}`).join(', ');
+      addToCart(product, quantity, undefined, selectedOptions);
+      addNotification('success', `${quantity}x ${product.name} (${optionsText}) ajouté au panier !`);
+      return;
+    }
+
+    // Legacy format
     if (product.variants && product.variants.length > 0 && !selectedVariantId) {
       addNotification('error', 'Veuillez sélectionner une variante');
       return;
@@ -132,8 +168,26 @@ const ProductDetailPage: React.FC = () => {
     );
   }
 
-  const variant = product.variants?.find(v => v.id === selectedVariantId);
-  const basePrice = variant ? product.price + variant.priceModifier : product.price;
+  // Calculate price based on variant type
+  let basePrice = product.price;
+  if (product.variantCategories && product.variantCategories.length > 0) {
+    // New format: sum modifiers from all selected options
+    for (const category of product.variantCategories) {
+      const selectedOptionId = selectedCategoryOptions[category.id];
+      if (selectedOptionId) {
+        const option = category.options.find(o => o.id === selectedOptionId);
+        if (option) {
+          basePrice += option.priceModifier;
+        }
+      }
+    }
+  } else if (product.variants && selectedVariantId) {
+    // Legacy format
+    const variant = product.variants.find(v => v.id === selectedVariantId);
+    if (variant) {
+      basePrice += variant.priceModifier;
+    }
+  }
   const promotion = productPromotions[parseInt(product.id)];
   const discountedPrice = promotion
     ? Math.round(basePrice * (1 - promotion.discountPercent / 100) * 100) / 100
@@ -285,8 +339,42 @@ const ProductDetailPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Variant selector */}
-              {product.variants && product.variants.length > 0 && (
+              {/* Variant category selectors (new format) */}
+              {product.variantCategories && product.variantCategories.length > 0 && (
+                <div className="space-y-4">
+                  {product.variantCategories.map((category) => (
+                    <div key={category.id}>
+                      <label className="block text-sm text-gray-400 mb-2">{category.name}</label>
+                      <div className="flex flex-wrap gap-2">
+                        {category.options.map((option) => (
+                          <button
+                            key={option.id}
+                            onClick={() => setSelectedCategoryOptions(prev => ({
+                              ...prev,
+                              [category.id]: option.id
+                            }))}
+                            className={`px-4 py-3 rounded-xl border transition-all ${
+                              selectedCategoryOptions[category.id] === option.id
+                                ? 'border-accent-mint bg-accent-mint/10 text-accent-mint'
+                                : 'border-gray-700 bg-dark-bg text-white hover:border-gray-500'
+                            }`}
+                          >
+                            <span className="font-medium">{option.name}</span>
+                            {option.priceModifier !== 0 && (
+                              <span className="ml-2 text-sm text-gray-400">
+                                ({option.priceModifier > 0 ? '+' : ''}{option.priceModifier.toFixed(2)} EUR)
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Legacy variant selector */}
+              {(!product.variantCategories || product.variantCategories.length === 0) && product.variants && product.variants.length > 0 && (
                 <div>
                   <label className="block text-sm text-gray-400 mb-2">Variante</label>
                   <div className="flex flex-wrap gap-2">
