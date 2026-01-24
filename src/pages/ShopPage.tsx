@@ -523,13 +523,18 @@ const ShopPage: React.FC = () => {
                                   <select
                                     key={category.id}
                                     value={selectedCategoryOptions[product.id]?.[category.id] || ''}
-                                    onChange={(e) => setSelectedCategoryOptions(prev => ({
-                                      ...prev,
-                                      [product.id]: {
-                                        ...(prev[product.id] || {}),
-                                        [category.id]: e.target.value ? parseInt(e.target.value) : undefined
-                                      }
-                                    }))}
+                                    onChange={(e) => {
+                                      const value = e.target.value ? parseInt(e.target.value) : null;
+                                      setSelectedCategoryOptions(prev => {
+                                        const productSelections = { ...(prev[product.id] || {}) };
+                                        if (value === null) {
+                                          delete productSelections[category.id];
+                                        } else {
+                                          productSelections[category.id] = value;
+                                        }
+                                        return { ...prev, [product.id]: productSelections };
+                                      });
+                                    }}
                                     className="w-full bg-dark-bg border border-gray-700 rounded-lg p-1.5 text-white text-xs focus:border-accent-mint outline-none cursor-pointer hover:border-gray-600 transition-colors"
                                   >
                                     <option value="">{category.name}</option>
