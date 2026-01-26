@@ -25,6 +25,35 @@ const ProductDetailPage: React.FC = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
+  const getAllImages = () => {
+    if (!product) return [];
+    const imgs: { url: string; id?: number }[] = [];
+
+    // Add main image first if exists
+    if (product.imageUrl) {
+      imgs.push({ url: product.imageUrl });
+    }
+
+    // Add gallery images
+    if (product.images && product.images.length > 0) {
+      product.images.forEach(img => {
+        imgs.push({ url: img.url, id: img.id });
+      });
+    }
+
+    return imgs;
+  };
+
+  const images = getAllImages();
+
+  const nextImage = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % images.length);
+  };
+
+  const prevImage = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!lightboxOpen) return;
@@ -144,35 +173,6 @@ const ProductDetailPage: React.FC = () => {
 
     addToCart(product, quantity, selectedVariantId);
     addNotification('success', `${quantity}x ${product.name}${variantText} ajouté au panier !`);
-  };
-
-  const getAllImages = () => {
-    if (!product) return [];
-    const images: { url: string; id?: number }[] = [];
-
-    // Add main image first if exists
-    if (product.imageUrl) {
-      images.push({ url: product.imageUrl });
-    }
-
-    // Add gallery images
-    if (product.images && product.images.length > 0) {
-      product.images.forEach(img => {
-        images.push({ url: img.url, id: img.id });
-      });
-    }
-
-    return images;
-  };
-
-  const images = getAllImages();
-
-  const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % images.length);
-  };
-
-  const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
   };
 
   if (loading) {
