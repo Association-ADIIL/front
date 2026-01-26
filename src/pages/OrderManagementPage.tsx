@@ -3,7 +3,7 @@ import { logger } from '../utils/logger';
 import { getAllOrders, updateOrderStatus, updatePaymentStatus, refundOrderItems, type Order } from '../api/orders';
 import { getAllInscriptions, updateInscriptionPaymentStatus, refundInscription, type Inscription } from '../api/inscriptions';
 import { getAllEvents, type Event } from '../api/events';
-import { Edit2, ShoppingBag, Calendar, CheckSquare, Square, Eye, Gift } from 'lucide-react';
+import { Edit2, ShoppingBag, Calendar, CheckSquare, Square, Eye, Gift, Download } from 'lucide-react';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -415,6 +415,121 @@ const OrderManagementPage: React.FC = () => {
       return (refundSelection[item.id] || 0) === availableRefund;
   }) || false;
 
+  // Export orders to CSV
+  const exportOrdersToCSV = () => {
+    const dataToExport = filteredOrders;
+
+    if (dataToExport.length === 0) {
+      addNotification('info', 'Aucune commande à exporter');
+      return;
+    }
+
+    // CSV header
+    const headers = [
+      'ID Commande',
+      'Date',
+      'Client Prénom',
+      'Client Nom',
+      'Email',
+      'Produit',
+      'Options/Variantes',
+      'Quantité',
+      'Prix unitaire original',
+      'Prix unitaire final',
+      'Prix ligne',
+      'Réduction produit',
+      'Réduction panier',
+      'Total commande',
+      'Méthode paiement',
+      'Statut paiement',
+      'Statut commande',
+      'Montant remboursé'
+    ];
+
+    const rows: string[][] = [];
+
+    dataToExport.forEach(order => {
+      order.items.forEach(item => {
+        // Format variant/options
+        let variantText = '';
+        if (item.variantSelection && (item.variantSelection as any[]).length > 0) {
+          variantText = (item.variantSelection as any[])
+            .map((opt: any) => `${opt.categoryName}: ${opt.optionName}`)
+            .join(' | ');
+        } else if (item.variantId && item.product.variants) {
+          const variant = item.product.variants.find(v => v.id === item.variantId);
+          if (variant) {
+            variantText = variant.name;
+          }
+        }
+
+        // Calculate effective price with cart discount
+        const totalAfterProductDiscount = order.items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+        const hasCartDiscount = (order.cartDiscountAmount || 0) > 0 && totalAfterProductDiscount > 0;
+        const cartDiscountRatio = hasCartDiscount ? (order.cartDiscountAmount || 0) / totalAfterProductDiscount : 0;
+        const effectivePrice = item.price * (1 - cartDiscountRatio);
+
+        const row = [
+          order.id.toString(),
+          new Date(order.createdAt).toLocaleDateString('fr-FR') + ' ' + new Date(order.createdAt).toLocaleTimeString('fr-FR'),
+          order.user?.firstName || '',
+          order.user?.lastName || '',
+          order.user?.email || '',
+          item.product.name,
+          variantText,
+          item.quantity.toString(),
+          item.originalPrice ? item.originalPrice.toFixed(2) : item.price.toFixed(2),
+          effectivePrice.toFixed(2),
+          (effectivePrice * item.quantity).toFixed(2),
+          (order.productDiscountAmount || 0).toFixed(2),
+          (order.cartDiscountAmount || 0).toFixed(2),
+          order.totalPrice.toFixed(2),
+          order.paymentMethod === 'HELLOASSO' ? 'HelloAsso' :
+            order.paymentMethod === 'PAYPAL' ? 'PayPal' :
+            order.paymentMethod === 'CASH_CB' ? 'Espèces/CB' :
+            order.paymentMethod === 'FREE' ? 'Gratuit' :
+            order.paymentMethod === 'BALANCE' ? 'Solde ADIIL' : order.paymentMethod,
+          order.paymentStatus === 'PENDING' ? 'En attente' :
+            order.paymentStatus === 'PAID' ? 'Payé' : 'Remboursé',
+          order.orderStatus === 'PENDING' ? 'En attente' :
+            order.orderStatus === 'PAID' ? 'Payée' :
+            order.orderStatus === 'COLLECTED' ? 'Récupérée' : 'Annulée',
+          (order.refundedAmount || 0).toFixed(2)
+        ];
+
+        rows.push(row);
+      });
+    });
+
+    // Escape CSV values
+    const escapeCSV = (value: string) => {
+      if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+        return `"${value.replace(/"/g, '""')}"`;
+      }
+      return value;
+    };
+
+    // Build CSV content
+    const csvContent = [
+      headers.map(escapeCSV).join(','),
+      ...rows.map(row => row.map(escapeCSV).join(','))
+    ].join('\n');
+
+    // Add BOM for Excel UTF-8 compatibility
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `commandes_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    addNotification('success', `${dataToExport.length} commandes exportées`);
+  };
+
   if (loading) return <div className="text-center p-8">Chargement...</div>;
 
   return (
@@ -463,6 +578,16 @@ const OrderManagementPage: React.FC = () => {
       {/* Filters for orders */}
       {viewMode === 'orders' && (
         <div className="bg-darker-bg border border-gray-800 rounded-2xl p-4 mb-4">
+          <div className="flex justify-between items-start mb-4">
+            <span className="text-gray-500 text-xs uppercase tracking-wide">Filtres</span>
+            <button
+              onClick={exportOrdersToCSV}
+              className="flex items-center gap-2 px-3 py-2 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-colors text-sm font-medium"
+            >
+              <Download size={16} />
+              Exporter CSV
+            </button>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Search */}
             <div>
