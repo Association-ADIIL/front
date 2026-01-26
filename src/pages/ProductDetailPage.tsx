@@ -3,7 +3,7 @@ import { logger } from '../utils/logger';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getProductById, type Product, type SelectedOption } from '../api/products';
 import { getActiveProductPromotions, type ProductPromotionsMap } from '../api/promotions';
-import { ArrowLeft, Share2, ShoppingCart, Minus, Plus, Tag, ChevronLeft, ChevronRight, LogIn } from 'lucide-react';
+import { ArrowLeft, Share2, ShoppingCart, Minus, Plus, Tag, ChevronLeft, ChevronRight, LogIn, X, ZoomIn } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useNotification } from '../context/NotificationContext';
@@ -23,6 +23,34 @@ const ProductDetailPage: React.FC = () => {
   const [selectedVariantId, setSelectedVariantId] = useState<number | undefined>(undefined);
   const [selectedCategoryOptions, setSelectedCategoryOptions] = useState<{ [categoryId: number]: number }>({});
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!lightboxOpen) return;
+      if (e.key === 'Escape') {
+        setLightboxOpen(false);
+      } else if (e.key === 'ArrowRight') {
+        setCurrentImageIndex((prev) => (prev + 1) % images.length);
+      } else if (e.key === 'ArrowLeft') {
+        setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [lightboxOpen, images.length]);
+
+  useEffect(() => {
+    if (lightboxOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [lightboxOpen]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -233,12 +261,22 @@ const ProductDetailPage: React.FC = () => {
             {/* Image Gallery */}
             <div className="space-y-4">
               {/* Main Image */}
-              <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-gray-900 border border-gray-800">
+              <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-gray-900 border border-gray-800 group">
                 <img
                   src={currentImage}
                   alt={product.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover cursor-pointer transition-transform group-hover:scale-[1.02]"
+                  onClick={() => setLightboxOpen(true)}
                 />
+
+                {/* Zoom indicator */}
+                <div
+                  className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors cursor-pointer pointer-events-none"
+                >
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-darker-bg/90 backdrop-blur-md p-3 rounded-xl border border-gray-700">
+                    <ZoomIn size={24} className="text-white" />
+                  </div>
+                </div>
 
                 {/* Navigation arrows */}
                 {images.length > 1 && (
@@ -460,6 +498,91 @@ const ProductDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Lightbox Modal */}
+      {lightboxOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm flex items-center justify-center"
+          onClick={() => setLightboxOpen(false)}
+        >
+          {/* Close button */}
+          <button
+            onClick={() => setLightboxOpen(false)}
+            className="absolute top-6 right-6 p-3 bg-darker-bg/90 backdrop-blur-md text-white rounded-xl border border-gray-700 hover:border-accent-mint hover:bg-darker-bg transition-all z-10"
+          >
+            <X size={24} />
+          </button>
+
+          {/* Image counter */}
+          {images.length > 1 && (
+            <div className="absolute top-6 left-1/2 -translate-x-1/2 px-4 py-2 bg-darker-bg/90 backdrop-blur-md text-white rounded-xl border border-gray-700 z-10">
+              {currentImageIndex + 1} / {images.length}
+            </div>
+          )}
+
+          {/* Main image */}
+          <div
+            className="relative max-w-[90vw] max-h-[85vh] flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={currentImage}
+              alt={product.name}
+              className="max-w-full max-h-[85vh] object-contain rounded-lg"
+            />
+
+            {/* Navigation arrows */}
+            {images.length > 1 && (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    prevImage();
+                  }}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-darker-bg/90 backdrop-blur-md text-white rounded-xl border border-gray-700 hover:border-accent-mint transition-all"
+                >
+                  <ChevronLeft size={28} />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    nextImage();
+                  }}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-darker-bg/90 backdrop-blur-md text-white rounded-xl border border-gray-700 hover:border-accent-mint transition-all"
+                >
+                  <ChevronRight size={28} />
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Thumbnails */}
+          {images.length > 1 && (
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 p-2 bg-darker-bg/90 backdrop-blur-md rounded-xl border border-gray-700 max-w-[90vw] overflow-x-auto">
+              {images.map((img, index) => (
+                <button
+                  key={img.id || index}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentImageIndex(index);
+                  }}
+                  className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                    index === currentImageIndex
+                      ? 'border-accent-mint'
+                      : 'border-transparent hover:border-gray-500'
+                  }`}
+                >
+                  <img
+                    src={img.url}
+                    alt={`${product.name} - Image ${index + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
