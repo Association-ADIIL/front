@@ -502,83 +502,90 @@ const ProductDetailPage: React.FC = () => {
       {/* Lightbox Modal */}
       {lightboxOpen && (
         <div
-          className="fixed inset-0 z-[1000] bg-black/95 backdrop-blur-sm flex items-center justify-center"
+          className="fixed inset-0 z-[1000] bg-black/95 backdrop-blur-sm flex flex-col"
           onClick={() => setLightboxOpen(false)}
         >
-          {/* Close button */}
-          <button
-            onClick={() => setLightboxOpen(false)}
-            className="absolute top-6 right-6 p-3 bg-darker-bg/90 backdrop-blur-md text-white rounded-xl border border-gray-700 hover:border-accent-mint hover:bg-darker-bg transition-all z-10"
-          >
-            <X size={24} />
-          </button>
+          {/* Header with close button and counter */}
+          <div className="flex-shrink-0 flex items-center justify-center p-6 relative">
+            {/* Image counter */}
+            {images.length > 1 && (
+              <div className="px-4 py-2 bg-darker-bg/90 backdrop-blur-md text-white rounded-xl border border-gray-700">
+                {currentImageIndex + 1} / {images.length}
+              </div>
+            )}
 
-          {/* Image counter */}
-          {images.length > 1 && (
-            <div className="absolute top-6 left-1/2 -translate-x-1/2 px-4 py-2 bg-darker-bg/90 backdrop-blur-md text-white rounded-xl border border-gray-700 z-10">
-              {currentImageIndex + 1} / {images.length}
-            </div>
-          )}
+            {/* Close button */}
+            <button
+              onClick={() => setLightboxOpen(false)}
+              className="absolute right-6 p-3 bg-darker-bg/90 backdrop-blur-md text-white rounded-xl border border-gray-700 hover:border-accent-mint hover:bg-darker-bg transition-all"
+            >
+              <X size={24} />
+            </button>
+          </div>
 
-          {/* Main image */}
+          {/* Main image area */}
           <div
-            className="relative max-w-[90vw] max-h-[85vh] flex items-center justify-center"
+            className="flex-1 flex items-center justify-center px-4 min-h-0"
             onClick={(e) => e.stopPropagation()}
           >
-            <img
-              src={currentImage}
-              alt={product.name}
-              className="max-w-full max-h-[85vh] object-contain rounded-lg"
-            />
+            <div className="relative max-w-[90vw] h-full flex items-center justify-center">
+              <img
+                src={currentImage}
+                alt={product.name}
+                className="max-w-full max-h-full object-contain rounded-lg"
+              />
 
-            {/* Navigation arrows */}
-            {images.length > 1 && (
-              <>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    prevImage();
-                  }}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-darker-bg/90 backdrop-blur-md text-white rounded-xl border border-gray-700 hover:border-accent-mint transition-all"
-                >
-                  <ChevronLeft size={28} />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    nextImage();
-                  }}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-darker-bg/90 backdrop-blur-md text-white rounded-xl border border-gray-700 hover:border-accent-mint transition-all"
-                >
-                  <ChevronRight size={28} />
-                </button>
-              </>
-            )}
+              {/* Navigation arrows */}
+              {images.length > 1 && (
+                <>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      prevImage();
+                    }}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-darker-bg/90 backdrop-blur-md text-white rounded-xl border border-gray-700 hover:border-accent-mint transition-all"
+                  >
+                    <ChevronLeft size={28} />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      nextImage();
+                    }}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-darker-bg/90 backdrop-blur-md text-white rounded-xl border border-gray-700 hover:border-accent-mint transition-all"
+                  >
+                    <ChevronRight size={28} />
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Thumbnails */}
           {images.length > 1 && (
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 p-2 bg-darker-bg/90 backdrop-blur-md rounded-xl border border-gray-700 max-w-[90vw] overflow-x-auto">
-              {images.map((img, index) => (
-                <button
-                  key={img.id || index}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setCurrentImageIndex(index);
-                  }}
-                  className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
-                    index === currentImageIndex
-                      ? 'border-accent-mint'
-                      : 'border-transparent hover:border-gray-500'
-                  }`}
-                >
-                  <img
-                    src={img.url}
-                    alt={`${product.name} - Image ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                </button>
-              ))}
+            <div className="flex-shrink-0 flex justify-center p-6">
+              <div className="flex gap-2 p-2 bg-darker-bg/90 backdrop-blur-md rounded-xl border border-gray-700 max-w-[90vw] overflow-x-auto">
+                {images.map((img, index) => (
+                  <button
+                    key={img.id || index}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCurrentImageIndex(index);
+                    }}
+                    className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                      index === currentImageIndex
+                        ? 'border-accent-mint'
+                        : 'border-transparent hover:border-gray-500'
+                    }`}
+                  >
+                    <img
+                      src={img.url}
+                      alt={`${product.name} - Image ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
