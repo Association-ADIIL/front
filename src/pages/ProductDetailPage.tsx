@@ -502,7 +502,7 @@ const ProductDetailPage: React.FC = () => {
       {/* Lightbox Modal */}
       {lightboxOpen && (
         <div
-          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm flex items-center justify-center"
+          className="fixed inset-0 z-[1000] bg-black/95 backdrop-blur-sm flex items-center justify-center"
           onClick={() => setLightboxOpen(false)}
         >
           {/* Close button */}

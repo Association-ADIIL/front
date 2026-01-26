@@ -552,7 +552,7 @@ const CartPage: React.FC = () => {
                                 }`}
                               >
                                 {selectedPaymentMethod === 'BALANCE' && balance >= finalPrice && (
-                                  <div className="absolute top-2 right-2 w-4 h-4 bg-accent-mint rounded-full flex items-center justify-center">
+                                  <div className="absolute top-2.5 right-2.5 w-4 h-4 bg-accent-mint rounded-full flex items-center justify-center">
                                     <CheckCircle2 size={10} className="text-darker-bg" />
                                   </div>
                                 )}
@@ -581,7 +581,7 @@ const CartPage: React.FC = () => {
                               }`}
                             >
                               {selectedPaymentMethod === 'HELLOASSO' && finalPrice >= 0.50 && (
-                                <div className="absolute top-2 right-2 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
+                                <div className="absolute top-2.5 right-2.5 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
                                   <CheckCircle2 size={10} className="text-white" />
                                 </div>
                               )}
@@ -604,7 +604,7 @@ const CartPage: React.FC = () => {
                               }`}
                             >
                               {selectedPaymentMethod === 'PAYPAL' && (
-                                <div className="absolute top-2 right-2 w-4 h-4 bg-indigo-500 rounded-full flex items-center justify-center">
+                                <div className="absolute top-2.5 right-2.5 w-4 h-4 bg-indigo-500 rounded-full flex items-center justify-center">
                                   <CheckCircle2 size={10} className="text-white" />
                                 </div>
                               )}
@@ -627,7 +627,7 @@ const CartPage: React.FC = () => {
                               }`}
                             >
                               {selectedPaymentMethod === 'CASH_CB' && (
-                                <div className="absolute top-2 right-2 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                                <div className="absolute top-2.5 right-2.5 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
                                   <CheckCircle2 size={10} className="text-white" />
                                 </div>
                               )}
