@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { logger } from '../utils/logger';
 import { getAllProducts, deleteProduct, createProduct, updateProduct, type Product, type ProductFormData, type ProductVariant, type ProductImage, type VariantCategory, type VariantOption } from '../api/products';
+import { getAllOrders, type Order } from '../api/orders';
 import { getAllCategories, type Category } from '../api/categories';
-import { Edit2, Trash2, Plus, X, Search, Images } from 'lucide-react';
+import { Edit2, Trash2, Plus, X, Search, Images, Download } from 'lucide-react';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
 import ImageUpload from '../components/ImageUpload';
@@ -323,6 +324,138 @@ const ProductManagementPage: React.FC = () => {
   };
 
   const [currentPage, setCurrentPage] = useState(1);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [exportingProductId, setExportingProductId] = useState<string | null>(null);
+
+  // Fetch orders for export functionality
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const data = await getAllOrders();
+        setOrders(data);
+      } catch (error) {
+        logger.error('Failed to fetch orders', error);
+      }
+    };
+    fetchOrders();
+  }, []);
+
+  // Export purchases for a specific product
+  const exportProductPurchases = (product: Product) => {
+    setExportingProductId(product.id);
+
+    // Filter orders that contain this product
+    const productOrders = orders.filter(order =>
+      order.items.some(item => String(item.productId) === String(product.id))
+    );
+
+    if (productOrders.length === 0) {
+      addNotification('info', `Aucun achat trouvé pour "${product.name}"`);
+      setExportingProductId(null);
+      return;
+    }
+
+    // CSV header
+    const headers = [
+      'ID Commande',
+      'Date',
+      'Client Prénom',
+      'Client Nom',
+      'Email',
+      'Options/Variantes',
+      'Quantité',
+      'Prix unitaire original',
+      'Prix unitaire final',
+      'Prix ligne',
+      'Méthode paiement',
+      'Statut paiement',
+      'Statut commande'
+    ];
+
+    const rows: string[][] = [];
+
+    productOrders.forEach(order => {
+      // Only include items for this specific product
+      const productItems = order.items.filter(item => String(item.productId) === String(product.id));
+
+      productItems.forEach(item => {
+        // Format variant/options
+        let variantText = '';
+        if (item.variantSelection && (item.variantSelection as any[]).length > 0) {
+          variantText = (item.variantSelection as any[])
+            .map((opt: any) => `${opt.categoryName}: ${opt.optionName}`)
+            .join(' | ');
+        } else if (item.variantId && item.product.variants) {
+          const variant = item.product.variants.find(v => v.id === item.variantId);
+          if (variant) {
+            variantText = variant.name;
+          }
+        }
+
+        // Calculate effective price with cart discount
+        const totalAfterProductDiscount = order.items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+        const hasCartDiscount = (order.cartDiscountAmount || 0) > 0 && totalAfterProductDiscount > 0;
+        const cartDiscountRatio = hasCartDiscount ? (order.cartDiscountAmount || 0) / totalAfterProductDiscount : 0;
+        const effectivePrice = item.price * (1 - cartDiscountRatio);
+
+        const row = [
+          order.id.toString(),
+          new Date(order.createdAt).toLocaleDateString('fr-FR') + ' ' + new Date(order.createdAt).toLocaleTimeString('fr-FR'),
+          order.user?.firstName || '',
+          order.user?.lastName || '',
+          order.user?.email || '',
+          variantText,
+          item.quantity.toString(),
+          item.originalPrice ? item.originalPrice.toFixed(2) : item.price.toFixed(2),
+          effectivePrice.toFixed(2),
+          (effectivePrice * item.quantity).toFixed(2),
+          order.paymentMethod === 'HELLOASSO' ? 'HelloAsso' :
+            order.paymentMethod === 'PAYPAL' ? 'PayPal' :
+            order.paymentMethod === 'CASH_CB' ? 'Espèces/CB' :
+            order.paymentMethod === 'FREE' ? 'Gratuit' :
+            order.paymentMethod === 'BALANCE' ? 'Solde ADIIL' : order.paymentMethod,
+          order.paymentStatus === 'PENDING' ? 'En attente' :
+            order.paymentStatus === 'PAID' ? 'Payé' : 'Remboursé',
+          order.orderStatus === 'PENDING' ? 'En attente' :
+            order.orderStatus === 'PAID' ? 'Payée' :
+            order.orderStatus === 'COLLECTED' ? 'Récupérée' : 'Annulée'
+        ];
+
+        rows.push(row);
+      });
+    });
+
+    // Escape CSV values
+    const escapeCSV = (value: string) => {
+      if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+        return `"${value.replace(/"/g, '""')}"`;
+      }
+      return value;
+    };
+
+    // Build CSV content
+    const csvContent = [
+      headers.map(escapeCSV).join(','),
+      ...rows.map(row => row.map(escapeCSV).join(','))
+    ].join('\n');
+
+    // Add BOM for Excel UTF-8 compatibility
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    // Sanitize product name for filename
+    const safeName = product.name.replace(/[^a-zA-Z0-9àâäéèêëïîôùûüç\s-]/gi, '').replace(/\s+/g, '_');
+    link.download = `achats_${safeName}_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    addNotification('success', `${rows.length} achat(s) exporté(s) pour "${product.name}"`);
+    setExportingProductId(null);
+  };
 
   // Reset pagination when search changes
   useEffect(() => {
@@ -394,6 +527,18 @@ const ProductManagementPage: React.FC = () => {
               />
               {/* Action buttons overlay */}
               <div className="absolute top-2 right-2 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={() => exportProductPurchases(product)}
+                  disabled={exportingProductId === product.id}
+                  className="p-2 bg-darker-bg/90 backdrop-blur text-green-400 hover:bg-green-500/20 rounded-lg transition-colors disabled:opacity-50"
+                  title="Exporter les achats"
+                >
+                  {exportingProductId === product.id ? (
+                    <div className="w-4 h-4 border-2 border-green-400 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Download size={16} />
+                  )}
+                </button>
                 <button onClick={() => handleOpenEdit(product)} className="p-2 bg-darker-bg/90 backdrop-blur text-blue-400 hover:bg-blue-500/20 rounded-lg transition-colors"><Edit2 size={16} /></button>
                 <button onClick={() => handleOpenDelete(product)} className="p-2 bg-darker-bg/90 backdrop-blur text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"><Trash2 size={16} /></button>
               </div>
