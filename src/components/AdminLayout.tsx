@@ -17,7 +17,8 @@ import {
   Gift,
   CreditCard,
   Terminal,
-  Shield
+  Shield,
+  Database
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -124,6 +125,15 @@ const colorConfig: Record<string, { bg: string; text: string; border: string; sh
     iconBg: 'bg-gray-500/20',
     hoverClass: 'hover:bg-gray-500/10 hover:text-gray-400 [&>div]:hover:bg-gray-500/20 [&>div>svg]:hover:text-gray-400',
     scrollbar: 'scrollbar-gray'
+  },
+  '/admin/backups': {
+    bg: 'bg-teal-500/10',
+    text: 'text-teal-400',
+    border: 'border-teal-500/30',
+    shadow: 'shadow-teal-500/5',
+    iconBg: 'bg-teal-500/20',
+    hoverClass: 'hover:bg-teal-500/10 hover:text-teal-400 [&>div]:hover:bg-teal-500/20 [&>div>svg]:hover:text-teal-400',
+    scrollbar: 'scrollbar-teal'
   }
 };
 
@@ -157,6 +167,7 @@ const navSections = [
       { path: '/admin/files', label: 'Fichiers', icon: FolderOpen },
       { path: '/admin/users', label: 'Utilisateurs', icon: Users },
       { path: '/admin/logs', label: 'Logs', icon: ScrollText },
+      { path: '/admin/backups', label: 'Backups', icon: Database },
     ]
   }
 ];

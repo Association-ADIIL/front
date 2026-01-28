@@ -42,6 +42,7 @@ const FileManagementPage = lazy(() => import('./pages/FileManagementPage'));
 const CategoryManagementPage = lazy(() => import('./pages/CategoryManagementPage'));
 const PromotionManagementPage = lazy(() => import('./pages/PromotionManagementPage'));
 const TransactionManagementPage = lazy(() => import('./pages/TransactionManagementPage'));
+const AdminBackupsPage = lazy(() => import('./pages/AdminBackupsPage'));
 
 // Loading component for lazy loaded pages
 const PageLoader = () => (
@@ -90,6 +91,7 @@ function App() {
               <Route path="/admin/logs" element={<Suspense fallback={<PageLoader />}><AdminLayout><AdminAuditLogsPage /></AdminLayout></Suspense>} />
               <Route path="/admin/promotions" element={<Suspense fallback={<PageLoader />}><AdminLayout><PromotionManagementPage /></AdminLayout></Suspense>} />
               <Route path="/admin/transactions" element={<Suspense fallback={<PageLoader />}><AdminLayout><TransactionManagementPage /></AdminLayout></Suspense>} />
+              <Route path="/admin/backups" element={<Suspense fallback={<PageLoader />}><AdminLayout><AdminBackupsPage /></AdminLayout></Suspense>} />
 
               {/* Public Routes (with Header/Footer) */}
               <Route
