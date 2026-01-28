@@ -55,6 +55,9 @@ const CartPage: React.FC = () => {
   // Calculate final price with discount (cart discount applies on top of product promotions)
   const finalPrice = discountInfo?.eligible ? discountInfo.finalAmount : totalWithProductPromotions;
 
+  // Compare balance with rounded values to avoid floating point precision issues
+  const hasEnoughBalance = Math.round(balance * 100) >= Math.round(finalPrice * 100);
+
   // Auto-deselect HelloAsso if below minimum
   useEffect(() => {
     if (selectedPaymentMethod === 'HELLOASSO' && finalPrice < 0.50) {
@@ -201,7 +204,7 @@ const CartPage: React.FC = () => {
 
     if (selectedPaymentMethod === 'BALANCE') {
       // Use finalPrice (after discount) for balance check
-      if (balance < finalPrice) {
+      if (!hasEnoughBalance) {
         addNotification('error', 'Solde insuffisant. Rechargez votre solde ADIIL.');
         navigate('/balance');
         return;
@@ -541,28 +544,28 @@ const CartPage: React.FC = () => {
                             {/* Solde ADIIL */}
                             {user && (
                               <button
-                                onClick={() => balance >= finalPrice && setSelectedPaymentMethod('BALANCE')}
-                                disabled={balance < finalPrice}
+                                onClick={() => hasEnoughBalance && setSelectedPaymentMethod('BALANCE')}
+                                disabled={!hasEnoughBalance}
                                 className={`relative p-3 rounded-xl border-2 transition-all text-left ${
-                                  balance < finalPrice
+                                  !hasEnoughBalance
                                     ? 'opacity-40 cursor-not-allowed border-gray-800 bg-dark-bg'
                                     : selectedPaymentMethod === 'BALANCE'
                                       ? 'border-accent-mint bg-accent-mint/10'
                                       : 'border-gray-800 bg-dark-bg hover:border-gray-700'
                                 }`}
                               >
-                                {selectedPaymentMethod === 'BALANCE' && balance >= finalPrice && (
+                                {selectedPaymentMethod === 'BALANCE' && hasEnoughBalance && (
                                   <div className="absolute top-2.5 right-2.5 w-4 h-4 bg-accent-mint rounded-full flex items-center justify-center">
                                     <CheckCircle2 size={10} className="text-darker-bg" />
                                   </div>
                                 )}
                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${
-                                  selectedPaymentMethod === 'BALANCE' && balance >= finalPrice ? 'bg-accent-mint' : 'bg-gray-800'
+                                  selectedPaymentMethod === 'BALANCE' && hasEnoughBalance ? 'bg-accent-mint' : 'bg-gray-800'
                                 }`}>
-                                  <Wallet size={14} className={selectedPaymentMethod === 'BALANCE' && balance >= finalPrice ? 'text-darker-bg' : 'text-gray-400'} />
+                                  <Wallet size={14} className={selectedPaymentMethod === 'BALANCE' && hasEnoughBalance ? 'text-darker-bg' : 'text-gray-400'} />
                                 </div>
                                 <p className="font-bold text-white text-xs">Solde ADIIL</p>
-                                <p className={`text-[10px] ${balance >= finalPrice ? 'text-green-400' : 'text-red-400'}`}>
+                                <p className={`text-[10px] ${hasEnoughBalance ? 'text-green-400' : 'text-red-400'}`}>
                                   {balance.toFixed(2)}€
                                 </p>
                               </button>
@@ -642,7 +645,7 @@ const CartPage: React.FC = () => {
                           </div>
 
                           {/* Recharge invite if balance too low */}
-                          {user && balance < finalPrice && (
+                          {user && !hasEnoughBalance && (
                             <div className="mb-5 p-3 bg-accent-mint/5 border border-accent-mint/20 rounded-xl">
                               <div className="flex items-center justify-between">
                                 <p className="text-xs text-gray-400">Solde insuffisant</p>
