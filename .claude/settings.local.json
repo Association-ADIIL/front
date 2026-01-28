@@ -10,7 +10,10 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(dir:*)",
-      "Bash(npx prisma migrate:*)"
+      "Bash(npx prisma migrate:*)",
+      "Bash(find:*)",
+      "Skill(frontend-design)",
+      "Bash(npx tsc:*)"
     ],
     "additionalDirectories": [
       "C:\\Users\\barna\\WebstormProjects\\site-back"

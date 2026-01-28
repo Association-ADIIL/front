@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { logger } from '../utils/logger';
-import { getBackupStatus, triggerBackup, type BackupStatus } from '../api/backups';
-import { Database, HardDrive, Clock, Calendar, RefreshCw, Play, CheckCircle, AlertCircle, Server } from 'lucide-react';
+import { getBackupStatus, triggerBackup, setBackupLock, type BackupStatus } from '../api/backups';
+import { Database, HardDrive, Clock, Calendar, RefreshCw, Play, CheckCircle, AlertCircle, Server, Shield, Lock, Unlock } from 'lucide-react';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { useNotification } from '../context/NotificationContext';
 
@@ -37,6 +37,7 @@ const AdminBackupsPage: React.FC = () => {
   const [status, setStatus] = useState<BackupStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [triggering, setTriggering] = useState(false);
+  const [lockingKey, setLockingKey] = useState<string | null>(null);
 
   const fetchStatus = async () => {
     try {
@@ -73,6 +74,20 @@ const AdminBackupsPage: React.FC = () => {
     fetchStatus();
   };
 
+  const handleToggleLock = async (key: string, currentlyLocked: boolean) => {
+    setLockingKey(key);
+    try {
+      await setBackupLock(key, !currentlyLocked);
+      addNotification('success', currentlyLocked ? 'Backup deverrouille' : 'Backup verrouille');
+      fetchStatus();
+    } catch (error) {
+      logger.error('Error toggling backup lock', error);
+      addNotification('error', 'Erreur lors du verrouillage');
+    } finally {
+      setLockingKey(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -105,7 +120,7 @@ const AdminBackupsPage: React.FC = () => {
       </div>
 
       {/* Status Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {/* Configuration Status */}
         <div className="bg-darker-bg p-5 rounded-2xl border border-gray-800">
           <div className="flex items-center gap-3 mb-4">
@@ -149,6 +164,19 @@ const AdminBackupsPage: React.FC = () => {
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wider">Retention</p>
               <p className="font-bold text-white">{status?.retentionDays || 30} jours</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Minimum kept */}
+        <div className="bg-darker-bg p-5 rounded-2xl border border-gray-800">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-orange-500/20 rounded-xl flex items-center justify-center">
+              <Shield size={20} className="text-orange-400" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wider">Minimum garde</p>
+              <p className="font-bold text-white">{status?.minKeepBackups || 3} backups</p>
             </div>
           </div>
         </div>
@@ -226,47 +254,94 @@ const AdminBackupsPage: React.FC = () => {
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Date</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:table-cell">Fichier</th>
                   <th className="px-6 py-4 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Taille</th>
+                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider w-20">Verrou</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800">
-                {status.backups.map((backup, index) => (
-                  <tr key={backup.key} className="hover:bg-dark-bg/50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${index === 0 ? 'bg-green-500/20' : 'bg-gray-800'}`}>
-                          <HardDrive size={14} className={index === 0 ? 'text-green-400' : 'text-gray-500'} />
-                        </div>
-                        <div>
-                          <p className="text-white font-medium text-sm">
-                            {formatRelativeTime(backup.date)}
-                            {index === 0 && (
-                              <span className="ml-2 px-1.5 py-0.5 bg-green-500/20 text-green-400 text-[10px] rounded-full">
-                                Dernier
-                              </span>
+                {status.backups.map((backup, index) => {
+                  const isAutoProtected = index < (status?.minKeepBackups || 3);
+                  const isLocked = backup.locked;
+                  return (
+                    <tr key={backup.key} className="hover:bg-dark-bg/50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                            index === 0 ? 'bg-green-500/20' :
+                            isLocked ? 'bg-yellow-500/20' :
+                            isAutoProtected ? 'bg-orange-500/20' : 'bg-gray-800'
+                          }`}>
+                            {isLocked ? (
+                              <Lock size={14} className="text-yellow-400" />
+                            ) : isAutoProtected ? (
+                              <Shield size={14} className={index === 0 ? 'text-green-400' : 'text-orange-400'} />
+                            ) : (
+                              <HardDrive size={14} className="text-gray-500" />
                             )}
-                          </p>
-                          <p className="text-[10px] text-gray-500">
-                            {new Date(backup.date).toLocaleString('fr-FR', {
-                              day: '2-digit',
-                              month: '2-digit',
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </p>
+                          </div>
+                          <div>
+                            <p className="text-white font-medium text-sm flex items-center gap-2 flex-wrap">
+                              {formatRelativeTime(backup.date)}
+                              {index === 0 && (
+                                <span className="px-1.5 py-0.5 bg-green-500/20 text-green-400 text-[10px] rounded-full">
+                                  Dernier
+                                </span>
+                              )}
+                              {isLocked && (
+                                <span className="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 text-[10px] rounded-full flex items-center gap-1">
+                                  <Lock size={8} />
+                                  Verrouille
+                                </span>
+                              )}
+                              {isAutoProtected && !isLocked && (
+                                <span className="px-1.5 py-0.5 bg-orange-500/20 text-orange-400 text-[10px] rounded-full flex items-center gap-1">
+                                  <Shield size={8} />
+                                  Auto
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-[10px] text-gray-500">
+                              {new Date(backup.date).toLocaleString('fr-FR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
-                      <code className="text-xs text-gray-400 bg-dark-bg px-2 py-1 rounded">
-                        {backup.key.split('/').pop()}
-                      </code>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <span className="text-sm text-gray-300 font-medium">{backup.sizeFormatted}</span>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
+                        <code className="text-xs text-gray-400 bg-dark-bg px-2 py-1 rounded">
+                          {backup.key.split('/').pop()}
+                        </code>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <span className="text-sm text-gray-300 font-medium">{backup.sizeFormatted}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <button
+                          onClick={() => handleToggleLock(backup.key, isLocked)}
+                          disabled={lockingKey === backup.key}
+                          className={`p-2 rounded-lg transition-colors ${
+                            isLocked
+                              ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'
+                              : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
+                          } disabled:opacity-50`}
+                          title={isLocked ? 'Deverrouiller' : 'Verrouiller'}
+                        >
+                          {lockingKey === backup.key ? (
+                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                          ) : isLocked ? (
+                            <Unlock size={16} />
+                          ) : (
+                            <Lock size={16} />
+                          )}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -284,6 +359,8 @@ const AdminBackupsPage: React.FC = () => {
             <ul className="text-gray-400 space-y-1 text-xs">
               <li>Les backups sont compresses en gzip et stockes sur Cloudflare R2</li>
               <li>Les sauvegardes de plus de {status?.retentionDays || 30} jours sont automatiquement supprimees</li>
+              <li>Les {status?.minKeepBackups || 3} backups les plus recents sont automatiquement proteges (badge "Auto")</li>
+              <li>Vous pouvez verrouiller manuellement un backup pour le garder indefiniment (badge "Verrouille")</li>
               <li>Les backups contiennent l'integralite de la base de donnees (structure + donnees)</li>
             </ul>
           </div>
