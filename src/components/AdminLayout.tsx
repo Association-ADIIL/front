@@ -18,7 +18,8 @@ import {
   CreditCard,
   Terminal,
   Shield,
-  Database
+  Database,
+  Trophy
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -134,6 +135,15 @@ const colorConfig: Record<string, { bg: string; text: string; border: string; sh
     iconBg: 'bg-teal-500/20',
     hoverClass: 'hover:bg-teal-500/10 hover:text-teal-400 [&>div]:hover:bg-teal-500/20 [&>div>svg]:hover:text-teal-400',
     scrollbar: 'scrollbar-teal'
+  },
+  '/admin/battle-pass': {
+    bg: 'bg-amber-500/10',
+    text: 'text-amber-400',
+    border: 'border-amber-500/30',
+    shadow: 'shadow-amber-500/5',
+    iconBg: 'bg-amber-500/20',
+    hoverClass: 'hover:bg-amber-500/10 hover:text-amber-400 [&>div]:hover:bg-amber-500/20 [&>div>svg]:hover:text-amber-400',
+    scrollbar: 'scrollbar-amber'
   }
 };
 
@@ -152,6 +162,7 @@ const navSections = [
       { path: '/admin/categories', label: 'Categories', icon: Tags },
       { path: '/admin/orders', label: 'Commandes', icon: ClipboardList },
       { path: '/admin/promotions', label: 'Promotions', icon: Gift },
+      { path: '/admin/battle-pass', label: 'Battle Pass', icon: Trophy },
     ]
   },
   {

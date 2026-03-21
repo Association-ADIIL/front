@@ -18,9 +18,11 @@ import ShopPage from './pages/ShopPage';
 import ProductDetailPage from './pages/ProductDetailPage';
 import CartPage from './pages/CartPage';
 import BalancePage from './pages/BalancePage';
+import BattlePassPage from './pages/BattlePassPage';
 import MyAccountPage from './pages/MyAccountPage';
 import PaymentCallbackPage from './pages/PaymentCallbackPage';
 import OrderPickupPage from './pages/OrderPickupPage';
+import BattlePassClaimPage from './pages/BattlePassClaimPage';
 import ShareFilePage from './pages/ShareFilePage';
 import NotFoundPage from './pages/NotFoundPage';
 import AdminLayout from './components/AdminLayout';
@@ -43,6 +45,7 @@ const CategoryManagementPage = lazy(() => import('./pages/CategoryManagementPage
 const PromotionManagementPage = lazy(() => import('./pages/PromotionManagementPage'));
 const TransactionManagementPage = lazy(() => import('./pages/TransactionManagementPage'));
 const AdminBackupsPage = lazy(() => import('./pages/AdminBackupsPage'));
+const AdminBattlePassPage = lazy(() => import('./pages/AdminBattlePassPage'));
 
 // Loading component for lazy loaded pages
 const PageLoader = () => (
@@ -92,6 +95,7 @@ function App() {
               <Route path="/admin/promotions" element={<Suspense fallback={<PageLoader />}><AdminLayout><PromotionManagementPage /></AdminLayout></Suspense>} />
               <Route path="/admin/transactions" element={<Suspense fallback={<PageLoader />}><AdminLayout><TransactionManagementPage /></AdminLayout></Suspense>} />
               <Route path="/admin/backups" element={<Suspense fallback={<PageLoader />}><AdminLayout><AdminBackupsPage /></AdminLayout></Suspense>} />
+              <Route path="/admin/battle-pass" element={<Suspense fallback={<PageLoader />}><AdminLayout><AdminBattlePassPage /></AdminLayout></Suspense>} />
 
               {/* Public Routes (with Header/Footer) */}
               <Route
@@ -117,9 +121,11 @@ function App() {
                         <Route path="/shop/:id" element={<ProductDetailPage />} />
                         <Route path="/cart" element={<CartPage />} />
                         <Route path="/balance" element={<BalancePage />} />
+                        <Route path="/battle-pass" element={<BattlePassPage />} />
                         <Route path="/my-account" element={<MyAccountPage />} />
                         <Route path="/payment/callback" element={<PaymentCallbackPage />} />
                         <Route path="/order-pickup/:id" element={<OrderPickupPage />} />
+                        <Route path="/battle-pass-claim/:battlePassId/:userId/:level/:tier" element={<BattlePassClaimPage />} />
                         <Route path="/share/:token" element={<ShareFilePage />} />
                         <Route path="*" element={<NotFoundPage />} />
                       </Routes>

@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { getMyOrders, type Order } from '../api/orders';
 import { getMyInscriptions, type Inscription } from '../api/inscriptions';
 import { deleteAccount, updateProfile } from '../api/auth';
+import { getPublicBattlePasses, getMyBattlePass, type BattlePass, type UserBattlePass } from '../api/battlePass';
 import { Link, Navigate } from 'react-router-dom';
 import {
   ChevronDown,
@@ -25,7 +26,9 @@ import {
   Edit2,
   Check,
   Loader2,
-  Bell
+  Bell,
+  Trophy,
+  Lock
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import BalanceDisplay from '../components/BalanceDisplay';
@@ -70,6 +73,11 @@ const MyAccountPage: React.FC = () => {
   const [emailOnOrder, setEmailOnOrder] = useState(true);
   const [emailOnRecharge, setEmailOnRecharge] = useState(true);
   const [isUpdatingEmailPrefs, setIsUpdatingEmailPrefs] = useState(false);
+  const [isBattlePassExpanded, setIsBattlePassExpanded] = useState(false);
+  const [battlePasses, setBattlePasses] = useState<BattlePass[]>([]);
+  const [userPassMap, setUserPassMap] = useState<Record<number, UserBattlePass>>({});
+  const [loadingBattlePass, setLoadingBattlePass] = useState(true);
+  const [qrReward, setQrReward] = useState<{ bpId: number; bpName: string; level: number; tier: 'FREE' | 'PREMIUM'; label: string | null } | null>(null);
 
   const handleUpdateGroup = async () => {
     if (!selectedGroup) return;
@@ -141,9 +149,27 @@ const MyAccountPage: React.FC = () => {
       }
     };
 
+    const fetchBattlePasses = async () => {
+      if (token) {
+        try {
+          const passes = await getPublicBattlePasses();
+          setBattlePasses(passes);
+          const entries = await Promise.all(passes.map(bp => getMyBattlePass(bp.id)));
+          const map: Record<number, UserBattlePass> = {};
+          entries.forEach(up => { map[up.battlePassId] = up; });
+          setUserPassMap(map);
+        } catch (error) {
+          logger.error('Failed to fetch battle passes', error);
+        } finally {
+          setLoadingBattlePass(false);
+        }
+      }
+    };
+
     if (!authLoading && user) {
       fetchOrders();
       fetchInscriptions();
+      fetchBattlePasses();
     }
   }, [user, token, authLoading]);
 
@@ -684,6 +710,174 @@ const MyAccountPage: React.FC = () => {
                   </div>
                 )}
               </div>
+              {/* Battle Pass Section */}
+              <div className="bg-darker-bg rounded-2xl border border-gray-800 overflow-hidden hover:border-gray-700 transition-colors">
+                <button
+                  onClick={() => setIsBattlePassExpanded(!isBattlePassExpanded)}
+                  className="w-full flex items-center justify-between p-6 hover:bg-dark-bg/50 transition-colors group"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center group-hover:bg-amber-500/20 transition-colors">
+                      <Trophy size={22} className="text-amber-400" />
+                    </div>
+                    <div className="text-left">
+                      <h2 className="text-lg font-bold text-white">Pass de combat</h2>
+                      <p className="text-sm text-gray-500">{battlePasses.length} pass{battlePasses.length > 1 ? 'es' : ''} actif{battlePasses.length > 1 ? 's' : ''}</p>
+                    </div>
+                  </div>
+                  <div className="w-8 h-8 rounded-lg bg-dark-bg flex items-center justify-center group-hover:bg-amber-500/10 transition-colors">
+                    {isBattlePassExpanded ? <ChevronDown size={18} className="text-gray-500" /> : <ChevronRight size={18} className="text-gray-500" />}
+                  </div>
+                </button>
+
+                {isBattlePassExpanded && (
+                  <div className="border-t border-gray-800">
+                    {loadingBattlePass ? (
+                      <div className="flex justify-center py-8">
+                        <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    ) : battlePasses.length === 0 ? (
+                      <div className="p-8 text-center">
+                        <div className="w-14 h-14 bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                          <Trophy size={24} className="text-gray-600" />
+                        </div>
+                        <p className="text-gray-500 font-montserrat mb-3">Aucun pass actif pour le moment</p>
+                        <Link to="/battle-pass" className="inline-flex items-center gap-2 text-amber-400 text-sm hover:underline">
+                          Voir les passes de combat
+                          <ChevronRight size={14} />
+                        </Link>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-gray-800/50">
+                        {battlePasses.map(bp => {
+                          const userPass = userPassMap[bp.id];
+                          const currentSpend = userPass?.currentSpend ?? 0;
+                          const maxRequired = bp.levels.length > 0 ? Math.max(...bp.levels.map(l => l.requiredSpend)) : 0;
+                          const progress = maxRequired > 0 ? Math.min(100, (currentSpend / maxRequired) * 100) : 0;
+                          const unlockedCount = bp.levels.filter(l => currentSpend >= l.requiredSpend).length;
+                          const claimedFree = userPass?.claimedFreeRewards ?? [];
+                          const claimedPremium = userPass?.claimedPremiumRewards ?? [];
+                          const isExpired = new Date() > new Date(bp.endDate);
+
+                          const getRewardIcon = (type: string | null) => {
+                            if (type === 'BALANCE') return <CreditCard size={11} />;
+                            if (type === 'PRODUCT') return <Package size={11} />;
+                            return <Gift size={11} />;
+                          };
+
+                          return (
+                            <div key={bp.id} className="p-5 hover:bg-dark-bg/30 transition-colors">
+                              {/* Pass header */}
+                              <div className="flex items-start justify-between mb-3">
+                                <div>
+                                  <h3 className="font-bold text-white">{bp.name}</h3>
+                                  <p className="text-xs text-gray-500 mt-0.5">
+                                    Du {new Date(bp.startDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} au {new Date(bp.endDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                    {isExpired && <span className="ml-2 text-red-400 font-medium">Expiré</span>}
+                                  </p>
+                                </div>
+                                {userPass?.hasPremium ? (
+                                  <span className="px-2.5 py-1 bg-amber-500/20 text-amber-400 text-xs font-bold rounded-full">✦ PREMIUM</span>
+                                ) : (
+                                  <Link to="/battle-pass" className="px-2.5 py-1 bg-dark-bg text-gray-500 text-xs font-medium rounded-full border border-gray-700 hover:border-amber-500/50 hover:text-amber-400 transition-colors">
+                                    Tier Free
+                                  </Link>
+                                )}
+                              </div>
+
+                              {/* Progress */}
+                              <div className="mb-4 bg-dark-bg rounded-xl p-3 border border-gray-800/50">
+                                <div className="flex items-center justify-between text-xs mb-2">
+                                  <span className="text-gray-400">Progression</span>
+                                  <span className="text-white font-medium">{currentSpend.toFixed(2)}€ <span className="text-gray-500">/ {maxRequired.toFixed(2)}€</span></span>
+                                </div>
+                                <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                                  <div className="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1.5">Niveau {unlockedCount} / {bp.levels.length} débloqué{unlockedCount > 1 ? 's' : ''}</p>
+                              </div>
+
+                              {/* Levels */}
+                              {bp.levels.length > 0 && (
+                                <div className="space-y-1.5">
+                                  {bp.levels.map(lvl => {
+                                    const isUnlocked = currentSpend >= lvl.requiredSpend;
+                                    const freeIsClaimed = claimedFree.includes(lvl.level);
+                                    const premiumIsClaimed = claimedPremium.includes(lvl.level);
+
+                                    return (
+                                      <div key={lvl.level} className={`flex items-start gap-2.5 p-2.5 rounded-xl border ${isUnlocked ? 'bg-dark-bg border-gray-800/50' : 'bg-dark-bg/50 border-gray-800/30 opacity-60'}`}>
+                                        {/* Level badge + spend (stacked) */}
+                                        <div className="flex-shrink-0 flex flex-col items-center gap-0.5 pt-0.5 w-9">
+                                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${isUnlocked ? 'bg-amber-500/20 text-amber-400' : 'bg-gray-800 text-gray-600'}`}>
+                                            {lvl.level}
+                                          </div>
+                                          <span className="text-[10px] text-gray-600 font-mono leading-none">{lvl.requiredSpend.toFixed(0)}€</span>
+                                        </div>
+
+                                        {/* Free + Premium stacked */}
+                                        <div className="flex-1 min-w-0 space-y-1.5">
+                                          {/* Free reward */}
+                                          {lvl.freeRewardType ? (
+                                            <div className="flex items-center justify-between gap-2">
+                                              <div className="flex items-center gap-1.5 min-w-0">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
+                                                <span className="text-emerald-400 flex-shrink-0">{getRewardIcon(lvl.freeRewardType)}</span>
+                                                <span className="text-xs text-gray-300 truncate">{lvl.freeRewardLabel || lvl.freeRewardType}</span>
+                                                {lvl.freeRewardValue ? <span className="text-xs text-emerald-400 font-medium flex-shrink-0">{lvl.freeRewardValue}€</span> : null}
+                                              </div>
+                                              {isUnlocked && !isExpired ? (
+                                                freeIsClaimed ? (
+                                                  <span className="flex items-center gap-0.5 text-xs text-emerald-400 flex-shrink-0"><Check size={11} />Ok</span>
+                                                ) : (
+                                                  <button onClick={() => setQrReward({ bpId: bp.id, bpName: bp.name, level: lvl.level, tier: 'FREE', label: lvl.freeRewardLabel })} className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-xs font-medium rounded-md hover:bg-emerald-500/30 transition-colors flex-shrink-0 flex items-center gap-1">
+                                                    <QrCode size={11} />QR
+                                                  </button>
+                                                )
+                                              ) : null}
+                                            </div>
+                                          ) : null}
+
+                                          {/* Premium reward */}
+                                          {lvl.premiumRewardType ? (
+                                            <div className="flex items-center justify-between gap-2">
+                                              <div className="flex items-center gap-1.5 min-w-0">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0" />
+                                                <span className="text-amber-400 flex-shrink-0">{getRewardIcon(lvl.premiumRewardType)}</span>
+                                                <span className="text-xs text-gray-300 truncate">{lvl.premiumRewardLabel || lvl.premiumRewardType}</span>
+                                                {lvl.premiumRewardValue ? <span className="text-xs text-amber-400 font-medium flex-shrink-0">{lvl.premiumRewardValue}€</span> : null}
+                                              </div>
+                                              {!userPass?.hasPremium ? (
+                                                <span className="flex items-center gap-0.5 text-xs text-gray-600 flex-shrink-0"><Lock size={11} /></span>
+                                              ) : isUnlocked && !isExpired ? (
+                                                premiumIsClaimed ? (
+                                                  <span className="flex items-center gap-0.5 text-xs text-amber-400 flex-shrink-0"><Check size={11} />Ok</span>
+                                                ) : (
+                                                  <button onClick={() => setQrReward({ bpId: bp.id, bpName: bp.name, level: lvl.level, tier: 'PREMIUM', label: lvl.premiumRewardLabel })} className="px-2 py-0.5 bg-amber-500/20 text-amber-400 text-xs font-medium rounded-md hover:bg-amber-500/30 transition-colors flex-shrink-0 flex items-center gap-1">
+                                                    <QrCode size={11} />QR
+                                                  </button>
+                                                )
+                                              ) : null}
+                                            </div>
+                                          ) : null}
+
+                                          {!lvl.freeRewardType && !lvl.premiumRewardType && (
+                                            <span className="text-xs text-gray-700">—</span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -742,6 +936,47 @@ const MyAccountPage: React.FC = () => {
                 )}
                 <p className="text-gray-500 text-xs mt-4 bg-dark-bg rounded-lg px-3 py-2">
                   Presentez ce QR Code lors du retrait
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Battle Pass QR Code Modal */}
+      {qrReward && user && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[1000] p-4">
+          <div className="bg-darker-bg rounded-2xl border border-gray-800 w-full max-w-sm animate-fadeIn">
+            <div className="flex items-center justify-between p-5 border-b border-gray-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center">
+                  <QrCode size={20} className="text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white">QR Code récompense</h3>
+                  <p className="text-xs text-gray-500">{qrReward.bpName} — Niveau {qrReward.level}</p>
+                </div>
+              </div>
+              <button onClick={() => setQrReward(null)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-dark-bg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-5">
+              <div className="bg-white rounded-xl p-4 mb-4">
+                <QRCodeSVG
+                  value={`${window.location.origin}/battle-pass-claim/${qrReward.bpId}/${user.id}/${qrReward.level}/${qrReward.tier}`}
+                  size={250}
+                  level="H"
+                  className="w-full h-auto"
+                />
+              </div>
+              <div className="text-center space-y-2">
+                <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${qrReward.tier === 'PREMIUM' ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                  <Trophy size={12} />
+                  Tier {qrReward.tier === 'PREMIUM' ? 'Premium' : 'Gratuit'} — {qrReward.label || 'Récompense'}
+                </div>
+                <p className="text-gray-500 text-xs mt-3 bg-dark-bg rounded-lg px-3 py-2">
+                  Présentez ce QR Code au BDE pour valider la récupération
                 </p>
               </div>
             </div>
