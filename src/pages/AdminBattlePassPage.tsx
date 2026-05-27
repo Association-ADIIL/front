@@ -19,9 +19,7 @@ import {
   type RewardType,
 } from '../api/battlePass';
 import {
-  Plus, Pencil, Trash2, Trophy, Crown, Users, Euro, RefreshCw,
-  ChevronDown, ChevronUp, Check, X, Save, Star, Lock, Gift,
-  Clock, BarChart3
+  Plus, Pencil, Trash2, Trophy, Crown, Users, Euro, RefreshCw, Save, Star, Gift, BarChart3
 } from 'lucide-react';
 import ConfirmDialog from '../components/ConfirmDialog';
 
@@ -791,7 +789,7 @@ const AdminBattlePassPage: React.FC = () => {
         confirmText="Supprimer"
         variant="danger"
         onConfirm={deletePass}
-        onCancel={() => setDeletePassId(null)}
+        onClose={() => setDeletePassId(null)}
       />
 
       <ConfirmDialog
@@ -801,7 +799,7 @@ const AdminBattlePassPage: React.FC = () => {
         confirmText="Supprimer"
         variant="danger"
         onConfirm={deleteLevel}
-        onCancel={() => setDeleteLevelTarget(null)}
+        onClose={() => setDeleteLevelTarget(null)}
       />
     </div>
   );

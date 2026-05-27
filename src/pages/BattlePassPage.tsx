@@ -64,7 +64,7 @@ const RewardCell: React.FC<RewardCellProps> = ({
   const isLocked = isPremium && !hasPremium;
 
   // Colors
-  const accentColor = isPremium ? 'amber' : 'emerald';
+  //const accentColor = isPremium ? 'amber' : 'emerald';
   const bgActive = isPremium ? 'bg-amber-950/60' : 'bg-emerald-950/50';
   const bgClaimed = isPremium ? 'bg-amber-900/30' : 'bg-emerald-900/30';
   const borderActive = isPremium ? 'border-amber-700/40' : 'border-emerald-700/40';
