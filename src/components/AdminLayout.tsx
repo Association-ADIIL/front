@@ -19,7 +19,8 @@ import {
   Terminal,
   Shield,
   Database,
-  Trophy
+  Trophy,
+  Megaphone
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -144,6 +145,15 @@ const colorConfig: Record<string, { bg: string; text: string; border: string; sh
     iconBg: 'bg-amber-500/20',
     hoverClass: 'hover:bg-amber-500/10 hover:text-amber-400 [&>div]:hover:bg-amber-500/20 [&>div>svg]:hover:text-amber-400',
     scrollbar: 'scrollbar-amber'
+  },
+  '/admin/banner': {
+    bg: 'bg-yellow-500/10',
+    text: 'text-yellow-400',
+    border: 'border-yellow-500/30',
+    shadow: 'shadow-yellow-500/5',
+    iconBg: 'bg-yellow-500/20',
+    hoverClass: 'hover:bg-yellow-500/10 hover:text-yellow-400 [&>div]:hover:bg-yellow-500/20 [&>div>svg]:hover:text-yellow-400',
+    scrollbar: 'scrollbar-yellow',
   }
 };
 
@@ -175,6 +185,7 @@ const navSections = [
   {
     title: 'Systeme',
     items: [
+      { path: '/admin/banner', label: 'Bandeau', icon: Megaphone },
       { path: '/admin/files', label: 'Fichiers', icon: FolderOpen },
       { path: '/admin/users', label: 'Utilisateurs', icon: Users },
       { path: '/admin/logs', label: 'Logs', icon: ScrollText },

@@ -28,11 +28,15 @@ import NotFoundPage from './pages/NotFoundPage';
 import AdminLayout from './components/AdminLayout';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider, useNotification } from './context/NotificationContext';
+import { BannerProvider } from './context/BannerContext';
 import { CartProvider } from './context/CartContext';
 import { ToastContainer } from './components/Toast';
 import { setUnauthorizedCallback, setErrorCallback } from './api/client';
+import { useBanner } from './context/BannerContext';
+
 
 // Lazy load admin pages for code splitting
+const AdminBannerPage = lazy(() => import('./pages/AdminBannerPage'));
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
 const UserManagementPage = lazy(() => import('./pages/UserManagementPage'));
 const EventManagementPage = lazy(() => import('./pages/EventManagementPage'));
@@ -53,6 +57,45 @@ const PageLoader = () => (
     <div className="w-10 h-10 border-2 border-accent-mint border-t-transparent rounded-full animate-spin"></div>
   </div>
 );
+
+/** Layout public : padding-top s'adapte à la présence du bandeau */
+const PublicLayout = () => {
+  const { isOpen: bannerOpen } = useBanner();
+  return (
+      <>
+        <Header />
+        {/* pt-20 = 80px (nav seule) | pt-[7.5rem] = 120px (nav + bandeau ~40px) */}
+        <main className={`flex-grow ${bannerOpen ? 'pt-[7.5rem]' : 'pt-20'}`}>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/legal" element={<LegalPage />} />
+            <Route path="/cgv" element={<CGVPage />} />
+            <Route path="/cgu" element={<CGUPage />} />
+            <Route path="/confidentialite" element={<ConfidentialitePage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/events" element={<EventsPage />} />
+            <Route path="/events/:id" element={<EventDetailPage />} />
+            <Route path="/shop" element={<ShopPage />} />
+            <Route path="/shop/:id" element={<ProductDetailPage />} />
+            <Route path="/cart" element={<CartPage />} />
+            <Route path="/balance" element={<BalancePage />} />
+            <Route path="/battle-pass" element={<BattlePassPage />} />
+            <Route path="/my-account" element={<MyAccountPage />} />
+            <Route path="/payment/callback" element={<PaymentCallbackPage />} />
+            <Route path="/order-pickup/:id" element={<OrderPickupPage />} />
+            <Route path="/battle-pass-claim/:battlePassId/:userId/:level/:tier" element={<BattlePassClaimPage />} />
+            <Route path="/share/:token" element={<ShareFilePage />} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </main>
+        <Footer />
+      </>
+  );
+};
 
 const ApiInterceptor = () => {
   const { logout } = useAuth();
@@ -78,63 +121,30 @@ function App() {
       <AuthProvider>
         <NotificationProvider>
           <CartProvider>
-            <ApiInterceptor />
-            <ToastContainer />
-            <Routes>
-              {/* Admin Routes (no Header/Footer) - Lazy loaded */}
-              <Route path="/admin" element={<Suspense fallback={<PageLoader />}><AdminLayout><AdminDashboardPage /></AdminLayout></Suspense>} />
-              <Route path="/admin/dashboard" element={<Suspense fallback={<PageLoader />}><AdminLayout><AdminDashboardPage /></AdminLayout></Suspense>} />
-              <Route path="/admin/users" element={<Suspense fallback={<PageLoader />}><AdminLayout><UserManagementPage /></AdminLayout></Suspense>} />
-              <Route path="/admin/events" element={<Suspense fallback={<PageLoader />}><AdminLayout><EventManagementPage /></AdminLayout></Suspense>} />
-              <Route path="/admin/products" element={<Suspense fallback={<PageLoader />}><AdminLayout><ProductManagementPage /></AdminLayout></Suspense>} />
-              <Route path="/admin/categories" element={<Suspense fallback={<PageLoader />}><AdminLayout><CategoryManagementPage /></AdminLayout></Suspense>} />
-              <Route path="/admin/orders" element={<Suspense fallback={<PageLoader />}><AdminLayout><OrderManagementPage /></AdminLayout></Suspense>} />
-              <Route path="/admin/statistics" element={<Suspense fallback={<PageLoader />}><AdminLayout><AdminSalesStatisticsPage /></AdminLayout></Suspense>} />
-              <Route path="/admin/files" element={<Suspense fallback={<PageLoader />}><AdminLayout><FileManagementPage /></AdminLayout></Suspense>} />
-              <Route path="/admin/logs" element={<Suspense fallback={<PageLoader />}><AdminLayout><AdminAuditLogsPage /></AdminLayout></Suspense>} />
-              <Route path="/admin/promotions" element={<Suspense fallback={<PageLoader />}><AdminLayout><PromotionManagementPage /></AdminLayout></Suspense>} />
-              <Route path="/admin/transactions" element={<Suspense fallback={<PageLoader />}><AdminLayout><TransactionManagementPage /></AdminLayout></Suspense>} />
-              <Route path="/admin/backups" element={<Suspense fallback={<PageLoader />}><AdminLayout><AdminBackupsPage /></AdminLayout></Suspense>} />
-              <Route path="/admin/battle-pass" element={<Suspense fallback={<PageLoader />}><AdminLayout><AdminBattlePassPage /></AdminLayout></Suspense>} />
+            <BannerProvider>
+              <ApiInterceptor />
+              <ToastContainer />
+              <Routes>
+                {/* Admin Routes (no Header/Footer) - Lazy loaded */}
+                <Route path="/admin" element={<Suspense fallback={<PageLoader />}><AdminLayout><AdminDashboardPage /></AdminLayout></Suspense>} />
+                <Route path="/admin/dashboard" element={<Suspense fallback={<PageLoader />}><AdminLayout><AdminDashboardPage /></AdminLayout></Suspense>} />
+                <Route path="/admin/users" element={<Suspense fallback={<PageLoader />}><AdminLayout><UserManagementPage /></AdminLayout></Suspense>} />
+                <Route path="/admin/events" element={<Suspense fallback={<PageLoader />}><AdminLayout><EventManagementPage /></AdminLayout></Suspense>} />
+                <Route path="/admin/products" element={<Suspense fallback={<PageLoader />}><AdminLayout><ProductManagementPage /></AdminLayout></Suspense>} />
+                <Route path="/admin/categories" element={<Suspense fallback={<PageLoader />}><AdminLayout><CategoryManagementPage /></AdminLayout></Suspense>} />
+                <Route path="/admin/orders" element={<Suspense fallback={<PageLoader />}><AdminLayout><OrderManagementPage /></AdminLayout></Suspense>} />
+                <Route path="/admin/statistics" element={<Suspense fallback={<PageLoader />}><AdminLayout><AdminSalesStatisticsPage /></AdminLayout></Suspense>} />
+                <Route path="/admin/files" element={<Suspense fallback={<PageLoader />}><AdminLayout><FileManagementPage /></AdminLayout></Suspense>} />
+                <Route path="/admin/logs" element={<Suspense fallback={<PageLoader />}><AdminLayout><AdminAuditLogsPage /></AdminLayout></Suspense>} />
+                <Route path="/admin/promotions" element={<Suspense fallback={<PageLoader />}><AdminLayout><PromotionManagementPage /></AdminLayout></Suspense>} />
+                <Route path="/admin/transactions" element={<Suspense fallback={<PageLoader />}><AdminLayout><TransactionManagementPage /></AdminLayout></Suspense>} />
+                <Route path="/admin/backups" element={<Suspense fallback={<PageLoader />}><AdminLayout><AdminBackupsPage /></AdminLayout></Suspense>} />
+                <Route path="/admin/battle-pass" element={<Suspense fallback={<PageLoader />}><AdminLayout><AdminBattlePassPage /></AdminLayout></Suspense>} />
+                <Route path="/admin/banner" element={<Suspense fallback={<PageLoader />}><AdminLayout><AdminBannerPage /></AdminLayout></Suspense>} />
 
-              {/* Public Routes (with Header/Footer) */}
-              <Route
-                path="*"
-                element={
-                  <>
-                    <Header />
-                    <main className="flex-grow pt-20"> {/* Added padding to account for fixed header height (~80px) */}
-                      <Routes>
-                        <Route path="/" element={<HomePage />} />
-                        <Route path="/about" element={<AboutPage />} />
-                        <Route path="/legal" element={<LegalPage />} />
-                        <Route path="/cgv" element={<CGVPage />} />
-                        <Route path="/cgu" element={<CGUPage />} />
-                        <Route path="/confidentialite" element={<ConfidentialitePage />} />
-                        <Route path="/login" element={<LoginPage />} />
-                        <Route path="/register" element={<RegisterPage />} />
-                        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                        <Route path="/reset-password" element={<ResetPasswordPage />} />
-                        <Route path="/events" element={<EventsPage />} />
-                        <Route path="/events/:id" element={<EventDetailPage />} />
-                        <Route path="/shop" element={<ShopPage />} />
-                        <Route path="/shop/:id" element={<ProductDetailPage />} />
-                        <Route path="/cart" element={<CartPage />} />
-                        <Route path="/balance" element={<BalancePage />} />
-                        <Route path="/battle-pass" element={<BattlePassPage />} />
-                        <Route path="/my-account" element={<MyAccountPage />} />
-                        <Route path="/payment/callback" element={<PaymentCallbackPage />} />
-                        <Route path="/order-pickup/:id" element={<OrderPickupPage />} />
-                        <Route path="/battle-pass-claim/:battlePassId/:userId/:level/:tier" element={<BattlePassClaimPage />} />
-                        <Route path="/share/:token" element={<ShareFilePage />} />
-                        <Route path="*" element={<NotFoundPage />} />
-                      </Routes>
-                    </main>
-                    <Footer />
-                  </>
-                }
-              />
-            </Routes>
+                <Route path="*" element={<PublicLayout />} />
+              </Routes>
+            </BannerProvider>
           </CartProvider>
         </NotificationProvider>
       </AuthProvider>

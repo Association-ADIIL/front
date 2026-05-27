@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { ShoppingCart, Menu, X } from 'lucide-react';
+import { useBanner } from '../context/BannerContext';
 
 const Header: React.FC = () => {
   const { user, isAdmin } = useAuth();
   const { totalItems } = useCart();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { isOpen: bannerOpen, message: bannerMessage, loading: bannerLoading } = useBanner();
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
@@ -66,6 +68,13 @@ const Header: React.FC = () => {
           </button>
         </div>
       </nav>
+
+      {/* Bandeau d'information */}
+      {!bannerLoading && bannerOpen && bannerMessage.trim() && (
+          <div className="bg-accent-mint text-darker-bg py-2.5 px-4 text-center font-semibold text-sm leading-snug">
+            {bannerMessage}
+          </div>
+      )}
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
