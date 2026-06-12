@@ -153,10 +153,15 @@ const MyAccountPage: React.FC = () => {
       if (token) {
         try {
           const passes = await getPublicBattlePasses();
-          setBattlePasses(passes);
-          const entries = await Promise.all(passes.map(bp => getMyBattlePass(bp.id)));
+          const entries = await Promise.allSettled(passes.map(bp => getMyBattlePass(bp.id)));
           const map: Record<number, UserBattlePass> = {};
-          entries.forEach(up => { map[up.battlePassId] = up; });
+          entries.forEach((result, i) => {
+            if (result.status === 'fulfilled' && result.value) {
+              map[passes[i].id] = result.value;
+            }
+          });
+          // Ne garder que les passes où l'user est inscrit
+          setBattlePasses(passes.filter(bp => map[bp.id] !== undefined));
           setUserPassMap(map);
         } catch (error) {
           logger.error('Failed to fetch battle passes', error);
