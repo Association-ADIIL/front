@@ -443,6 +443,35 @@ const AdminBattlePassPage: React.FC = () => {
     }
   };
 
+  // ── FIX: moved above return ──
+
+  const handleRevokePremium = async (userId: number) => {
+    if (!selectedPass) return;
+    try {
+      await adminRevokePremiumForUser(selectedPass.id, userId);
+      const updated = await adminGetUserPasses(selectedPass.id);
+      setUserPasses(updated);
+      addNotification('success', 'Premium retiré');
+    } catch (e: any) {
+      addNotification('error', e.message ?? 'Erreur');
+    }
+  };
+
+  const handleRemoveUser = async () => {
+    if (!selectedPass || !removeUserTarget) return;
+    try {
+      await adminRemoveUserFromBattlePass(selectedPass.id, removeUserTarget);
+      const updated = await adminGetUserPasses(selectedPass.id);
+      setUserPasses(updated);
+      const s = await adminGetStats(selectedPass.id);
+      setStats(s);
+      addNotification('success', 'Utilisateur retiré du battle pass');
+      setRemoveUserTarget(null);
+    } catch (e: any) {
+      addNotification('error', e.message ?? 'Erreur');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -829,32 +858,6 @@ const AdminBattlePassPage: React.FC = () => {
       />
     </div>
   );
-  const handleRevokePremium = async (userId: number) => {
-    if (!selectedPass) return;
-    try {
-      await adminRevokePremiumForUser(selectedPass.id, userId);
-      const updated = await adminGetUserPasses(selectedPass.id);
-      setUserPasses(updated);
-      addNotification('success', 'Premium retiré');
-    } catch (e: any) {
-      addNotification('error', e.message ?? 'Erreur');
-    }
-  };
-
-  const handleRemoveUser = async () => {
-    if (!selectedPass || !removeUserTarget) return;
-    try {
-      await adminRemoveUserFromBattlePass(selectedPass.id, removeUserTarget);
-      const updated = await adminGetUserPasses(selectedPass.id);
-      setUserPasses(updated);
-      const s = await adminGetStats(selectedPass.id);
-      setStats(s);
-      addNotification('success', 'Utilisateur retiré du battle pass');
-      setRemoveUserTarget(null);
-    } catch (e: any) {
-      addNotification('error', e.message ?? 'Erreur');
-    }
-  };
 };
 
 export default AdminBattlePassPage;
