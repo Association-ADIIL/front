@@ -220,7 +220,7 @@ const BattlePassPage: React.FC = () => {
     setLoadingUserPass(true);
     getMyBattlePass(selectedPass.id)
       .then(setUserPass)
-      .catch(() => addNotification('error', 'Impossible de charger ta progression'))
+      .catch(() => setUserPass(null))
       .finally(() => setLoadingUserPass(false));
   }, [selectedPass, user]);
 
