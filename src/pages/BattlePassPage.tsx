@@ -6,6 +6,7 @@ import {
   getPublicBattlePasses,
   getMyBattlePass,
   unlockPremium,
+  joinBattlePass,
   type BattlePass,
   type BattlePassLevel,
   type UserBattlePass,
@@ -200,6 +201,23 @@ const BattlePassPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [loadingUserPass, setLoadingUserPass] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
+
+  const [joining, setJoining] = useState(false);
+
+  const handleJoin = async () => {
+    if (!selectedPass || !user) return;
+    setJoining(true);
+    try {
+      const newPass = await joinBattlePass(selectedPass.id);
+      setUserPass(newPass);
+      addNotification('success', 'Inscrit au pass de combat !');
+    } catch (e: any) {
+      addNotification('error', e.message ?? 'Erreur');
+    } finally {
+      setJoining(false);
+    }
+  };
+
   const [showUnlockConfirm, setShowUnlockConfirm] = useState(false);
   const [qrReward, setQrReward] = useState<{ level: number; tier: 'FREE' | 'PREMIUM'; label: string | null } | null>(null);
 
@@ -404,31 +422,44 @@ const BattlePassPage: React.FC = () => {
                       </div>
 
                       {/* Premium button */}
-                      <div className="flex-shrink-0">
-                        {hasPremium ? (
-                          <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-400 font-bold text-sm w-full lg:w-auto justify-center lg:justify-start">
-                            <Crown size={16} className="text-amber-400" />
-                            <div>
-                              <div>Premium actif</div>
-                              <div className="text-[10px] text-amber-600 font-normal">Toutes les récompenses débloquées</div>
-                            </div>
-                          </div>
-                        ) : !isExpired ? (
+                      <div className="flex-shrink-0 flex gap-3">
+                        {!userPass && !isExpired && (
                           <button
-                            onClick={() => setShowUnlockConfirm(true)}
-                            className="w-full lg:w-auto flex items-center justify-center gap-2.5 px-5 py-3 rounded-2xl text-white font-bold text-sm transition-all hover:scale-[1.02] border border-amber-500/30"
-                            style={{
-                              background: 'linear-gradient(135deg, #92400e 0%, #b45309 50%, #d97706 100%)',
-                              boxShadow: '0 8px 24px rgba(180,83,9,0.3)',
-                            }}
+                            onClick={handleJoin}
+                            disabled={joining}
+                            className="w-full lg:w-auto flex items-center justify-center gap-2 px-5 py-3 rounded-2xl text-white font-bold text-sm transition-all hover:scale-[1.02] border border-emerald-500/30 disabled:opacity-50"
+                            style={{ background: 'linear-gradient(135deg, #064e3b 0%, #059669 100%)', boxShadow: '0 8px 24px rgba(5,150,105,0.3)' }}
                           >
-                            <Crown size={18} />
+                            <Star size={18} />
                             <div>
-                              <div>Débloquer Premium</div>
-                              <div className="text-[11px] text-amber-200 font-normal">{fmt(selectedPass.premiumPrice)}€ via solde Adiil</div>
+                              <div>Rejoindre</div>
+                              <div className="text-[11px] text-emerald-200 font-normal">Tier gratuit</div>
                             </div>
                           </button>
-                        ) : null}
+                        )}
+                        {userPass && (
+                          hasPremium ? (
+                            <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-400 font-bold text-sm w-full lg:w-auto justify-center lg:justify-start">
+                              <Crown size={16} className="text-amber-400" />
+                              <div>
+                                <div>Premium actif</div>
+                                <div className="text-[10px] text-amber-600 font-normal">Toutes les récompenses débloquées</div>
+                              </div>
+                            </div>
+                          ) : !isExpired ? (
+                            <button
+                              onClick={() => setShowUnlockConfirm(true)}
+                              className="w-full lg:w-auto flex items-center justify-center gap-2.5 px-5 py-3 rounded-2xl text-white font-bold text-sm transition-all hover:scale-[1.02] border border-amber-500/30"
+                              style={{ background: 'linear-gradient(135deg, #92400e 0%, #b45309 50%, #d97706 100%)', boxShadow: '0 8px 24px rgba(180,83,9,0.3)' }}
+                            >
+                              <Crown size={18} />
+                              <div>
+                                <div>Débloquer Premium</div>
+                                <div className="text-[11px] text-amber-200 font-normal">{fmt(selectedPass.premiumPrice)}€ via solde Adiil</div>
+                              </div>
+                            </button>
+                          ) : null
+                        )}
                       </div>
                     </div>
                   )

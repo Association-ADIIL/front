@@ -86,6 +86,9 @@ export const claimReward = (id: number, level: number, tier: 'FREE' | 'PREMIUM')
     { method: 'POST', body: JSON.stringify({ level, tier }) }
   );
 
+export const joinBattlePass = (id: number) =>
+  fetchJson<UserBattlePass>(`/battle-pass/${id}/join`, { method: 'POST', body: JSON.stringify({}) });
+
 export const unlockPremium = (id: number) =>
   fetchJson<{ message: string; battlePassId: number; premiumPrice: number }>(
     `/battle-pass/${id}/unlock-premium`,
