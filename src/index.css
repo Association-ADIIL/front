@@ -1,0 +1,335 @@
+/* Import Google Fonts - Koulen and Montserrat */
+@import url('https://fonts.googleapis.com/css2?family=Koulen&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    font-family: 'Montserrat', sans-serif;
+  }
+
+  body {
+    background-color: #1E1E1E;
+    color: white;
+  }
+
+  /* Global scrollbar styles with accent-mint */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #0f0f0f;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(119, 241, 190, 0.3);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(119, 241, 190, 0.5);
+  }
+
+  ::-webkit-scrollbar-corner {
+    background: #0f0f0f;
+  }
+
+  /* Firefox global */
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(119, 241, 190, 0.3) #0f0f0f;
+  }
+
+  /* Custom scrollbar styles (for modals and specific areas) */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #374151;
+    border-radius: 20px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: #4B5563;
+  }
+
+  /* Firefox */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #374151 transparent;
+  }
+
+  /* Admin scrollbar base styles */
+  .scrollbar-red::-webkit-scrollbar,
+  .scrollbar-purple::-webkit-scrollbar,
+  .scrollbar-orange::-webkit-scrollbar,
+  .scrollbar-cyan::-webkit-scrollbar,
+  .scrollbar-green::-webkit-scrollbar,
+  .scrollbar-rose::-webkit-scrollbar,
+  .scrollbar-pink::-webkit-scrollbar,
+  .scrollbar-emerald::-webkit-scrollbar,
+  .scrollbar-amber::-webkit-scrollbar,
+  .scrollbar-blue::-webkit-scrollbar,
+  .scrollbar-gray::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-red::-webkit-scrollbar-track,
+  .scrollbar-purple::-webkit-scrollbar-track,
+  .scrollbar-orange::-webkit-scrollbar-track,
+  .scrollbar-cyan::-webkit-scrollbar-track,
+  .scrollbar-green::-webkit-scrollbar-track,
+  .scrollbar-rose::-webkit-scrollbar-track,
+  .scrollbar-pink::-webkit-scrollbar-track,
+  .scrollbar-emerald::-webkit-scrollbar-track,
+  .scrollbar-amber::-webkit-scrollbar-track,
+  .scrollbar-blue::-webkit-scrollbar-track,
+  .scrollbar-gray::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /* Admin scrollbar colors */
+  .scrollbar-red::-webkit-scrollbar-thumb { background-color: rgba(239, 68, 68, 0.4); border-radius: 20px; }
+  .scrollbar-red::-webkit-scrollbar-thumb:hover { background-color: rgba(239, 68, 68, 0.6); }
+  .scrollbar-red { scrollbar-width: thin; scrollbar-color: rgba(239, 68, 68, 0.4) transparent; }
+
+  .scrollbar-purple::-webkit-scrollbar-thumb { background-color: rgba(168, 85, 247, 0.4); border-radius: 20px; }
+  .scrollbar-purple::-webkit-scrollbar-thumb:hover { background-color: rgba(168, 85, 247, 0.6); }
+  .scrollbar-purple { scrollbar-width: thin; scrollbar-color: rgba(168, 85, 247, 0.4) transparent; }
+
+  .scrollbar-orange::-webkit-scrollbar-thumb { background-color: rgba(251, 146, 60, 0.4); border-radius: 20px; }
+  .scrollbar-orange::-webkit-scrollbar-thumb:hover { background-color: rgba(251, 146, 60, 0.6); }
+  .scrollbar-orange { scrollbar-width: thin; scrollbar-color: rgba(251, 146, 60, 0.4) transparent; }
+
+  .scrollbar-cyan::-webkit-scrollbar-thumb { background-color: rgba(34, 211, 238, 0.4); border-radius: 20px; }
+  .scrollbar-cyan::-webkit-scrollbar-thumb:hover { background-color: rgba(34, 211, 238, 0.6); }
+  .scrollbar-cyan { scrollbar-width: thin; scrollbar-color: rgba(34, 211, 238, 0.4) transparent; }
+
+  .scrollbar-green::-webkit-scrollbar-thumb { background-color: rgba(74, 222, 128, 0.4); border-radius: 20px; }
+  .scrollbar-green::-webkit-scrollbar-thumb:hover { background-color: rgba(74, 222, 128, 0.6); }
+  .scrollbar-green { scrollbar-width: thin; scrollbar-color: rgba(74, 222, 128, 0.4) transparent; }
+
+  .scrollbar-rose::-webkit-scrollbar-thumb { background-color: rgba(251, 113, 133, 0.4); border-radius: 20px; }
+  .scrollbar-rose::-webkit-scrollbar-thumb:hover { background-color: rgba(251, 113, 133, 0.6); }
+  .scrollbar-rose { scrollbar-width: thin; scrollbar-color: rgba(251, 113, 133, 0.4) transparent; }
+
+  .scrollbar-pink::-webkit-scrollbar-thumb { background-color: rgba(244, 114, 182, 0.4); border-radius: 20px; }
+  .scrollbar-pink::-webkit-scrollbar-thumb:hover { background-color: rgba(244, 114, 182, 0.6); }
+  .scrollbar-pink { scrollbar-width: thin; scrollbar-color: rgba(244, 114, 182, 0.4) transparent; }
+
+  .scrollbar-emerald::-webkit-scrollbar-thumb { background-color: rgba(52, 211, 153, 0.4); border-radius: 20px; }
+  .scrollbar-emerald::-webkit-scrollbar-thumb:hover { background-color: rgba(52, 211, 153, 0.6); }
+  .scrollbar-emerald { scrollbar-width: thin; scrollbar-color: rgba(52, 211, 153, 0.4) transparent; }
+
+  .scrollbar-amber::-webkit-scrollbar-thumb { background-color: rgba(251, 191, 36, 0.4); border-radius: 20px; }
+  .scrollbar-amber::-webkit-scrollbar-thumb:hover { background-color: rgba(251, 191, 36, 0.6); }
+  .scrollbar-amber { scrollbar-width: thin; scrollbar-color: rgba(251, 191, 36, 0.4) transparent; }
+
+  .scrollbar-blue::-webkit-scrollbar-thumb { background-color: rgba(96, 165, 250, 0.4); border-radius: 20px; }
+  .scrollbar-blue::-webkit-scrollbar-thumb:hover { background-color: rgba(96, 165, 250, 0.6); }
+  .scrollbar-blue { scrollbar-width: thin; scrollbar-color: rgba(96, 165, 250, 0.4) transparent; }
+
+  .scrollbar-gray::-webkit-scrollbar-thumb { background-color: rgba(156, 163, 175, 0.4); border-radius: 20px; }
+  .scrollbar-gray::-webkit-scrollbar-thumb:hover { background-color: rgba(156, 163, 175, 0.6); }
+  .scrollbar-gray { scrollbar-width: thin; scrollbar-color: rgba(156, 163, 175, 0.4) transparent; }
+
+  /* Custom horizontal scrollbar with accent color */
+  .custom-scrollbar-x::-webkit-scrollbar {
+    height: 8px;
+  }
+
+  .custom-scrollbar-x::-webkit-scrollbar-track {
+    background: #1f2937;
+    border-radius: 4px;
+  }
+
+  .custom-scrollbar-x::-webkit-scrollbar-thumb {
+    background: linear-gradient(90deg, #77F1BE 0%, #5ddba3 100%);
+    border-radius: 4px;
+  }
+
+  .custom-scrollbar-x::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(90deg, #5ddba3 0%, #4bc98f 100%);
+  }
+
+  /* Firefox */
+  .custom-scrollbar-x {
+    scrollbar-width: thin;
+    scrollbar-color: #77F1BE #1f2937;
+  }
+}
+
+@layer components {
+  /* Hover scale effects */
+  .hover-scale-sm {
+    transition: transform 0.2s ease-in-out;
+  }
+  .hover-scale-sm:hover {
+    transform: scale(1.02);
+  }
+
+  .hover-scale-md {
+    transition: all 0.3s ease-in-out;
+  }
+  .hover-scale-md:hover {
+    transform: scale(1.05);
+  }
+
+  /* Card styles */
+  .card {
+    border-radius: 20px;
+    box-shadow: 10px 7px 4px rgba(0, 0, 0, 0.107);
+    background-color: #0F0F0F;
+  }
+
+  /* Vertical text utility */
+  .vertical-text {
+    font-family: "Koulen", "Montserrat", sans-serif;
+    width: fit-content;
+    writing-mode: vertical-lr;
+    text-orientation: upright;
+    letter-spacing: -40px;
+    font-weight: 500;
+    font-size: 90px;
+    text-align: center;
+  }
+
+  /* Status badges */
+  .badge-subscribed {
+    background-color: rgb(38, 100, 49);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  .badge-full {
+    background-color: #5D5757;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  .badge-available {
+    background-color: #c3161675;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  /* Event status classes */
+  .event-subscribed {
+    background-color: rgb(38, 100, 49);
+  }
+
+  .event-not-subscribed {
+    background-color: #c3161675;
+  }
+
+  .event-full {
+    background-color: #5D5757;
+  }
+
+  /* Timeline marker colors */
+  .timeline-marker.passed {
+    background-color: rgb(155, 140, 140);
+  }
+
+  .timeline-marker.today {
+    background-color: rgb(64, 180, 141);
+  }
+
+  .timeline-marker.upcoming {
+    background-color: rgb(38, 100, 49);
+  }
+
+  /* Header links */
+  .header-link {
+    font-family: 'Montserrat', serif;
+    font-weight: bold;
+    font-size: 1.2em;
+    border-radius: 10px;
+    transition-duration: 0.2s;
+    padding: 10px;
+    text-align: center;
+  }
+
+  .header-link:hover {
+    color: rgb(23, 23, 23);
+    background-color: rgb(119, 241, 190);
+  }
+
+  /* Mobile header links */
+  .header-link-mobile {
+    font-family: 'Montserrat', serif;
+    font-weight: 600;
+    font-size: 1rem;
+    padding: 12px 16px;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+    color: white;
+  }
+
+  .header-link-mobile:hover {
+    background-color: rgba(119, 241, 190, 0.1);
+    color: rgb(119, 241, 190);
+  }
+
+  /* Bonus bubble animation - yellow glow */
+  .animate-bonus-pulse {
+    animation: bonus-pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes bonus-pulse {
+    0%, 100% {
+      transform: scale(1);
+      box-shadow: 0 4px 15px rgba(250, 204, 21, 0.4);
+    }
+    50% {
+      transform: scale(1.08);
+      box-shadow: 0 6px 25px rgba(250, 204, 21, 0.6);
+    }
+  }
+
+  /* Slow pulse for promotion box glow */
+  .animate-pulse-slow {
+    animation: pulse-slow 3s ease-in-out infinite;
+  }
+
+  @keyframes pulse-slow {
+    0%, 100% {
+      opacity: 0.5;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  /* Fade in animation for tooltips */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  }
+}

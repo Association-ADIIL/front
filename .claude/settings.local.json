@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx prisma db push:*)",
+      "Bash(npx prisma generate)",
+      "Bash(npm run dev:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(dir:*)",
+      "Bash(npx prisma migrate:*)",
+      "Bash(find:*)",
+      "Skill(frontend-design)",
+      "Bash(npx tsc:*)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\barna\\WebstormProjects\\site-back"
+    ]
+  }
+}
