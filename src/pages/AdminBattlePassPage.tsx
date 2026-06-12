@@ -12,6 +12,8 @@ import {
   adminGetStats,
   adminUnlockPremiumForUser,
   adminSyncAllSpend,
+  adminRevokePremiumForUser,
+  adminRemoveUserFromBattlePass,
   type BattlePass,
   type BattlePassLevel,
   type UserPassEntry,
@@ -241,6 +243,7 @@ const AdminBattlePassPage: React.FC = () => {
   const [deleteLevelTarget, setDeleteLevelTarget] = useState<{ passId: number; level: number } | null>(null);
 
   const [syncing, setSyncing] = useState(false);
+  const [removeUserTarget, setRemoveUserTarget] = useState<number | null>(null);
 
   const load = async (): Promise<BattlePass[]> => {
     try {
@@ -651,14 +654,29 @@ const AdminBattlePassPage: React.FC = () => {
                                   <span className="flex items-center gap-0.5"><Gift size={9} />{claimedCount} réclamé(s)</span>
                                 </div>
                               </div>
-                              {!up.hasPremium && (
+                              <div className="flex flex-col gap-1 flex-shrink-0">
+                                {up.hasPremium ? (
+                                  <button
+                                    onClick={() => handleRevokePremium(up.user.id)}
+                                    className="px-2.5 py-1.5 text-[10px] font-semibold text-red-400 rounded-lg bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-all"
+                                  >
+                                    <Crown size={10} className="inline mr-1" />Retirer Premium
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => handleAdminUnlock(up.user.id)}
+                                    className="px-2.5 py-1.5 text-[10px] font-semibold text-amber-400 rounded-lg bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 transition-all"
+                                  >
+                                    <Crown size={10} className="inline mr-1" />Grant Premium
+                                  </button>
+                                )}
                                 <button
-                                  onClick={() => handleAdminUnlock(up.user.id)}
-                                  className="flex-shrink-0 px-2.5 py-1.5 text-[10px] font-semibold text-amber-400 rounded-lg bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 transition-all"
+                                  onClick={() => setRemoveUserTarget(up.user.id)}
+                                  className="px-2.5 py-1.5 text-[10px] font-semibold text-red-400 rounded-lg bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-all"
                                 >
-                                  <Crown size={10} className="inline mr-1" />Grant Premium
+                                  <Trash2 size={10} className="inline mr-1" />Retirer
                                 </button>
-                              )}
+                              </div>
                             </div>
                           </div>
                         );
@@ -791,7 +809,15 @@ const AdminBattlePassPage: React.FC = () => {
         onConfirm={deletePass}
         onClose={() => setDeletePassId(null)}
       />
-
+      <ConfirmDialog
+        isOpen={removeUserTarget !== null}
+        title="Retirer l'utilisateur ?"
+        message="L'utilisateur perdra toute sa progression sur ce battle pass. Cette action est irréversible."
+        confirmText="Retirer"
+        variant="danger"
+        onConfirm={handleRemoveUser}
+        onClose={() => setRemoveUserTarget(null)}
+      />
       <ConfirmDialog
         isOpen={deleteLevelTarget !== null}
         title="Supprimer le niveau ?"
@@ -803,6 +829,32 @@ const AdminBattlePassPage: React.FC = () => {
       />
     </div>
   );
+  const handleRevokePremium = async (userId: number) => {
+    if (!selectedPass) return;
+    try {
+      await adminRevokePremiumForUser(selectedPass.id, userId);
+      const updated = await adminGetUserPasses(selectedPass.id);
+      setUserPasses(updated);
+      addNotification('success', 'Premium retiré');
+    } catch (e: any) {
+      addNotification('error', e.message ?? 'Erreur');
+    }
+  };
+
+  const handleRemoveUser = async () => {
+    if (!selectedPass || !removeUserTarget) return;
+    try {
+      await adminRemoveUserFromBattlePass(selectedPass.id, removeUserTarget);
+      const updated = await adminGetUserPasses(selectedPass.id);
+      setUserPasses(updated);
+      const s = await adminGetStats(selectedPass.id);
+      setStats(s);
+      addNotification('success', 'Utilisateur retiré du battle pass');
+      setRemoveUserTarget(null);
+    } catch (e: any) {
+      addNotification('error', e.message ?? 'Erreur');
+    }
+  };
 };
 
 export default AdminBattlePassPage;
