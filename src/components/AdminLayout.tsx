@@ -20,7 +20,8 @@ import {
   Shield,
   Database,
   Trophy,
-  Megaphone
+  Megaphone,
+  Receipt
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -146,6 +147,15 @@ const colorConfig: Record<string, { bg: string; text: string; border: string; sh
     hoverClass: 'hover:bg-amber-500/10 hover:text-amber-400 [&>div]:hover:bg-amber-500/20 [&>div>svg]:hover:text-amber-400',
     scrollbar: 'scrollbar-amber'
   },
+  '/admin/caisse': {
+      bg: 'bg-accent-mint/10',
+      text: 'text-accent-mint',
+      border: 'border-accent-mint/30',
+      shadow: 'shadow-accent-mint/5',
+      iconBg: 'bg-accent-mint/20',
+      hoverClass: 'hover:bg-accent-mint/10 hover:text-accent-mint [&>div]:hover:bg-accent-mint/20 [&>div>svg]:hover:text-accent-mint',
+      scrollbar: 'scrollbar-green'
+    },
   '/admin/banner': {
     bg: 'bg-yellow-500/10',
     text: 'text-yellow-400',
@@ -173,6 +183,7 @@ const navSections = [
       { path: '/admin/orders', label: 'Commandes', icon: ClipboardList },
       { path: '/admin/promotions', label: 'Promotions', icon: Gift },
       { path: '/admin/battle-pass', label: 'Battle Pass', icon: Trophy },
+      { path: '/admin/caisse', label: 'Caisse', icon: Receipt },
     ]
   },
   {

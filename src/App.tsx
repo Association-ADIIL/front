@@ -50,6 +50,7 @@ const PromotionManagementPage = lazy(() => import('./pages/PromotionManagementPa
 const TransactionManagementPage = lazy(() => import('./pages/TransactionManagementPage'));
 const AdminBackupsPage = lazy(() => import('./pages/AdminBackupsPage'));
 const AdminBattlePassPage = lazy(() => import('./pages/AdminBattlePassPage'));
+const AdminCaissePage = lazy(() => import('./pages/AdminCaissePage'));
 
 // Loading component for lazy loaded pages
 const PageLoader = () => (
@@ -141,6 +142,7 @@ function App() {
                 <Route path="/admin/backups" element={<Suspense fallback={<PageLoader />}><AdminLayout><AdminBackupsPage /></AdminLayout></Suspense>} />
                 <Route path="/admin/battle-pass" element={<Suspense fallback={<PageLoader />}><AdminLayout><AdminBattlePassPage /></AdminLayout></Suspense>} />
                 <Route path="/admin/banner" element={<Suspense fallback={<PageLoader />}><AdminLayout><AdminBannerPage /></AdminLayout></Suspense>} />
+                <Route path="/admin/caisse" element={<Suspense fallback={<PageLoader />}><AdminLayout><AdminCaissePage /></AdminLayout></Suspense>} />
 
                 <Route path="*" element={<PublicLayout />} />
               </Routes>

@@ -450,7 +450,26 @@ const HomePage: React.FC = () => {
                       />
                     </div>
                     <p className="text-xs font-medium text-white truncate">{product.name}</p>
-                    <p className="text-sm text-accent-mint font-bold">{product.price}€</p>
+                    {(() => {
+                      const now = new Date();
+                      const activePromo = product.productPromotions?.find(pp => {
+                        const p = pp.promotion;
+                        if (!p.isActive) return false;
+                        if (p.startDate && new Date(p.startDate) > now) return false;
+                        if (p.endDate && new Date(p.endDate) < now) return false;
+                        return p.type === 'PERCENTAGE_DISCOUNT' || p.type === 'PRODUCT_DISCOUNT';
+                      });
+                      const discountPercent = activePromo ? (activePromo.promotion.rules as any).discountPercent : null;
+                      const discountedPrice = discountPercent ? Math.round(product.price * (1 - discountPercent / 100) * 100) / 100 : null;
+                      return discountedPrice ? (
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-gray-500 line-through">{product.price}€</span>
+                          <span className="text-sm text-red-400 font-bold">{discountedPrice}€</span>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-accent-mint font-bold">{product.price}€</p>
+                      );
+                    })()}
                   </div>
                 </Link>
               ))}

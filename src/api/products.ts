@@ -15,6 +15,7 @@ export interface VariantOption {
   priceModifier: number;
 }
 
+
 export interface VariantCategory {
   id: number;
   name: string;
@@ -52,6 +53,16 @@ export interface Product {
   subcategory?: Subcategory & {
     category?: Category;
   };
+  productPromotions?: Array<{
+    promotion: {
+      id: number;
+      type: string;
+      rules: any;
+      isActive: boolean;
+      startDate: string | null;
+      endDate: string | null;
+    };
+  }>;
 }
 
 export type ProductFormData = Omit<Product, 'id' | 'subcategory'> & {

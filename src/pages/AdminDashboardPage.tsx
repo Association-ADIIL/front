@@ -27,6 +27,7 @@ const AdminDashboardPage: React.FC = () => {
     totalRevenue: 0,
     revenueThisMonth: 0,
     totalInscriptions: 0,
+    avgOrderValue: 0,
   });
   const [balanceStats, setBalanceStats] = useState<BalanceStats | null>(null);
   const [recentInscriptions, setRecentInscriptions] = useState<Inscription[]>([]);
@@ -86,9 +87,18 @@ const AdminDashboardPage: React.FC = () => {
         const totalRevenue = orders
           .filter(o => o.paymentStatus === 'PAID')
           .reduce((sum, o) => sum + o.totalPrice, 0);
+
         const revenueThisMonth = orders
           .filter(o => o.paymentStatus === 'PAID' && new Date(o.createdAt) >= firstDayOfMonth)
           .reduce((sum, o) => sum + o.totalPrice, 0);
+
+        const paidOrders = orders.filter(o =>
+          o.paymentStatus === 'PAID' &&
+          !o.items.some(item => item.product.subcategoryId === 19)
+        );
+        const avgOrderValue = paidOrders.length > 0
+          ? paidOrders.reduce((sum, o) => sum + o.totalPrice, 0) / paidOrders.length
+          : 0;
 
         // Orders to collect
         setOrdersToCollect(orders.filter(o => 
@@ -113,6 +123,7 @@ const AdminDashboardPage: React.FC = () => {
           totalRevenue,
           revenueThisMonth,
           totalInscriptions: inscriptions.length,
+          avgOrderValue,
         });
 
         setRecentInscriptions(recentInscriptionsList);
@@ -225,7 +236,7 @@ const AdminDashboardPage: React.FC = () => {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Users */}
         <div className="bg-darker-bg rounded-2xl p-5 border border-gray-800 hover:border-blue-500/30 transition-all group">
           <div className="flex items-center justify-between mb-4">
@@ -277,7 +288,18 @@ const AdminDashboardPage: React.FC = () => {
           </div>
           <h3 className="text-3xl font-koulen text-green-400 mb-1">{stats.totalRevenue.toFixed(2)} €</h3>
           <p className="text-xs text-gray-500">Chiffre d'affaires total</p>
-        </div>
+                  </div>
+
+                  {/* Panier moyen */}
+                  <div className="bg-darker-bg rounded-2xl p-5 border border-gray-800 hover:border-yellow-500/30 transition-all group">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-12 h-12 bg-yellow-500/10 rounded-xl flex items-center justify-center group-hover:bg-yellow-500/20 transition-colors">
+                        <ShoppingBag className="text-yellow-400" size={22} />
+                      </div>
+                    </div>
+                    <h3 className="text-3xl font-koulen text-yellow-400 mb-1">{stats.avgOrderValue.toFixed(2)} €</h3>
+                    <p className="text-xs text-gray-500">Panier moyen</p>
+                  </div>
       </div>
 
       {/* Balance Stats */}
