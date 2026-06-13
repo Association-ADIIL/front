@@ -150,7 +150,7 @@ const MyAccountPage: React.FC = () => {
     };
 
     const fetchBattlePasses = async () => {
-      if (token) {
+        if (!token) return;
         try {
           const passes = await getPublicBattlePasses();
           const entries = await Promise.allSettled(passes.map(bp => getMyBattlePass(bp.id)));
@@ -160,7 +160,6 @@ const MyAccountPage: React.FC = () => {
               map[passes[i].id] = result.value;
             }
           });
-          // Ne garder que les passes où l'user est inscrit
           setBattlePasses(passes.filter(bp => map[bp.id] !== undefined));
           setUserPassMap(map);
         } catch (error) {
@@ -168,15 +167,22 @@ const MyAccountPage: React.FC = () => {
         } finally {
           setLoadingBattlePass(false);
         }
-      }
-    };
+      };
 
-    if (!authLoading && user) {
       fetchOrders();
       fetchInscriptions();
       fetchBattlePasses();
-    }
-  }, [user, token, authLoading]);
+
+      // Re-fetch battle passes quand l'onglet redevient actif
+      const handleVisibilityChange = () => fetchBattlePasses();
+      window.addEventListener('focus', handleVisibilityChange);
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+
+      return () => {
+        window.removeEventListener('focus', handleVisibilityChange);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
+    }, [user, token, authLoading]);
 
   // Initialize email preferences from user data
   useEffect(() => {

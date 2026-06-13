@@ -235,11 +235,27 @@ const BattlePassPage: React.FC = () => {
 
   useEffect(() => {
     if (!selectedPass || !user) { setUserPass(null); return; }
+
+    const fetchUserPass = () => {
+      getMyBattlePass(selectedPass.id)
+        .then(setUserPass)
+        .catch(() => setUserPass(null));
+    };
+
     setLoadingUserPass(true);
     getMyBattlePass(selectedPass.id)
       .then(setUserPass)
       .catch(() => setUserPass(null))
       .finally(() => setLoadingUserPass(false));
+
+    // Re-fetch quand l'onglet redevient actif
+    window.addEventListener('focus', fetchUserPass);
+    document.addEventListener('visibilitychange', fetchUserPass);
+
+    return () => {
+      window.removeEventListener('focus', fetchUserPass);
+      document.removeEventListener('visibilitychange', fetchUserPass);
+    };
   }, [selectedPass, user]);
 
   const handleUnlockPremium = async () => {
