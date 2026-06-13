@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { useNotification } from '../context/NotificationContext';
 import { getAllProducts, type Product } from '../api/products';
-import { fetchJson, API_BASE_URL } from '../api/client';
+import { fetchJson } from '../api/client';
 import {
   Search, ShoppingCart, Trash2, Plus, Minus, Receipt, X,
   CheckCircle, ChevronRight, History, Undo2, Tag,

@@ -94,7 +94,7 @@ const AdminDashboardPage: React.FC = () => {
 
         const paidOrders = orders.filter(o =>
           o.paymentStatus === 'PAID' &&
-          !o.items.some(item => item.product.subcategoryId === 19)
+          !o.items.some(item => (item.product as any).subcategoryId === 19)
         );
         const avgOrderValue = paidOrders.length > 0
           ? paidOrders.reduce((sum, o) => sum + o.totalPrice, 0) / paidOrders.length
