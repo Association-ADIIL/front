@@ -685,7 +685,7 @@ function DashboardTab({ dashboard }: { dashboard: DashboardData | null }) {
                 <Tooltip
                   contentStyle={{ background: '#0f1318', border: '1px solid #1f2937', borderRadius: 8 }}
                   labelFormatter={shortDate}
-                  formatter={(v: number) => [eur(v ?? 0), 'CA']}
+                  formatter={(v: number | undefined) => [eur(v ?? 0), 'CA']}
                 />
                 <Area type="monotone" dataKey="ca" stroke="#1D9E75" strokeWidth={2}
                   fill="url(#caGrad)" />
@@ -716,7 +716,7 @@ function DashboardTab({ dashboard }: { dashboard: DashboardData | null }) {
                   contentStyle={{ background: '#0f1318', border: '1px solid #1f2937', borderRadius: 8 }}
                   labelStyle={{ color: '#fff', fontWeight: 600, marginBottom: 4 }}
                   itemStyle={{ color: '#9ca3af' }}
-                  formatter={(v: number) => [eur(v), 'CA']}
+                  formatter={(v: number | undefined) => [eur(v ?? 0), 'CA']}
                   labelFormatter={(_, payload) => payload?.[0]?.payload?.name ?? ''}
                 />
                 <Bar dataKey="ca" radius={[0, 4, 4, 0]} activeBar={false}>
