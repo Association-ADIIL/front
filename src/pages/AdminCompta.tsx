@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  TrendingUp, TrendingDown, ShoppingCart, Receipt, Euro,
+  TrendingUp, TrendingDown, ShoppingCart, Euro,
   Plus, Trash2, Pencil, X, Check, ChevronLeft, ChevronRight,
   BarChart3, Package, RefreshCw, AlertCircle, Loader2,
 } from 'lucide-react';
@@ -38,14 +38,6 @@ interface DashboardData {
   achatsParCategorie: AchatCategorieStat[];
   repartitionPaiements: PaiementStat[];
   achatsRecents: AchatFournisseur[];
-}
-
-interface AchatItem {
-  id?: number;
-  productId: number;
-  productName?: string; // pour affichage (rempli côté backend via include product)
-  quantite: number;
-  prixUnitaire: number;
 }
 
 interface AchatFournisseur {
@@ -505,8 +497,6 @@ export default function ComptabilitePage() {
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
-  const kpis = dashboard?.kpis;
-
   return (
     <div className="space-y-6">
 
@@ -695,7 +685,7 @@ function DashboardTab({ dashboard }: { dashboard: DashboardData | null }) {
                 <Tooltip
                   contentStyle={{ background: '#0f1318', border: '1px solid #1f2937', borderRadius: 8 }}
                   labelFormatter={shortDate}
-                  formatter={(v: number) => [eur(v), 'CA']}
+                  formatter={(v: number) => [eur(v ?? 0), 'CA']}
                 />
                 <Area type="monotone" dataKey="ca" stroke="#1D9E75" strokeWidth={2}
                   fill="url(#caGrad)" />
