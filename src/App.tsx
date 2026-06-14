@@ -51,6 +51,7 @@ const TransactionManagementPage = lazy(() => import('./pages/TransactionManageme
 const AdminBackupsPage = lazy(() => import('./pages/AdminBackupsPage'));
 const AdminBattlePassPage = lazy(() => import('./pages/AdminBattlePassPage'));
 const AdminCaissePage = lazy(() => import('./pages/AdminCaissePage'));
+const ComptabilitePage = lazy(() => import('./pages/AdminCompta'));
 
 // Loading component for lazy loaded pages
 const PageLoader = () => (
@@ -90,6 +91,8 @@ const PublicLayout = () => {
             <Route path="/order-pickup/:id" element={<OrderPickupPage />} />
             <Route path="/battle-pass-claim/:battlePassId/:userId/:level/:tier" element={<BattlePassClaimPage />} />
             <Route path="/share/:token" element={<ShareFilePage />} />
+
+
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </main>
@@ -143,6 +146,7 @@ function App() {
                 <Route path="/admin/battle-pass" element={<Suspense fallback={<PageLoader />}><AdminLayout><AdminBattlePassPage /></AdminLayout></Suspense>} />
                 <Route path="/admin/banner" element={<Suspense fallback={<PageLoader />}><AdminLayout><AdminBannerPage /></AdminLayout></Suspense>} />
                 <Route path="/admin/caisse" element={<Suspense fallback={<PageLoader />}><AdminLayout><AdminCaissePage /></AdminLayout></Suspense>} />
+                <Route path="/admin/comptabilite" element={<Suspense fallback={<PageLoader />}><AdminLayout><ComptabilitePage /></AdminLayout></Suspense>} />
 
                 <Route path="*" element={<PublicLayout />} />
               </Routes>

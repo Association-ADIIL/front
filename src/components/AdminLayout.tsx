@@ -164,6 +164,15 @@ const colorConfig: Record<string, { bg: string; text: string; border: string; sh
     iconBg: 'bg-yellow-500/20',
     hoverClass: 'hover:bg-yellow-500/10 hover:text-yellow-400 [&>div]:hover:bg-yellow-500/20 [&>div>svg]:hover:text-yellow-400',
     scrollbar: 'scrollbar-yellow',
+  },
+  '/admin/comptabilite': {
+    bg: 'bg-indigo-500/10',
+    text: 'text-indigo-400',
+    border: 'border-indigo-500/30',
+    shadow: 'shadow-indigo-500/5',
+    iconBg: 'bg-indigo-500/20',
+    hoverClass: 'hover:bg-indigo-500/10 hover:text-indigo-400 [&>div]:hover:bg-indigo-500/20 [&>div>svg]:hover:text-indigo-400',
+    scrollbar: 'scrollbar-indigo'
   }
 };
 
@@ -184,6 +193,7 @@ const navSections = [
       { path: '/admin/promotions', label: 'Promotions', icon: Gift },
       { path: '/admin/battle-pass', label: 'Battle Pass', icon: Trophy },
       { path: '/admin/caisse', label: 'Caisse', icon: Receipt },
+      { path: '/admin/comptabilite', label: 'Comptabilité', icon: Receipt }
     ]
   },
   {
@@ -344,15 +354,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         </div>
       </aside>
 
-      {/* Sidebar glow decoration - fixed at bottom, above sidebar */}
-      <div className={`
-        fixed -bottom-20 -left-20 w-[350px] h-[300px] pointer-events-none z-[101]
-        transition-transform duration-300 ease-in-out
-        lg:translate-x-0
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <div className={`absolute bottom-10 left-10 w-[200px] h-[200px] ${activeColors.bg} rounded-full blur-[80px]`} />
-      </div>
+
 
       {/* Main content */}
       <main className={`flex-1 p-4 lg:p-8 lg:ml-72 min-w-0 mt-14 lg:mt-0 relative overflow-y-auto ${activeColors.scrollbar}`}>
