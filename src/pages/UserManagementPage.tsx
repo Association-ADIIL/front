@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { logger } from '../utils/logger';
 import { getAllUsers, deleteUser, createUser, updateUser } from '../api/users';
 import { getUserBalance } from '../api/balance';
-import { type User, getMe } from '../api/auth';
+import { type User } from '../api/auth';
 import { useAuth } from '../context/AuthContext';
 import { Edit2, Trash2, Plus, User as UserIcon, Search, Eye, Mail, Calendar, CreditCard, Users, Loader } from 'lucide-react';
 import Modal from '../components/Modal';
@@ -134,6 +134,7 @@ const UserManagementPage: React.FC = () => {
         await createUser({
           ...formData,
           type: formData.type as 'STUDENT' | 'PROFESSOR' | 'EXTERNAL' | 'ADMIN_BDE' | 'ADMIN_PROF',
+          filiere: formData.filiere as 'INFO' | 'MMI' | 'TC' | 'BIO' | 'AUTRES' | null | undefined,
         });
       }
       setIsModalOpen(false);
