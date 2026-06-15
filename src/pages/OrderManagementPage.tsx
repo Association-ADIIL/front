@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { logger } from '../utils/logger';
-import { getAllOrders, updateOrderStatus, updatePaymentStatus, refundOrderItems, type Order } from '../api/orders';
+import { getAllOrders, updateOrderStatus, updatePaymentStatus, refundOrderItems, deleteOrder, type Order } from '../api/orders';
 import { getAllInscriptions, updateInscriptionPaymentStatus, refundInscription, type Inscription } from '../api/inscriptions';
 import { getAllEvents, type Event } from '../api/events';
-import { Edit2, ShoppingBag, Calendar, CheckSquare, Square, Eye, Gift, Download } from 'lucide-react';
+import { Edit2, ShoppingBag, Calendar, CheckSquare, Square, Eye, Gift, Download, Trash2 } from 'lucide-react';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -56,7 +56,7 @@ const OrderManagementPage: React.FC = () => {
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string[]>([]);
   const [inscriptionSearchQuery, setInscriptionSearchQuery] = useState('');
   const [, setEvents] = useState<Event[]>([]);
-  
+
   // Order specific filters
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState<string[]>([]);
@@ -415,6 +415,27 @@ const OrderManagementPage: React.FC = () => {
       return (refundSelection[item.id] || 0) === availableRefund;
   }) || false;
 
+  // Delete an order entirely
+  const handleDeleteOrder = (order: Order) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Supprimer la commande',
+      message: `Êtes-vous sûr de vouloir supprimer définitivement la commande #${order.id.toString().padStart(6, '0')} ?\n\nCette action est irréversible et ne déclenche aucun remboursement.`,
+      onConfirm: async () => {
+        try {
+          await deleteOrder(order.id);
+          addNotification('success', 'Commande supprimée avec succès');
+          setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+          setIsModalOpen(false);
+          fetchOrders();
+        } catch (error) {
+          logger.error('Failed to delete order', error);
+          addNotification('error', (error as any).message || 'Erreur lors de la suppression de la commande');
+        }
+      },
+    });
+  };
+
   // Export orders to CSV
   const exportOrdersToCSV = () => {
     const dataToExport = filteredOrders;
@@ -766,13 +787,22 @@ const OrderManagementPage: React.FC = () => {
                       )}
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => handleOpenEditOrder(order)}
-                        className="text-green-400 hover:text-white transition-colors"
-                        title="Voir les détails"
-                      >
-                        <Eye size={18} />
-                      </button>
+                      <div className="flex items-center justify-end gap-3">
+                        <button
+                          onClick={() => handleOpenEditOrder(order)}
+                          className="text-green-400 hover:text-white transition-colors"
+                          title="Voir les détails"
+                        >
+                          <Eye size={18} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteOrder(order)}
+                          className="text-red-400 hover:text-red-300 transition-colors"
+                          title="Supprimer la commande"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -1172,7 +1202,14 @@ const OrderManagementPage: React.FC = () => {
                 </div>
             )}
 
-             <div className="flex justify-end pt-4 border-t border-gray-700">
+             <div className="flex justify-between pt-4 border-t border-gray-700">
+                <button
+                  onClick={() => currentOrder && handleDeleteOrder(currentOrder)}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <Trash2 size={16} />
+                  Supprimer la commande
+                </button>
                 <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-300 hover:text-white">Fermer</button>
             </div>
             </>
@@ -1305,7 +1342,7 @@ const OrderManagementPage: React.FC = () => {
         onConfirm={confirmDialog.onConfirm}
         title={confirmDialog.title}
         message={confirmDialog.message}
-        confirmText="Rembourser"
+        confirmText="Confirmer"
         cancelText="Annuler"
         variant="danger"
       />

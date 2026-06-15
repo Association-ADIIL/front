@@ -188,3 +188,9 @@ export const confirmOrderPickup = async (id: number): Promise<{ order: Order; me
     method: 'POST',
   });
 };
+
+export const deleteOrder = async (id: number): Promise<{ message: string }> => {
+  return fetchJson(`/orders/${id}`, {
+    method: 'DELETE',
+  });
+};

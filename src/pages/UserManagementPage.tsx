@@ -2,7 +2,8 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { logger } from '../utils/logger';
 import { getAllUsers, deleteUser, createUser, updateUser } from '../api/users';
 import { getUserBalance } from '../api/balance';
-import { type User } from '../api/auth';
+import { type User, getMe } from '../api/auth';
+import { useAuth } from '../context/AuthContext';
 import { Edit2, Trash2, Plus, User as UserIcon, Search, Eye, Mail, Calendar, CreditCard, Users, Loader } from 'lucide-react';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
@@ -25,13 +26,14 @@ const UserManagementPage: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedUserBalance, setSelectedUserBalance] = useState<number | null>(null);
   const [loadingBalance, setLoadingBalance] = useState(false);
+  const { refreshUser } = useAuth();
 
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     type: 'STUDENT',
-    studentGroup: '',
+    filiere: '',
     password: '', // Only for creation
   });
 
@@ -75,7 +77,7 @@ const UserManagementPage: React.FC = () => {
       lastName: '',
       email: '',
       type: 'STUDENT',
-      studentGroup: '',
+      filiere: '',
       password: '',
     });
     setIsModalOpen(true);
@@ -88,7 +90,7 @@ const UserManagementPage: React.FC = () => {
       lastName: user.lastName,
       email: user.email,
       type: user.type,
-      studentGroup: user.studentGroup || '',
+      filiere: user.filiere || '',
       password: '', // Don't show password on edit
     });
     setIsModalOpen(true);
@@ -136,6 +138,7 @@ const UserManagementPage: React.FC = () => {
       }
       setIsModalOpen(false);
       fetchUsers();
+      await refreshUser();
     } catch (error) {
       logger.error('Failed to save user', error);
       alert("Erreur lors de l'enregistrement de l'utilisateur.");
@@ -202,7 +205,7 @@ const UserManagementPage: React.FC = () => {
               <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Utilisateur</th>
               <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">Email</th>
               <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Type</th>
-              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden sm:table-cell">Groupe</th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden sm:table-cell">Filière</th>
               <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
@@ -244,7 +247,7 @@ const UserManagementPage: React.FC = () => {
                   </span>
                 </td>
                 <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-400 hidden sm:table-cell">
-                  {user.studentGroup || '-'}
+                  {user.filiere || '-'}
                 </td>
                 <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-sm font-medium">
                   <button onClick={() => handleOpenDetail(user)} className="text-gray-400 hover:text-white mr-3 sm:mr-4" title="Voir les détails"><Eye size={18} /></button>
@@ -307,21 +310,13 @@ const UserManagementPage: React.FC = () => {
             </div>
             {(formData.type === 'STUDENT' || formData.type === 'ADMIN_BDE') && (
                 <div>
-                    <label className="block text-gray-400 mb-1">Groupe TP</label>
-                    <select name="studentGroup" value={formData.studentGroup} onChange={handleChange} className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white">
+                    <label className="block text-gray-400 mb-1">Filière</label>
+                    <select name="filiere" value={formData.filiere} onChange={handleChange} className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white">
                         <option value="">Aucun</option>
-                        <option value="G11A">11A</option>
-                        <option value="G11B">11B</option>
-                        <option value="G12C">12C</option>
-                        <option value="G12D">12D</option>
-                        <option value="G21A">21A</option>
-                        <option value="G21B">21B</option>
-                        <option value="G22C">22C</option>
-                        <option value="G22D">22D</option>
-                        <option value="G31A">31A</option>
-                        <option value="G31B">31B</option>
-                        <option value="G32C">32C</option>
-                        <option value="G32D">32D</option>
+                        <option value="INFO">INFO</option>
+                        <option value="MMI">MMI</option>
+                        <option value="TC">TC</option>
+                        <option value="BIO">BIO</option>
                     </select>
                 </div>
             )}
@@ -424,8 +419,8 @@ const UserManagementPage: React.FC = () => {
                     <Users size={18} className="text-purple-400" />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 uppercase tracking-wider">Groupe TP</p>
-                    <p className="text-white font-medium">{selectedUser.studentGroup || 'Aucun'}</p>
+                    <p className="text-xs text-gray-500 uppercase tracking-wider">Filière</p>
+                    <p className="text-white font-medium">{selectedUser.filiere || 'Aucun'}</p>
                   </div>
                 </div>
               </div>

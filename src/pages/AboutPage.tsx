@@ -5,76 +5,88 @@ import SEO from '../components/SEO';
 // TODO: Remplacer par les vraies données des membres
 const teamMembers = [
   {
-    name: "Sami HAJADI",
+    name: "Lucas VAN-MESSEM",
     role: "Président",
     image: null, // TODO: Ajouter l'URL de la photo
-    description: "Description courte du rôle"
+    description: "Représente l'association et coordonne l'ensemble du bureau et des projets."
   },
   {
-    name: "Arthur PAILLEREAU",
-    role: "Trésorier",
-    image: null,
-    description: "Description courte du rôle"
-  },
-  {
-    name: "Alix CORBIN",
-    role: "Trésorier",
-    image: null,
-    description: "Description courte du rôle"
-  },
-  {
-    name: "Lucas VAN-MESSEM",
-    role: "Secrétaire",
-    image: null,
-    description: "Description courte du rôle"
+    name: "Ryad Bouk'hil",
+    role: "Vice-Président",
+    image: null, // TODO: Ajouter l'URL de la photo
+    description: "Assiste le président et le remplace dans ses missions si besoin."
   },
   {
     name: "Maxence LISSONNET",
-    role: "Boutique",
+    role: "Trésorier",
     image: null,
-    description: "Description courte du rôle"
+    description: "Gère le budget, les comptes et les finances de l'association."
   },
   {
-    name: "Barnabé HAVARD",
-    role: "Resp. Boutique",
+    name: "Matthias De Oliveira",
+    role: "Vice-Trésorier",
     image: null,
-    description: "Description courte du rôle"
+    description: "Seconde le trésorier dans la gestion financière de l'association."
   },
   {
-    name: "Julien DAUVERGNE",
-    role: "Boutique & Finances",
+    name: "Alix CORBIN",
+    role: "Responsable Communication",
     image: null,
-    description: "Description courte du rôle"
+    description: "Pilote la communication et l'image de l'association sur tous les canaux."
   },
   {
-    name: "Mathis LE-NÔTRE",
-    role: "Cuisinier",
+    name: "Sofiane Lachguer",
+    role: "Vice-Responsable Communication",
     image: null,
-    description: "Description courte du rôle"
+    description: "Accompagne le responsable communication dans la création de contenus."
+  },
+  {
+    name: "Mathéo Rousseau",
+    role: "Vice-Secrétaire",
+    image: null,
+    description: "Aide à la rédaction des comptes-rendus et au suivi administratif."
+  },
+  {
+    name: "Evan Hériault",
+    role: "Membre Actif",
+    image: null,
+    description: "Participe activement aux projets et missions de l'association."
+  },
+  {
+    name: "Macéo Morin",
+    role: "Membre Actif",
+    image: null,
+    description: "Participe activement aux projets et missions de l'association."
+  },
+  {
+    name: "Yannis Chevalier",
+    role: "Membre Actif",
+    image: null,
+    description: "Participe activement aux projets et missions de l'association."
   },
   {
     name: "Antoine RIOUL",
-    role: "Boutique",
+    role: "Membre Actif",
     image: null,
-    description: "Description courte du rôle"
+    description: "Participe à la gestion de la boutique et au suivi des produits de l'association."
   },
   {
     name: "Dylan LEBOIS",
-    role: "Boutique",
+    role: "Membre Actif",
     image: null,
-    description: "Description courte du rôle"
+    description: "Participe à la gestion de la boutique et des stocks."
   },
   {
     name: "Tom GAUDIN",
-    role: "Évènements",
+    role: "Membre Actif",
     image: null,
-    description: "Description courte du rôle"
+    description: "Participe à l'organisation et à la coordination des évènements de l'association."
   },
   {
     name: "Marc FOUCHER",
-    role: "Cuisinier & Boutique",
+    role: "Membre Actif",
     image: null,
-    description: "Description courte du rôle"
+    description: "Prépare les plats lors des évènements et contribue à la gestion de la boutique."
   }
 ];
 
@@ -180,7 +192,7 @@ const AboutPage: React.FC = () => {
       <section className="py-20 bg-darker-bg">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <span className="text-accent-mint text-sm font-bold uppercase tracking-wider">Bureau 2025-2026</span>
+            <span className="text-accent-mint text-sm font-bold uppercase tracking-wider">Bureau 2026-2027</span>
             <h2 className="text-4xl md:text-5xl font-koulen text-white mt-2">L'EQUIPE</h2>
             <p className="text-gray-400 mt-4 max-w-xl mx-auto font-montserrat">
               Les membres du bureau qui font vivre l'association au quotidien.

@@ -4,20 +4,6 @@ import { useAuth } from '../context/AuthContext';
 import { Mail, Lock, User, Users, UserPlus, ArrowRight, GraduationCap } from 'lucide-react';
 import SEO from '../components/SEO';
 
-const STUDENT_GROUPS = [
-  { value: 'G11A', label: '11A' },
-  { value: 'G11B', label: '11B' },
-  { value: 'G12C', label: '12C' },
-  { value: 'G12D', label: '12D' },
-  { value: 'G21A', label: '21A' },
-  { value: 'G21B', label: '21B' },
-  { value: 'G22C', label: '22C' },
-  { value: 'G22D', label: '22D' },
-  { value: 'G31A', label: '31A' },
-  { value: 'G31B', label: '31B' },
-  { value: 'G32C', label: '32C' },
-  { value: 'G32D', label: '32D' },
-];
 
 const ACCOUNT_TYPES = [
   { value: 'STUDENT', label: 'Etudiant', icon: GraduationCap },
@@ -33,8 +19,7 @@ const RegisterPage: React.FC = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    type: 'STUDENT',
-    studentGroup: ''
+    type: 'STUDENT'
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -53,11 +38,6 @@ const RegisterPage: React.FC = () => {
       return;
     }
 
-    if (formData.type === 'STUDENT' && !formData.studentGroup) {
-      setError("Le groupe TP est obligatoire pour les etudiants.");
-      return;
-    }
-
     setIsLoading(true);
     try {
       await register({
@@ -66,7 +46,6 @@ const RegisterPage: React.FC = () => {
         firstName: formData.firstName,
         lastName: formData.lastName,
         type: formData.type,
-        studentGroup: formData.type === 'STUDENT' ? formData.studentGroup : undefined
       });
     } catch (err: any) {
       if (err.code === 'EMAIL_EXISTS' || err.message?.includes('existe déjà')) {
@@ -205,47 +184,26 @@ const RegisterPage: React.FC = () => {
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {ACCOUNT_TYPES.map(({ value, label, icon: Icon }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, type: value, studentGroup: value !== 'STUDENT' ? '' : prev.studentGroup }))}
-                    className={`p-3 rounded-xl border transition-all flex flex-col items-center gap-1.5 ${
-                      formData.type === value
-                        ? 'bg-accent-mint/10 border-accent-mint text-accent-mint'
-                        : 'bg-dark-bg border-gray-700 text-gray-400 hover:border-gray-600'
-                    }`}
-                  >
-                    <Icon size={20} />
-                    <span className="text-xs font-semibold">{label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
+                                  <button
+                                    key={value}
+                                    type="button"
+                                    onClick={() => setFormData(prev => ({ ...prev, type: value }))}
+                                    className={`p-3 rounded-xl border transition-all flex flex-col items-center gap-1.5 ${
+                                      formData.type === value
+                                        ? 'bg-accent-mint/10 border-accent-mint text-accent-mint'
+                                        : 'bg-dark-bg border-gray-700 text-gray-400 hover:border-gray-600'
+                                    }`}
+                                  >
+                                    <Icon size={20} />
+                                    <span className="text-xs font-semibold">{label}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
 
-            {/* Student group */}
-            {formData.type === 'STUDENT' && (
-              <div>
-                <label className="block text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wide">
-                  Groupe TP
-                </label>
-                <div className="grid grid-cols-4 gap-2">
-                  {STUDENT_GROUPS.map(({ value, label }) => (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, studentGroup: value }))}
-                      className={`py-2.5 px-3 rounded-xl border font-bold text-sm transition-all ${
-                        formData.studentGroup === value
-                          ? 'bg-accent-mint text-darker-bg border-accent-mint'
-                          : 'bg-dark-bg border-gray-700 text-gray-400 hover:border-gray-600 hover:text-white'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+
+
+
 
             {/* Legal notice */}
             <p className="text-xs text-gray-500 text-center mt-4">
