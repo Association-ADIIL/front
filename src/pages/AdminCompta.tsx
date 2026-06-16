@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   TrendingUp, TrendingDown, ShoppingCart, Euro,
   Plus, Trash2, Pencil, X, Check, ChevronLeft, ChevronRight,
-  BarChart3, Package, RefreshCw, AlertCircle, Loader2,
+  BarChart3, Package, RefreshCw, AlertCircle, Loader2, Settings,
+  Boxes,
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip,
@@ -44,6 +45,7 @@ interface AchatFournisseur {
   id: number;
   date: string;
   fournisseur: string;
+  fournisseurCategorie?: string | null;
   montant: number;
   categorie: string;
   createdAt: string;
@@ -61,15 +63,34 @@ interface ProductOption {
   active: boolean;
 }
 
-type AchatCategorie = 'STOCK' | 'MATERIEL' | 'EMBALLAGE' | 'FRAIS_FIXES' | 'AUTRE';
+interface CategorieOption {
+  value: string;
+  label: string;
+}
+interface StockItem {
+  productId: number;
+  name: string;
+  categorie: string | null;
+  costPrice: number;
+  stockActuel: number;
+  ventes: number;
+  achats: number;
+  valeur: number;
+}
 
-const CATEGORIES: { value: AchatCategorie; label: string }[] = [
-  { value: 'STOCK', label: 'Réapprovisionnement stock' },
-  { value: 'MATERIEL', label: 'Matériel' },
-  { value: 'EMBALLAGE', label: 'Emballage' },
-  { value: 'FRAIS_FIXES', label: 'Frais fixes' },
-  { value: 'AUTRE', label: 'Autre' },
-];
+interface StockKPIs {
+  valeurTotale: number;
+  nbRupture: number;
+  nbFaible: number;
+  nbProduits: number;
+}
+
+interface StockData {
+  items: StockItem[];
+  kpis: StockKPIs;
+}
+
+// ─── Couleurs ─────────────────────────────────────────────────────────────────
 
 const CAT_COLORS: Record<string, string> = {
   STOCK: '#1D9E75',
@@ -78,6 +99,21 @@ const CAT_COLORS: Record<string, string> = {
   FRAIS_FIXES: '#D4537E',
   AUTRE: '#888780',
 };
+
+const PALETTE = ['#1D9E75', '#378ADD', '#EF9F27', '#D4537E', '#8B5CF6', '#06B6D4', '#F43F5E', '#84CC16', '#F59E0B', '#888780'];
+
+function hashString(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+function getCategorieColor(value: string): string {
+  return CAT_COLORS[value] ?? PALETTE[hashString(value) % PALETTE.length];
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -120,8 +156,8 @@ interface KpiCardProps {
   value: string;
   sub?: string;
   icon: React.ReactNode;
-  positive?: boolean | null; // null = neutral
-  color: string; // tailwind bg class
+  positive?: boolean | null;
+  color: string;
 }
 
 function KpiCard({ label, value, sub, icon, positive, color }: KpiCardProps) {
@@ -155,21 +191,26 @@ interface AchatModalProps {
   initial?: AchatFournisseur | null;
   defaultDate: string;
   products: ProductOption[];
+  achatCategories: CategorieOption[];
+  fournisseurCategories: CategorieOption[];
   onClose: () => void;
   onSave: (data: {
     date: string;
     fournisseur: string;
-    categorie: AchatCategorie;
+    categorie: string;
+    fournisseurCategorie: string | null;
     items: { productId: number; quantite: number; prixUnitaire: number }[];
   }) => Promise<void>;
 }
 
 interface FormItem {
-  uid: string; // clé locale pour le rendu
+  uid: string;
   productId: number | null;
-  productName: string; // texte affiché dans le champ recherche
+  productName: string;
   quantite: string;
   prixUnitaire: string;
+  nbParPaquet: string;   // ← nouveau
+  prixPaquet: string;
   showSuggestions: boolean;
 }
 
@@ -177,22 +218,27 @@ function makeUid() {
   return Math.random().toString(36).slice(2);
 }
 
-function AchatModal({ initial, defaultDate, products, onClose, onSave }: AchatModalProps) {
+function AchatModal({ initial, defaultDate, products, achatCategories, fournisseurCategories, onClose, onSave }: AchatModalProps) {
   const [date, setDate] = useState(initial ? initial.date.split('T')[0] : defaultDate);
-  const [fournisseur, setFournisseur] = useState(initial?.fournisseur ?? '');
-  const [categorie, setCategorie] = useState<AchatCategorie>((initial?.categorie ?? 'STOCK') as AchatCategorie);
+  const [categorie, setCategorie] = useState<string>(
+    initial?.categorie ?? ''
+  );
+  const [fournisseurCategorie, setFournisseurCategorie] = useState<string>(
+    initial?.fournisseurCategorie ?? ''
+  );
   const [items, setItems] = useState<FormItem[]>(() => {
     if (initial && initial.items.length > 0) {
       return initial.items.map((i) => ({
-        uid: makeUid(),
-        productId: i.product.id,
-        productName: i.product.name,
-        quantite: String(i.quantite),
-        prixUnitaire: String(i.prixUnitaire),
-        showSuggestions: false,
+      uid: makeUid(),
+      productId: i.product.id,
+      productName: i.product.name,
+      quantite: String(i.quantite),
+      nbParPaquet: '1',
+      prixPaquet: String(i.prixUnitaire), // approximation à l'édition
+      showSuggestions: false,
       }));
     }
-    return [{ uid: makeUid(), productId: null, productName: '', quantite: '1', prixUnitaire: '', showSuggestions: false }];
+    return [{ uid: makeUid(), productId: null, productName: '', quantite: '', nbParPaquet: '', prixPaquet: '', showSuggestions: false }];
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -205,7 +251,7 @@ function AchatModal({ initial, defaultDate, products, onClose, onSave }: AchatMo
   }
 
   function addItem() {
-    setItems((arr) => [...arr, { uid: makeUid(), productId: null, productName: '', quantite: '1', prixUnitaire: '', showSuggestions: false }]);
+    setItems((arr) => [...arr, { uid: makeUid(), productId: null, productName: '', quantite: '', nbParPaquet: '', prixPaquet: '', showSuggestions: false }]);
   }
 
   function removeItem(uid: string) {
@@ -218,13 +264,15 @@ function AchatModal({ initial, defaultDate, products, onClose, onSave }: AchatMo
 
   const total = items.reduce((s, it) => {
     const q = parseFloat(it.quantite) || 0;
-    const p = parseFloat(it.prixUnitaire) || 0;
-    return s + q * p;
+    const n = parseFloat(it.nbParPaquet) || 1;
+    const pp = parseFloat(it.prixPaquet) || 0;
+    const prixUnitaire = n > 0 ? pp / n : 0;
+    return s + q * prixUnitaire;
   }, 0);
 
   async function handleSubmit() {
-    if (!date || !fournisseur.trim()) {
-      setError('Date et fournisseur sont obligatoires.');
+    if (!date ) {
+      setError('Date obligatoire.');
       return;
     }
     if (items.length === 0) {
@@ -237,13 +285,18 @@ function AchatModal({ initial, defaultDate, products, onClose, onSave }: AchatMo
         return;
       }
       const q = parseFloat(it.quantite);
-      const p = parseFloat(it.prixUnitaire);
+      const n = parseFloat(it.nbParPaquet);
+      const pp = parseFloat(it.prixPaquet);
       if (isNaN(q) || q <= 0) {
         setError('Quantité invalide sur une ligne.');
         return;
       }
-      if (isNaN(p) || p < 0) {
-        setError('Prix unitaire invalide sur une ligne.');
+      if (isNaN(n) || n <= 0) {
+        setError('Nb par paquet invalide sur une ligne.');
+        return;
+      }
+      if (isNaN(pp) || pp < 0) {
+        setError('Prix paquet invalide sur une ligne.');
         return;
       }
     }
@@ -252,12 +305,13 @@ function AchatModal({ initial, defaultDate, products, onClose, onSave }: AchatMo
     try {
       await onSave({
         date,
-        fournisseur: fournisseur.trim(),
+        fournisseur: '',
         categorie,
+        fournisseurCategorie: fournisseurCategorie || null,
         items: items.map((it) => ({
           productId: it.productId as number,
           quantite: parseFloat(it.quantite),
-          prixUnitaire: parseFloat(it.prixUnitaire),
+          prixUnitaire: parseFloat(it.prixPaquet) / (parseFloat(it.nbParPaquet) || 1),
         })),
       });
       onClose();
@@ -273,7 +327,7 @@ function AchatModal({ initial, defaultDate, products, onClose, onSave }: AchatMo
       <div className="bg-darker-bg border border-gray-800 rounded-2xl w-full max-w-xl mx-4 shadow-2xl max-h-[90vh] overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-700">
         <div className="flex items-center justify-between p-5 border-b border-gray-800">
           <h3 className="font-semibold text-white">
-            {initial ? 'Modifier un achat' : 'Saisir un achat fournisseur'}
+            {initial ? 'Modifier un achat' : 'Saisir un achat'}
           </h3>
           <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
             <X size={18} />
@@ -287,22 +341,26 @@ function AchatModal({ initial, defaultDate, products, onClose, onSave }: AchatMo
               <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputCls} />
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Catégorie</label>
-              <select value={categorie} onChange={(e) => setCategorie(e.target.value as AchatCategorie)} className={inputCls}>
-                {CATEGORIES.map((c) => (
+              <label className="text-xs text-gray-500 mb-1 block">Catégorie d'achat</label>
+              <select value={categorie} onChange={(e) => setCategorie(e.target.value)} className={inputCls}>
+                <option value="">Aucune</option>
+                {achatCategories.map((c) => (
                   <option key={c.value} value={c.value}>{c.label}</option>
                 ))}
               </select>
             </div>
           </div>
 
-          <div>
-            <label className="text-xs text-gray-500 mb-1 block">Fournisseur</label>
-            <input
-              type="text" placeholder="ex: Metro, Costco…"
-              value={fournisseur} onChange={(e) => setFournisseur(e.target.value)}
-              className={inputCls}
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Catégorie Magasin</label>
+              <select value={fournisseurCategorie} onChange={(e) => setFournisseurCategorie(e.target.value)} className={inputCls}>
+                <option value="">Aucune</option>
+                {fournisseurCategories.map((c) => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Liste des articles */}
@@ -318,7 +376,6 @@ function AchatModal({ initial, defaultDate, products, onClose, onSave }: AchatMo
 
               return (
                 <div key={it.uid} className="flex gap-2 items-start">
-                  {/* Produit (autocomplétion) */}
                   <div className="relative flex-1 min-w-[180px]">
                     <input
                       type="text"
@@ -345,7 +402,6 @@ function AchatModal({ initial, defaultDate, products, onClose, onSave }: AchatMo
                     )}
                   </div>
 
-                  {/* Quantité */}
                   <input
                     type="number" min="1" step="1" placeholder="Qté"
                     value={it.quantite}
@@ -353,15 +409,18 @@ function AchatModal({ initial, defaultDate, products, onClose, onSave }: AchatMo
                     className={`${inputCls} w-20`}
                   />
 
-                  {/* Prix unitaire */}
                   <input
-                    type="number" min="0" step="0.01" placeholder="Prix u."
-                    value={it.prixUnitaire}
-                    onChange={(e) => updateItem(it.uid, { prixUnitaire: e.target.value })}
-                    className={`${inputCls} w-24`}
+                    type="number" min="1" step="1" placeholder="/ paquet"
+                    value={it.nbParPaquet}
+                    onChange={(e) => updateItem(it.uid, { nbParPaquet: e.target.value })}
+                    className={`${inputCls} w-20`}
                   />
-
-                  {/* Supprimer */}
+                  <input
+                    type="number" min="0" step="0.01" placeholder="Prix paquet"
+                    value={it.prixPaquet}
+                    onChange={(e) => updateItem(it.uid, { prixPaquet: e.target.value })}
+                    className={`${inputCls} w-28`}
+                  />
                   <button
                     type="button"
                     onClick={() => removeItem(it.uid)}
@@ -383,7 +442,6 @@ function AchatModal({ initial, defaultDate, products, onClose, onSave }: AchatMo
             </button>
           </div>
 
-          {/* Total */}
           <div className="flex justify-between items-center pt-2 border-t border-gray-800">
             <span className="text-sm text-gray-400">Total</span>
             <span className="text-lg font-semibold text-white">{eur(total)}</span>
@@ -422,11 +480,13 @@ export default function ComptabilitePage() {
     const [dashboard, setDashboard] = useState<DashboardData | null>(null);
     const [achats, setAchats] = useState<AchatFournisseur[]>([]);
     const [products, setProducts] = useState<ProductOption[]>([]);
+    const [achatCategories, setAchatCategories] = useState<CategorieOption[]>([]);
+    const [fournisseurCategories, setFournisseurCategories] = useState<CategorieOption[]>([]);
+    const [stockData, setStockData] = useState<StockData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [tab, setTab] = useState<'dashboard' | 'achats'>('dashboard');
+    const [tab, setTab] = useState<'dashboard' | 'achats' | 'stock' | 'parametres'>('dashboard');
 
-    // Modal state
     const [modalOpen, setModalOpen] = useState(false);
     const [editTarget, setEditTarget] = useState<AchatFournisseur | null>(null);
     const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -454,9 +514,37 @@ export default function ComptabilitePage() {
       }
     }, [periode.debut, periode.fin]);
 
-    useEffect(() => { load(); }, [load]);
+    const loadCategories = useCallback(async () => {
+      try {
+        const data = await fetchJson<{ achatCategories: CategorieOption[]; fournisseurCategories: CategorieOption[] }>(
+          '/admin/comptabilite/categories'
+        );
+        setAchatCategories(data.achatCategories);
+        setFournisseurCategories(data.fournisseurCategories);
+      } catch {
+        setAchatCategories([]);
+        setFournisseurCategories([]);
+      }
+    }, []);
 
-    // Charge la liste des produits une seule fois (pour l'autocomplétion)
+    const loadStock = useCallback(async () => {
+      const [y, m] = [
+        parseInt(periode.debut.split('-')[0]),
+        parseInt(periode.debut.split('-')[1]),
+      ];
+      try {
+        const data = await fetchJson<StockData>(`/admin/stock?mois=${m}&annee=${y}`);
+        setStockData(data);
+      } catch {
+        setStockData(null);
+      }
+    }, [periode.debut]);
+
+    useEffect(() => { loadStock(); }, [loadStock]);
+
+    useEffect(() => { load(); }, [load]);
+    useEffect(() => { loadCategories(); }, [loadCategories]);
+
     useEffect(() => {
       fetchJson<ProductOption[]>('/products')
         .then(setProducts)
@@ -468,7 +556,8 @@ export default function ComptabilitePage() {
     async function handleSaveAchat(data: {
       date: string;
       fournisseur: string;
-      categorie: AchatCategorie;
+      categorie: string;
+      fournisseurCategorie: string | null;
       items: { productId: number; quantite: number; prixUnitaire: number }[];
     }) {
       if (editTarget) {
@@ -507,7 +596,6 @@ export default function ComptabilitePage() {
           <p className="text-sm text-gray-500 mt-0.5">Suivi financier de la supérette</p>
         </div>
 
-        {/* Sélecteur de mois */}
         <div className="flex items-center gap-2 bg-dark-bg/60 border border-gray-800 rounded-xl px-3 py-2">
           <button
             onClick={() => setMonthOffset((o) => o - 1)}
@@ -544,17 +632,24 @@ export default function ComptabilitePage() {
 
       {/* Tabs */}
       <div className="flex gap-1 bg-dark-bg/60 border border-gray-800 rounded-xl p-1 w-fit">
-        {([['dashboard', 'Vue d\'ensemble'], ['achats', 'Achats fournisseurs']] as const).map(
+        {([
+          ['dashboard', 'Vue d\'ensemble'],
+          ['achats', 'Achats'],
+          ['stock', 'Stock'],
+          ['parametres', 'Paramètres'],
+        ] as const).map(
           ([key, label]) => (
             <button
               key={key}
               onClick={() => setTab(key)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
                 tab === key
                   ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                   : 'text-gray-500 hover:text-white'
               }`}
             >
+              {key === 'parametres'}
+              {key === 'stock'}
               {label}
             </button>
           )
@@ -566,15 +661,29 @@ export default function ComptabilitePage() {
           <Loader2 size={28} className="animate-spin text-emerald-400" />
         </div>
       ) : tab === 'dashboard' ? (
-        <DashboardTab dashboard={dashboard} />
-      ) : (
+        <DashboardTab dashboard={dashboard} achatCategories={achatCategories} />
+      ) : tab === 'achats' ? (
         <AchatsTab
           achats={achats}
           deletingId={deletingId}
-          defaultDate={periode.fin}
+          default={periode.fin}
+          achatCategories={achatCategories}
           onAdd={() => { setEditTarget(null); setModalOpen(true); }}
           onEdit={(a) => { setEditTarget(a); setModalOpen(true); }}
           onDelete={handleDelete}
+        />
+      ) : tab === 'stock' ? (
+        <StockTab
+          data={stockData}
+          mois={parseInt(periode.debut.split('-')[1])}
+          annee={parseInt(periode.debut.split('-')[0])}
+          onReload={loadStock}
+        />
+      ) : (
+        <ParametresTab
+          achatCategories={achatCategories}
+          fournisseurCategories={fournisseurCategories}
+          onReload={loadCategories}
         />
       )}
 
@@ -583,6 +692,8 @@ export default function ComptabilitePage() {
                 initial={editTarget}
                 defaultDate={periode.debut}
                 products={products}
+                achatCategories={achatCategories}
+                fournisseurCategories={fournisseurCategories}
                 onClose={() => { setModalOpen(false); setEditTarget(null); }}
                 onSave={handleSaveAchat}
               />
@@ -593,7 +704,7 @@ export default function ComptabilitePage() {
 
 // ─── Dashboard tab ────────────────────────────────────────────────────────────
 
-function DashboardTab({ dashboard }: { dashboard: DashboardData | null }) {
+function DashboardTab({ dashboard, achatCategories }: { dashboard: DashboardData | null; achatCategories: CategorieOption[] }) {
   if (!dashboard) return null;
   const { kpis, evolution, topProduits, achatsParCategorie, repartitionPaiements } = dashboard;
 
@@ -602,7 +713,6 @@ function DashboardTab({ dashboard }: { dashboard: DashboardData | null }) {
   return (
     <div className="space-y-6">
 
-      {/* KPI Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard
           label="Chiffre d'affaires"
@@ -621,7 +731,7 @@ function DashboardTab({ dashboard }: { dashboard: DashboardData | null }) {
           positive={null}
         />
         <KpiCard
-          label="Résultat net"
+          label="Gains net"
           value={eur(kpis.resultatNet)}
           sub={resultatPositif ? 'Bénéfice' : 'Déficit'}
           icon={resultatPositif
@@ -632,7 +742,7 @@ function DashboardTab({ dashboard }: { dashboard: DashboardData | null }) {
           positive={resultatPositif}
         />
         <KpiCard
-          label="Taux de marque"
+          label="Taux de marge"
           value={pct(kpis.tauxMarque)}
           sub={`Taux de marge : ${pct(kpis.tauxMarge)}`}
           icon={<BarChart3 size={15} className="text-blue-400" />}
@@ -641,7 +751,6 @@ function DashboardTab({ dashboard }: { dashboard: DashboardData | null }) {
         />
       </div>
 
-      {/* Ligne 2 KPIs secondaires */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-dark-bg/40 border border-gray-800/60 rounded-xl p-4">
           <p className="text-xs text-gray-500 mb-1">Panier moyen</p>
@@ -661,10 +770,8 @@ function DashboardTab({ dashboard }: { dashboard: DashboardData | null }) {
         </div>
       </div>
 
-      {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
-        {/* Évolution CA */}
         <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-5">
           <p className="text-sm font-medium text-white mb-4">Évolution du CA</p>
           {evolution.length === 0 ? (
@@ -694,7 +801,6 @@ function DashboardTab({ dashboard }: { dashboard: DashboardData | null }) {
           )}
         </div>
 
-        {/* Top produits */}
         <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-5">
           <p className="text-sm font-medium text-white mb-4">Top produits par CA</p>
           {topProduits.length === 0 ? (
@@ -730,10 +836,8 @@ function DashboardTab({ dashboard }: { dashboard: DashboardData | null }) {
         </div>
       </div>
 
-      {/* Row 3 : achats par catégorie + répartition paiements */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
-        {/* Achats par catégorie */}
         <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-5">
           <p className="text-sm font-medium text-white mb-4">Dépenses par catégorie</p>
           {achatsParCategorie.length === 0 ? (
@@ -744,9 +848,9 @@ function DashboardTab({ dashboard }: { dashboard: DashboardData | null }) {
                 .sort((a, b) => b.montant - a.montant)
                 .map((item) => {
                   const total = achatsParCategorie.reduce((s, i) => s + i.montant, 0);
-                  const pct = total > 0 ? (item.montant / total) * 100 : 0;
-                  const color = CAT_COLORS[item.categorie] ?? '#888780';
-                  const label = CATEGORIES.find((c) => c.value === item.categorie)?.label ?? item.categorie;
+                  const pctVal = total > 0 ? (item.montant / total) * 100 : 0;
+                  const color = getCategorieColor(item.categorie);
+                  const label = achatCategories.find((c) => c.value === item.categorie)?.label ?? item.categorie;
                   return (
                     <div key={item.categorie}>
                       <div className="flex justify-between text-xs mb-1">
@@ -756,7 +860,7 @@ function DashboardTab({ dashboard }: { dashboard: DashboardData | null }) {
                       <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
                         <div
                           className="h-full rounded-full transition-all"
-                          style={{ width: `${pct}%`, backgroundColor: color }}
+                          style={{ width: `${pctVal}%`, backgroundColor: color }}
                         />
                       </div>
                     </div>
@@ -766,7 +870,6 @@ function DashboardTab({ dashboard }: { dashboard: DashboardData | null }) {
           )}
         </div>
 
-        {/* Répartition paiements */}
         <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-5">
           <p className="text-sm font-medium text-white mb-4">Méthodes de paiement</p>
           {repartitionPaiements.length === 0 ? (
@@ -807,17 +910,17 @@ interface AchatsTabProps {
   achats: AchatFournisseur[];
   deletingId: number | null;
   defaultDate: string;
+  achatCategories: CategorieOption[];
   onAdd: () => void;
   onEdit: (a: AchatFournisseur) => void;
   onDelete: (id: number) => void;
 }
 
-function AchatsTab({ achats, deletingId, onAdd, onEdit, onDelete }: AchatsTabProps) {
+function AchatsTab({ achats, deletingId, achatCategories, onAdd, onEdit, onDelete }: AchatsTabProps) {
   const total = achats.reduce((s, a) => s + a.montant, 0);
 
   return (
     <div className="space-y-4">
-      {/* Header row */}
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-gray-500">
@@ -833,7 +936,6 @@ function AchatsTab({ achats, deletingId, onAdd, onEdit, onDelete }: AchatsTabPro
         </button>
       </div>
 
-      {/* Table */}
       {achats.length === 0 ? (
         <div className="bg-dark-bg/40 border border-gray-800 rounded-xl py-16 text-center">
           <Package size={32} className="text-gray-700 mx-auto mb-3" />
@@ -851,17 +953,18 @@ function AchatsTab({ achats, deletingId, onAdd, onEdit, onDelete }: AchatsTabPro
             <thead>
               <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
                 <th className="text-left px-4 py-3 font-medium">Date</th>
-                <th className="text-left px-4 py-3 font-medium">Fournisseur</th>
-                <th className="text-left px-4 py-3 font-medium hidden md:table-cell">Description</th>
                 <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">Catégorie</th>
+                <th className="text-left px-4 py-3 font-medium hidden md:table-cell">Articles</th>
+                <th className="text-right px-4 py-3 font-medium hidden lg:table-cell">Prix unitaire</th>
+                <th className="text-right px-4 py-3 font-medium hidden lg:table-cell">Total articles</th>
                 <th className="text-right px-4 py-3 font-medium">Montant</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody>
               {achats.map((a, i) => {
-                const color = CAT_COLORS[a.categorie] ?? '#888780';
-                const label = CATEGORIES.find((c) => c.value === a.categorie)?.label ?? a.categorie;
+                const color = getCategorieColor(a.categorie);
+                const label = achatCategories.find((c) => c.value === a.categorie)?.label ?? a.categorie;
                 return (
                     <tr
                     key={a.id}
@@ -871,10 +974,6 @@ function AchatsTab({ achats, deletingId, onAdd, onEdit, onDelete }: AchatsTabPro
                     <td className="px-4 py-3 text-gray-400 whitespace-nowrap">
                     {shortDate(a.date)}
                     </td>
-                    <td className="px-4 py-3 text-white font-medium">{a.fournisseur}</td>
-                    <td className="px-4 py-3 text-gray-400 hidden md:table-cell">
-                    {a.items.map((it) => `${it.product.name} ×${it.quantite}`).join(', ')}
-                    </td>
                     <td className="px-4 py-3 hidden sm:table-cell">
                       <span
                         className="text-xs px-2 py-0.5 rounded-full font-medium"
@@ -882,6 +981,21 @@ function AchatsTab({ achats, deletingId, onAdd, onEdit, onDelete }: AchatsTabPro
                       >
                         {label}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-400 hidden md:table-cell">
+                      {a.items.map((it) => (
+                        <div key={it.id}>{it.product.name} ×{it.quantite}</div>
+                      ))}
+                    </td>
+                    <td className="px-4 py-3 text-right hidden lg:table-cell">
+                      {a.items.map((it) => (
+                        <div key={it.id} className="text-gray-400">{eur(it.prixUnitaire)}</div>
+                      ))}
+                    </td>
+                    <td className="px-4 py-3 text-right hidden lg:table-cell">
+                      {a.items.map((it) => (
+                        <div key={it.id} className="text-white/70">{eur(it.prixUnitaire * it.quantite)}</div>
+                      ))}
                     </td>
                     <td className="px-4 py-3 text-right text-white font-semibold whitespace-nowrap">
                       {eur(a.montant)}
@@ -912,13 +1026,377 @@ function AchatsTab({ achats, deletingId, onAdd, onEdit, onDelete }: AchatsTabPro
             </tbody>
             <tfoot>
               <tr className="border-t border-gray-800 bg-dark-bg/40">
-                <td colSpan={4} className="px-4 py-3 text-xs text-gray-500 uppercase tracking-wider">
+                <td colSpan={6} className="px-4 py-3 text-xs text-gray-500 uppercase tracking-wider">
                   Total période
                 </td>
                 <td className="px-4 py-3 text-right text-white font-bold">{eur(total)}</td>
                 <td />
               </tr>
             </tfoot>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Paramètres tab ───────────────────────────────────────────────────────────
+
+interface ParametresTabProps {
+  achatCategories: CategorieOption[];
+  fournisseurCategories: CategorieOption[];
+  onReload: () => Promise<void>;
+}
+
+function CategorieListEditor({
+  title,
+  categories,
+  onAdd,
+  onRemove,
+}: {
+  title: string;
+  categories: CategorieOption[];
+  onAdd: (label: string) => Promise<void>;
+  onRemove: (value: string) => Promise<void>;
+}) {
+  const [newLabel, setNewLabel] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [removingValue, setRemovingValue] = useState<string | null>(null);
+  const [error, setError] = useState('');
+
+  const inputCls =
+    'flex-1 bg-dark-bg border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500/60 transition-colors';
+
+  async function handleAdd() {
+    if (!newLabel.trim()) return;
+    setSaving(true);
+    setError('');
+    try {
+      await onAdd(newLabel.trim());
+      setNewLabel('');
+    } catch (e: any) {
+      setError(e.message ?? "Erreur lors de l'ajout.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleRemove(value: string) {
+    setRemovingValue(value);
+    setError('');
+    try {
+      await onRemove(value);
+    } catch (e: any) {
+      setError(e.message ?? 'Erreur lors de la suppression.');
+    } finally {
+      setRemovingValue(null);
+    }
+  }
+
+  return (
+    <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-5">
+      <p className="text-sm font-medium text-white mb-4">{title}</p>
+
+      {categories.length === 0 ? (
+        <p className="text-gray-600 text-sm mb-3">Aucune catégorie pour le moment.</p>
+      ) : (
+        <div className="space-y-2 mb-4">
+          {categories.map((c) => (
+            <div
+              key={c.value}
+              className="flex items-center justify-between bg-dark-bg/40 border border-gray-800/60 rounded-lg px-3 py-2"
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  className="w-2.5 h-2.5 rounded-full"
+                  style={{ backgroundColor: getCategorieColor(c.value) }}
+                />
+                <span className="text-sm text-gray-200">{c.label}</span>
+              </div>
+              <button
+                onClick={() => handleRemove(c.value)}
+                disabled={removingValue === c.value}
+                className="p-1.5 text-gray-600 hover:text-red-400 transition-colors rounded-lg hover:bg-red-500/10 disabled:opacity-50"
+              >
+                {removingValue === c.value
+                  ? <Loader2 size={13} className="animate-spin" />
+                  : <Trash2 size={13} />
+                }
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        <input
+          type="text"
+          placeholder="Nouvelle catégorie…"
+          value={newLabel}
+          onChange={(e) => setNewLabel(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
+          className={inputCls}
+        />
+        <button
+          onClick={handleAdd}
+          disabled={saving || !newLabel.trim()}
+          className="flex items-center gap-1 px-3 py-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-lg text-sm font-medium hover:bg-emerald-500/30 transition-colors disabled:opacity-50"
+        >
+          {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+        </button>
+      </div>
+
+      {error && (
+        <p className="text-red-400 text-xs flex items-center gap-1 mt-2">
+          <AlertCircle size={12} /> {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ParametresTab({ achatCategories, fournisseurCategories, onReload }: ParametresTabProps) {
+  async function addAchat(label: string) {
+    await fetchJson('/admin/comptabilite/categories/achat', {
+      method: 'POST',
+      body: JSON.stringify({ label }),
+    });
+    await onReload();
+  }
+
+  async function removeAchat(value: string) {
+    await fetchJson(`/admin/comptabilite/categories/achat/${encodeURIComponent(value)}`, {
+      method: 'DELETE',
+    });
+    await onReload();
+  }
+
+  async function addFournisseur(label: string) {
+    await fetchJson('/admin/comptabilite/categories/fournisseur', {
+      method: 'POST',
+      body: JSON.stringify({ label }),
+    });
+    await onReload();
+  }
+
+  async function removeFournisseur(value: string) {
+    await fetchJson(`/admin/comptabilite/categories/fournisseur/${encodeURIComponent(value)}`, {
+      method: 'DELETE',
+    });
+    await onReload();
+  }
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <CategorieListEditor
+        title="Catégories d'achat"
+        categories={achatCategories}
+        onAdd={addAchat}
+        onRemove={removeAchat}
+      />
+      <CategorieListEditor
+        title="Catégories de fournisseur"
+        categories={fournisseurCategories}
+        onAdd={addFournisseur}
+        onRemove={removeFournisseur}
+      />
+    </div>
+  );
+}
+
+// ─── Helpers stock ────────────────────────────────────────────────────────────
+
+function stockBadge(stock: number) {
+  if (stock === 0) return { label: 'Rupture', color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/30' };
+  if (stock <= 3) return { label: 'Faible', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/30' };
+  return { label: 'OK', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/30' };
+}
+
+// ─── Stock tab ────────────────────────────────────────────────────────────────
+
+interface StockTabProps {
+  data: StockData | null;
+  mois: number;
+  annee: number;
+  onReload: () => Promise<void>;
+}
+
+function StockTab({ data, mois, annee, onReload }: StockTabProps) {
+  const [search, setSearch] = useState('');
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [savingId, setSavingId] = useState<number | null>(null);
+
+  async function stepStock(productId: number, newVal: number) {
+    setSavingId(productId);
+    try {
+      await fetchJson(`/admin/stock/${productId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ mois, annee, quantite: newVal }),
+      });
+      await onReload();
+    } finally {
+      setSavingId(null);
+    }
+  }
+
+  async function commitEdit(productId: number) {
+    const quantite = parseInt(editValue);
+    if (isNaN(quantite) || quantite < 0) { setEditingId(null); return; }
+    setSavingId(productId);
+    try {
+      await fetchJson(`/admin/stock/${productId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ mois, annee, quantite }),
+      });
+      await onReload();
+    } finally {
+      setSavingId(null);
+      setEditingId(null);
+    }
+  }
+
+  const filtered = (data?.items ?? []).filter((i) =>
+    i.name.toLowerCase().includes(search.toLowerCase()) ||
+    (i.categorie ?? '').toLowerCase().includes(search.toLowerCase())
+  );
+
+  const kpis = data?.kpis;
+
+  return (
+    <div className="space-y-4">
+
+      {kpis && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-4 flex flex-col gap-2">
+            <span className="text-xs text-gray-500 uppercase tracking-wider">Valeur stock</span>
+            <p className="text-2xl font-bold text-white">{eur(kpis.valeurTotale)}</p>
+          </div>
+          <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-4 flex flex-col gap-2">
+            <span className="text-xs text-gray-500 uppercase tracking-wider">Produits actifs</span>
+            <p className="text-2xl font-bold text-white">{kpis.nbProduits}</p>
+          </div>
+          <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-4 flex flex-col gap-2">
+            <span className="text-xs text-gray-500 uppercase tracking-wider">Stock faible</span>
+            <p className="text-2xl font-bold text-amber-400">{kpis.nbFaible}</p>
+          </div>
+          <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-4 flex flex-col gap-2">
+            <span className="text-xs text-gray-500 uppercase tracking-wider">Rupture</span>
+            <p className="text-2xl font-bold text-red-400">{kpis.nbRupture}</p>
+          </div>
+        </div>
+      )}
+
+      <input
+        type="text"
+        placeholder="Rechercher un produit ou une catégorie…"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="w-full max-w-sm bg-dark-bg/60 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500/60 transition-colors"
+      />
+
+      {!data ? (
+        <div className="flex items-center justify-center py-24">
+          <Loader2 size={28} className="animate-spin text-emerald-400" />
+        </div>
+      ) : (
+        <div className="bg-dark-bg/60 border border-gray-800 rounded-xl overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
+                <th className="text-left px-4 py-3 font-medium">Produit</th>
+                <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">Catégorie</th>
+                <th className="text-center px-4 py-3 font-medium">Stock</th>
+                <th className="text-center px-4 py-3 font-medium hidden md:table-cell">Ventes mois</th>
+                <th className="text-center px-4 py-3 font-medium hidden md:table-cell">Achats mois</th>
+                <th className="text-right px-4 py-3 font-medium hidden lg:table-cell">Prix achat</th>
+                <th className="text-right px-4 py-3 font-medium">Valeur</th>
+                <th className="text-center px-4 py-3 font-medium hidden sm:table-cell">État</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-16 text-center text-gray-600">
+                    Aucun produit trouvé.
+                  </td>
+                </tr>
+              ) : filtered.map((item, i) => {
+                const badge = stockBadge(item.stockActuel);
+                const isSaving = savingId === item.productId;
+                const isEditing = editingId === item.productId;
+                return (
+                  <tr
+                    key={item.productId}
+                    className={`border-b border-gray-800/50 hover:bg-white/[0.02] transition-colors ${
+                      i === filtered.length - 1 ? 'border-b-0' : ''
+                    }`}
+                  >
+                    <td className="px-4 py-3 text-white font-medium">{item.name}</td>
+                    <td className="px-4 py-3 text-gray-400 hidden sm:table-cell">
+                      {item.categorie ?? '—'}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <div className="inline-flex items-center border border-gray-700 rounded-lg overflow-hidden">
+                        <button
+                          disabled={isSaving}
+                          onClick={() => stepStock(item.productId, Math.max(0, item.stockActuel - 1))}
+                          className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-40"
+                        >−</button>
+                        <input
+                          type="number"
+                          min="0"
+                          disabled={isSaving}
+                          value={isEditing ? editValue : item.stockActuel}
+                          onChange={(e) => { setEditingId(item.productId); setEditValue(e.target.value); }}
+                          onBlur={() => isEditing && commitEdit(item.productId)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') commitEdit(item.productId);
+                            if (e.key === 'Escape') setEditingId(null);
+                          }}
+                          className="w-11 h-7 bg-transparent border-x border-gray-700 text-center text-sm font-semibold text-white focus:outline-none focus:bg-white/5 disabled:opacity-40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                        <button
+                          disabled={isSaving}
+                          onClick={() => stepStock(item.productId, item.stockActuel + 1)}
+                          className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-40"
+                        >+</button>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-center text-red-400 hidden md:table-cell">
+                      {item.ventes > 0 ? `−${item.ventes}` : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-center text-emerald-400 hidden md:table-cell">
+                      {item.achats > 0 ? `+${item.achats}` : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-right text-gray-400 hidden lg:table-cell">
+                      {item.costPrice > 0 ? eur(item.costPrice) : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-right text-white font-semibold">
+                      {item.valeur > 0 ? eur(item.valeur) : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-center hidden sm:table-cell">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium border ${badge.bg} ${badge.color}`}>
+                        {badge.label}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            {data && (
+              <tfoot>
+                <tr className="border-t border-gray-800 bg-dark-bg/40">
+                  <td colSpan={6} className="px-4 py-3 text-xs text-gray-500 uppercase tracking-wider">
+                    Valeur totale
+                  </td>
+                  <td className="px-4 py-3 text-right text-white font-bold">
+                    {eur(data.kpis.valeurTotale)}
+                  </td>
+                  <td />
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
       )}
