@@ -2,9 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   TrendingUp, TrendingDown, ShoppingCart, Euro,
   Plus, Trash2, Pencil, X, Check, ChevronLeft, ChevronRight,
-  BarChart3, Package, RefreshCw, AlertCircle, Loader2, Settings,
-
-} from 'lucide-react';
+  BarChart3, Package, RefreshCw, AlertCircle, Loader2,} from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip,
   ResponsiveContainer, Cell,
