@@ -3,7 +3,7 @@ import {
   TrendingUp, TrendingDown, ShoppingCart, Euro,
   Plus, Trash2, Pencil, X, Check, ChevronLeft, ChevronRight,
   BarChart3, Package, RefreshCw, AlertCircle, Loader2, Settings,
-  Boxes,
+
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip,
@@ -208,7 +208,7 @@ interface FormItem {
   productId: number | null;
   productName: string;
   quantite: string;
-  prixUnitaire: string;
+
   nbParPaquet: string;   // ← nouveau
   prixPaquet: string;
   showSuggestions: boolean;
@@ -666,7 +666,7 @@ export default function ComptabilitePage() {
         <AchatsTab
           achats={achats}
           deletingId={deletingId}
-          default={periode.fin}
+          defaultDate={periode.fin}
           achatCategories={achatCategories}
           onAdd={() => { setEditTarget(null); setModalOpen(true); }}
           onEdit={(a) => { setEditTarget(a); setModalOpen(true); }}
@@ -913,7 +913,7 @@ interface AchatsTabProps {
   achatCategories: CategorieOption[];
   onAdd: () => void;
   onEdit: (a: AchatFournisseur) => void;
-  onDelete: (id: number) => void;
+  onDelete: (id: number) => Promise<void>;
 }
 
 function AchatsTab({ achats, deletingId, achatCategories, onAdd, onEdit, onDelete }: AchatsTabProps) {
