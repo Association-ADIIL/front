@@ -65,11 +65,13 @@ interface CategorieOption {
   value: string;
   label: string;
 }
+
 interface StockItem {
   productId: number;
   name: string;
   categorie: string | null;
   costPrice: number;
+  stockDebut: number;
   stockActuel: number;
   ventes: number;
   achats: number;
@@ -133,6 +135,12 @@ function getMonthRange(offset = 0) {
     fin: fmt(last),
     label: first.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }),
   };
+}
+
+
+function isMonthPast(mois: number, annee: number): boolean {
+  const now = new Date();
+  return annee < now.getFullYear() || (annee === now.getFullYear() && mois < now.getMonth() + 1);
 }
 
 function shortDate(iso: string) {
@@ -206,8 +214,7 @@ interface FormItem {
   productId: number | null;
   productName: string;
   quantite: string;
-
-  nbParPaquet: string;   // ← nouveau
+  nbParPaquet: string;
   prixPaquet: string;
   showSuggestions: boolean;
 }
@@ -218,22 +225,18 @@ function makeUid() {
 
 function AchatModal({ initial, defaultDate, products, achatCategories, fournisseurCategories, onClose, onSave }: AchatModalProps) {
   const [date, setDate] = useState(initial ? initial.date.split('T')[0] : defaultDate);
-  const [categorie, setCategorie] = useState<string>(
-    initial?.categorie ?? ''
-  );
-  const [fournisseurCategorie, setFournisseurCategorie] = useState<string>(
-    initial?.fournisseurCategorie ?? ''
-  );
+  const [categorie, setCategorie] = useState<string>(initial?.categorie ?? '');
+  const [fournisseurCategorie, setFournisseurCategorie] = useState<string>(initial?.fournisseurCategorie ?? '');
   const [items, setItems] = useState<FormItem[]>(() => {
     if (initial && initial.items.length > 0) {
       return initial.items.map((i) => ({
-      uid: makeUid(),
-      productId: i.product.id,
-      productName: i.product.name,
-      quantite: String(i.quantite),
-      nbParPaquet: '1',
-      prixPaquet: String(i.prixUnitaire), // approximation à l'édition
-      showSuggestions: false,
+        uid: makeUid(),
+        productId: i.product.id,
+        productName: i.product.name,
+        quantite: String(i.quantite),
+        nbParPaquet: '1',
+        prixPaquet: String(i.prixUnitaire),
+        showSuggestions: false,
       }));
     }
     return [{ uid: makeUid(), productId: null, productName: '', quantite: '', nbParPaquet: '', prixPaquet: '', showSuggestions: false }];
@@ -269,36 +272,17 @@ function AchatModal({ initial, defaultDate, products, achatCategories, fournisse
   }, 0);
 
   async function handleSubmit() {
-    if (!date ) {
-      setError('Date obligatoire.');
-      return;
-    }
-    if (items.length === 0) {
-      setError('Ajoute au moins un article.');
-      return;
-    }
+    if (!date) { setError('Date obligatoire.'); return; }
+    if (items.length === 0) { setError('Ajoute au moins un article.'); return; }
     for (const it of items) {
-      if (!it.productId) {
-        setError('Sélectionne un produit pour chaque ligne.');
-        return;
-      }
+      if (!it.productId) { setError('Sélectionne un produit pour chaque ligne.'); return; }
       const q = parseFloat(it.quantite);
       const n = parseFloat(it.nbParPaquet);
       const pp = parseFloat(it.prixPaquet);
-      if (isNaN(q) || q <= 0) {
-        setError('Quantité invalide sur une ligne.');
-        return;
-      }
-      if (isNaN(n) || n <= 0) {
-        setError('Nb par paquet invalide sur une ligne.');
-        return;
-      }
-      if (isNaN(pp) || pp < 0) {
-        setError('Prix paquet invalide sur une ligne.');
-        return;
-      }
+      if (isNaN(q) || q <= 0) { setError('Quantité invalide sur une ligne.'); return; }
+      if (isNaN(n) || n <= 0) { setError('Nb par paquet invalide sur une ligne.'); return; }
+      if (isNaN(pp) || pp < 0) { setError('Prix paquet invalide sur une ligne.'); return; }
     }
-
     setSaving(true);
     try {
       await onSave({
@@ -361,17 +345,14 @@ function AchatModal({ initial, defaultDate, products, achatCategories, fournisse
             </div>
           </div>
 
-          {/* Liste des articles */}
           <div className="space-y-2">
             <label className="text-xs text-gray-500 block">Articles</label>
-
             {items.map((it) => {
               const suggestions = it.productName.trim().length > 0
                 ? products.filter((p) =>
                     p.active && p.name.toLowerCase().includes(it.productName.toLowerCase())
                   ).slice(0, 6)
                 : [];
-
               return (
                 <div key={it.uid} className="flex gap-2 items-start">
                   <div className="relative flex-1 min-w-[180px]">
@@ -399,14 +380,12 @@ function AchatModal({ initial, defaultDate, products, achatCategories, fournisse
                       </div>
                     )}
                   </div>
-
                   <input
                     type="number" min="1" step="1" placeholder="Qté"
                     value={it.quantite}
                     onChange={(e) => updateItem(it.uid, { quantite: e.target.value })}
                     className={`${inputCls} w-20`}
                   />
-
                   <input
                     type="number" min="1" step="1" placeholder="/ paquet"
                     value={it.nbParPaquet}
@@ -430,7 +409,6 @@ function AchatModal({ initial, defaultDate, products, achatCategories, fournisse
                 </div>
               );
             })}
-
             <button
               type="button"
               onClick={addItem}
@@ -472,105 +450,99 @@ function AchatModal({ initial, defaultDate, products, achatCategories, fournisse
 // ─── Page principale ──────────────────────────────────────────────────────────
 
 export default function ComptabilitePage() {
-    const [monthOffset, setMonthOffset] = useState(0);
-    const periode = getMonthRange(monthOffset);
+  const [monthOffset, setMonthOffset] = useState(0);
+  const periode = getMonthRange(monthOffset);
 
-    const [dashboard, setDashboard] = useState<DashboardData | null>(null);
-    const [achats, setAchats] = useState<AchatFournisseur[]>([]);
-    const [products, setProducts] = useState<ProductOption[]>([]);
-    const [achatCategories, setAchatCategories] = useState<CategorieOption[]>([]);
-    const [fournisseurCategories, setFournisseurCategories] = useState<CategorieOption[]>([]);
-    const [stockData, setStockData] = useState<StockData | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
-    const [tab, setTab] = useState<'dashboard' | 'achats' | 'stock' | 'parametres'>('dashboard');
+  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
+  const [achats, setAchats] = useState<AchatFournisseur[]>([]);
+  const [products, setProducts] = useState<ProductOption[]>([]);
+  const [achatCategories, setAchatCategories] = useState<CategorieOption[]>([]);
+  const [fournisseurCategories, setFournisseurCategories] = useState<CategorieOption[]>([]);
+  const [stockData, setStockData] = useState<StockData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [tab, setTab] = useState<'dashboard' | 'achats' | 'stock' | 'parametres'>('dashboard');
 
-    const [modalOpen, setModalOpen] = useState(false);
-    const [editTarget, setEditTarget] = useState<AchatFournisseur | null>(null);
-    const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<AchatFournisseur | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
-    // ── Data fetching ────────────────────────────────────────────────────────────
-
-    const load = useCallback(async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const [dash, ach] = await Promise.all([
-          fetchJson<DashboardData>(
-            `/admin/comptabilite/dashboard?debut=${periode.debut}&fin=${periode.fin}`
-          ),
-          fetchJson<AchatFournisseur[]>(
-            `/admin/comptabilite/achats?debut=${periode.debut}&fin=${periode.fin}`
-          ),
-        ]);
-        setDashboard(dash);
-        setAchats(ach);
-      } catch (e: any) {
-        setError(e.message ?? 'Impossible de charger les données.');
-      } finally {
-        setLoading(false);
-      }
-    }, [periode.debut, periode.fin]);
-
-    const loadCategories = useCallback(async () => {
-      try {
-        const data = await fetchJson<{ achatCategories: CategorieOption[]; fournisseurCategories: CategorieOption[] }>(
-          '/admin/comptabilite/categories'
-        );
-        setAchatCategories(data.achatCategories);
-        setFournisseurCategories(data.fournisseurCategories);
-      } catch {
-        setAchatCategories([]);
-        setFournisseurCategories([]);
-      }
-    }, []);
-
-    const loadStock = useCallback(async () => {
-      const [y, m] = [
-        parseInt(periode.debut.split('-')[0]),
-        parseInt(periode.debut.split('-')[1]),
-      ];
-      try {
-        const data = await fetchJson<StockData>(`/admin/stock?mois=${m}&annee=${y}`);
-        setStockData(data);
-      } catch {
-        setStockData(null);
-      }
-    }, [periode.debut]);
-
-    useEffect(() => { loadStock(); }, [loadStock]);
-
-    useEffect(() => { load(); }, [load]);
-    useEffect(() => { loadCategories(); }, [loadCategories]);
-
-    useEffect(() => {
-      fetchJson<ProductOption[]>('/products')
-        .then(setProducts)
-        .catch(() => setProducts([]));
-    }, []);
-
-    // ── Actions ──────────────────────────────────────────────────────────────────
-
-    async function handleSaveAchat(data: {
-      date: string;
-      fournisseur: string;
-      categorie: string;
-      fournisseurCategorie: string | null;
-      items: { productId: number; quantite: number; prixUnitaire: number }[];
-    }) {
-      if (editTarget) {
-        await fetchJson(`/admin/comptabilite/achats/${editTarget.id}`, {
-          method: 'PUT',
-          body: JSON.stringify(data),
-        });
-      } else {
-        await fetchJson('/admin/comptabilite/achats', {
-          method: 'POST',
-          body: JSON.stringify(data),
-        });
-      }
-      await load();
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [dash, ach] = await Promise.all([
+        fetchJson<DashboardData>(
+          `/admin/comptabilite/dashboard?debut=${periode.debut}&fin=${periode.fin}`
+        ),
+        fetchJson<AchatFournisseur[]>(
+          `/admin/comptabilite/achats?debut=${periode.debut}&fin=${periode.fin}`
+        ),
+      ]);
+      setDashboard(dash);
+      setAchats(ach);
+    } catch (e: any) {
+      setError(e.message ?? 'Impossible de charger les données.');
+    } finally {
+      setLoading(false);
     }
+  }, [periode.debut, periode.fin]);
+
+  const loadCategories = useCallback(async () => {
+    try {
+      const data = await fetchJson<{ achatCategories: CategorieOption[]; fournisseurCategories: CategorieOption[] }>(
+        '/admin/comptabilite/categories'
+      );
+      setAchatCategories(data.achatCategories);
+      setFournisseurCategories(data.fournisseurCategories);
+    } catch {
+      setAchatCategories([]);
+      setFournisseurCategories([]);
+    }
+  }, []);
+
+  const loadStock = useCallback(async () => {
+    const [y, m] = [
+      parseInt(periode.debut.split('-')[0]),
+      parseInt(periode.debut.split('-')[1]),
+    ];
+    try {
+      const data = await fetchJson<StockData>(`/admin/stock?mois=${m}&annee=${y}`);
+      setStockData(data);
+    } catch {
+      setStockData(null);
+    }
+  }, [periode.debut]);
+
+  useEffect(() => { loadStock(); }, [loadStock]);
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => { loadCategories(); }, [loadCategories]);
+  useEffect(() => {
+    fetchJson<ProductOption[]>('/products')
+      .then(setProducts)
+      .catch(() => setProducts([]));
+  }, []);
+
+  async function handleSaveAchat(data: {
+    date: string;
+    fournisseur: string;
+    categorie: string;
+    fournisseurCategorie: string | null;
+    items: { productId: number; quantite: number; prixUnitaire: number }[];
+  }) {
+    if (editTarget) {
+      await fetchJson(`/admin/comptabilite/achats/${editTarget.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+    } else {
+      await fetchJson('/admin/comptabilite/achats', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    }
+    await load();
+  }
 
   async function handleDelete(id: number) {
     setDeletingId(id);
@@ -582,12 +554,10 @@ export default function ComptabilitePage() {
     }
   }
 
-  // ── Render ───────────────────────────────────────────────────────────────────
-
   return (
     <div className="space-y-6">
 
-      {/* Header */}
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Comptabilité</h1>
@@ -621,37 +591,33 @@ export default function ComptabilitePage() {
         </div>
       </div>
 
-      {/* Error */}
+
       {error && (
         <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-400 text-sm">
           <AlertCircle size={16} /> {error}
         </div>
       )}
 
-      {/* Tabs */}
+
       <div className="flex gap-1 bg-dark-bg/60 border border-gray-800 rounded-xl p-1 w-fit">
         {([
           ['dashboard', 'Vue d\'ensemble'],
           ['achats', 'Achats'],
           ['stock', 'Stock'],
           ['parametres', 'Paramètres'],
-        ] as const).map(
-          ([key, label]) => (
-            <button
-              key={key}
-              onClick={() => setTab(key)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
-                tab === key
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                  : 'text-gray-500 hover:text-white'
-              }`}
-            >
-              {key === 'parametres'}
-              {key === 'stock'}
-              {label}
-            </button>
-          )
-        )}
+        ] as const).map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => setTab(key)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
+              tab === key
+                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                : 'text-gray-500 hover:text-white'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {loading && !dashboard ? (
@@ -682,20 +648,21 @@ export default function ComptabilitePage() {
           achatCategories={achatCategories}
           fournisseurCategories={fournisseurCategories}
           onReload={loadCategories}
+          onStockReload={loadStock}
         />
       )}
 
       {modalOpen && (
-              <AchatModal
-                initial={editTarget}
-                defaultDate={periode.debut}
-                products={products}
-                achatCategories={achatCategories}
-                fournisseurCategories={fournisseurCategories}
-                onClose={() => { setModalOpen(false); setEditTarget(null); }}
-                onSave={handleSaveAchat}
-              />
-            )}
+        <AchatModal
+          initial={editTarget}
+          defaultDate={periode.debut}
+          products={products}
+          achatCategories={achatCategories}
+          fournisseurCategories={fournisseurCategories}
+          onClose={() => { setModalOpen(false); setEditTarget(null); }}
+          onSave={handleSaveAchat}
+        />
+      )}
     </div>
   );
 }
@@ -705,12 +672,10 @@ export default function ComptabilitePage() {
 function DashboardTab({ dashboard, achatCategories }: { dashboard: DashboardData | null; achatCategories: CategorieOption[] }) {
   if (!dashboard) return null;
   const { kpis, evolution, topProduits, achatsParCategorie, repartitionPaiements } = dashboard;
-
   const resultatPositif = kpis.resultatNet >= 0;
 
   return (
     <div className="space-y-6">
-
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard
           label="Chiffre d'affaires"
@@ -769,7 +734,6 @@ function DashboardTab({ dashboard, achatCategories }: { dashboard: DashboardData
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
         <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-5">
           <p className="text-sm font-medium text-white mb-4">Évolution du CA</p>
           {evolution.length === 0 ? (
@@ -804,7 +768,6 @@ function DashboardTab({ dashboard, achatCategories }: { dashboard: DashboardData
           {topProduits.length === 0 ? (
             <p className="text-gray-600 text-sm text-center py-10">Aucune vente</p>
           ) : (
-
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={topProduits} layout="vertical" margin={{ top: 0, right: 4, left: 4, bottom: 0 }}>
                 <XAxis type="number" tick={{ fill: '#6b7280', fontSize: 11 }}
@@ -835,7 +798,6 @@ function DashboardTab({ dashboard, achatCategories }: { dashboard: DashboardData
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
         <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-5">
           <p className="text-sm font-medium text-white mb-4">Dépenses par catégorie</p>
           {achatsParCategorie.length === 0 ? (
@@ -920,12 +882,10 @@ function AchatsTab({ achats, deletingId, achatCategories, onAdd, onEdit, onDelet
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-gray-500">
-            {achats.length} entrée{achats.length !== 1 ? 's' : ''} ·{' '}
-            <span className="text-white font-medium">{eur(total)}</span> total
-          </p>
-        </div>
+        <p className="text-sm text-gray-500">
+          {achats.length} entrée{achats.length !== 1 ? 's' : ''} ·{' '}
+          <span className="text-white font-medium">{eur(total)}</span> total
+        </p>
         <button
           onClick={onAdd}
           className="flex items-center gap-2 px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-xl text-sm font-medium hover:bg-emerald-500/30 transition-colors"
@@ -964,14 +924,13 @@ function AchatsTab({ achats, deletingId, achatCategories, onAdd, onEdit, onDelet
                 const color = getCategorieColor(a.categorie);
                 const label = achatCategories.find((c) => c.value === a.categorie)?.label ?? a.categorie;
                 return (
-                    <tr
+                  <tr
                     key={a.id}
                     className={`border-b border-gray-800/50 hover:bg-white/[0.02] transition-colors ${
-                        i === achats.length - 1 ? 'border-b-0' : ''
-                        }`}>
-                    <td className="px-4 py-3 text-gray-400 whitespace-nowrap">
-                    {shortDate(a.date)}
-                    </td>
+                      i === achats.length - 1 ? 'border-b-0' : ''
+                    }`}
+                  >
+                    <td className="px-4 py-3 text-gray-400 whitespace-nowrap">{shortDate(a.date)}</td>
                     <td className="px-4 py-3 hidden sm:table-cell">
                       <span
                         className="text-xs px-2 py-0.5 rounded-full font-medium"
@@ -1024,7 +983,7 @@ function AchatsTab({ achats, deletingId, achatCategories, onAdd, onEdit, onDelet
             </tbody>
             <tfoot>
               <tr className="border-t border-gray-800 bg-dark-bg/40">
-                <td colSpan={6} className="px-4 py-3 text-xs text-gray-500 uppercase tracking-wider">
+                <td colSpan={7} className="px-4 py-3 text-xs text-gray-500 uppercase tracking-wider">
                   Total période
                 </td>
                 <td className="px-4 py-3 text-right text-white font-bold">{eur(total)}</td>
@@ -1038,13 +997,268 @@ function AchatsTab({ achats, deletingId, achatCategories, onAdd, onEdit, onDelet
   );
 }
 
+// ─── Helpers stock ────────────────────────────────────────────────────────────
+
+function stockBadge(stock: number) {
+  if (stock === 0) return { label: 'Rupture', color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/30' };
+  if (stock <= 3) return { label: 'Faible', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/30' };
+  return { label: 'OK', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/30' };
+}
+
+// ─── Stock tab ────────────────────────────────────────────────────────────────
+
+interface StockTabProps {
+  data: StockData | null;
+  mois: number;
+  annee: number;
+  onReload: () => Promise<void>;
+}
+
+function StockTab({ data, mois, annee, onReload }: StockTabProps) {
+  const [search, setSearch] = useState('');
+  const [savingId, setSavingId] = useState<number | null>(null);
+  const [editingDebutId, setEditingDebutId] = useState<number | null>(null);
+  const [editDebutValue, setEditDebutValue] = useState('');
+
+  // Le mois est-il passé (terminé) ?
+  const past = isMonthPast(mois, annee);
+  const stockActuelLabel = past ? 'Stock fin mois' : 'Stock actuel';
+
+  async function commitDebut(productId: number) {
+    const quantite = parseInt(editDebutValue);
+    if (isNaN(quantite) || quantite < 0) { setEditingDebutId(null); return; }
+    setSavingId(productId);
+    try {
+      await fetchJson(`/admin/stock/${productId}/debut`, {
+        method: 'PUT',
+        body: JSON.stringify({ mois, annee, quantite }),
+      });
+      await onReload();
+    } finally {
+      setSavingId(null);
+      setEditingDebutId(null);
+    }
+  }
+
+  const filtered = (data?.items ?? []).filter((i) =>
+    i.name.toLowerCase().includes(search.toLowerCase()) ||
+    (i.categorie ?? '').toLowerCase().includes(search.toLowerCase())
+  );
+
+  const kpis = data?.kpis;
+
+  return (
+    <div className="space-y-4">
+
+      {kpis && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-4 flex flex-col gap-2">
+            <span className="text-xs text-gray-500 uppercase tracking-wider">Valeur stock</span>
+            <p className="text-2xl font-bold text-white">{eur(kpis.valeurTotale)}</p>
+          </div>
+          <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-4 flex flex-col gap-2">
+            <span className="text-xs text-gray-500 uppercase tracking-wider">Produits actifs</span>
+            <p className="text-2xl font-bold text-white">{kpis.nbProduits}</p>
+          </div>
+          <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-4 flex flex-col gap-2">
+            <span className="text-xs text-gray-500 uppercase tracking-wider">Stock faible</span>
+            <p className="text-2xl font-bold text-amber-400">{kpis.nbFaible}</p>
+          </div>
+          <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-4 flex flex-col gap-2">
+            <span className="text-xs text-gray-500 uppercase tracking-wider">Rupture</span>
+            <p className="text-2xl font-bold text-red-400">{kpis.nbRupture}</p>
+          </div>
+        </div>
+      )}
+
+      <input
+        type="text"
+        placeholder="Rechercher un produit ou une catégorie…"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="w-full max-w-sm bg-dark-bg/60 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500/60 transition-colors"
+      />
+
+      {!data ? (
+        <div className="flex items-center justify-center py-24">
+          <Loader2 size={28} className="animate-spin text-emerald-400" />
+        </div>
+      ) : (
+        <div className="bg-dark-bg/60 border border-gray-800 rounded-xl overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
+                <th className="text-left px-4 py-3 font-medium">Produit</th>
+                <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">Catégorie</th>
+                <th className="text-center px-4 py-3 font-medium hidden md:table-cell">Début mois</th>
+                <th className="text-center px-4 py-3 font-medium hidden md:table-cell">Ventes</th>
+                <th className="text-center px-4 py-3 font-medium hidden md:table-cell">Achats</th>
+                <th className="text-center px-4 py-3 font-medium">{stockActuelLabel}</th>
+                <th className="text-right px-4 py-3 font-medium hidden lg:table-cell">Prix achat</th>
+                <th className="text-right px-4 py-3 font-medium">Valeur</th>
+                <th className="text-center px-4 py-3 font-medium hidden sm:table-cell">État</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="px-4 py-16 text-center text-gray-600">
+                    Aucun produit trouvé.
+                  </td>
+                </tr>
+              ) : filtered.map((item, i) => {
+                const badge = stockBadge(item.stockActuel);
+                const isSaving = savingId === item.productId;
+
+                return (
+                  <tr
+                    key={item.productId}
+                    className={`border-b border-gray-800/50 hover:bg-white/[0.02] transition-colors ${
+                      i === filtered.length - 1 ? 'border-b-0' : ''
+                    }`}
+                  >
+                    <td className="px-4 py-3 text-white font-medium">{item.name}</td>
+                    <td className="px-4 py-3 text-gray-400 hidden sm:table-cell">
+                      {item.categorie ?? '—'}
+                    </td>
+
+
+                    <td className="px-4 py-3 text-center hidden md:table-cell">
+                      {isSaving ? (
+                        <Loader2 size={14} className="animate-spin text-emerald-400 mx-auto" />
+                      ) : (
+                        <input
+                          type="number"
+                          min="0"
+                          value={editingDebutId === item.productId ? editDebutValue : (item.stockDebut ?? 0)}
+                          onChange={(e) => { setEditingDebutId(item.productId); setEditDebutValue(e.target.value); }}
+                          onBlur={() => editingDebutId === item.productId && commitDebut(item.productId)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') commitDebut(item.productId);
+                            if (e.key === 'Escape') setEditingDebutId(null);
+                          }}
+                          className="w-16 h-7 bg-transparent border border-gray-700 rounded text-center text-sm font-semibold text-white focus:outline-none focus:border-emerald-500/60 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                      )}
+                    </td>
+
+
+                    <td className="px-4 py-3 text-center text-red-400 hidden md:table-cell">
+                      {item.ventes > 0 ? `−${item.ventes}` : '—'}
+                    </td>
+
+
+                    <td className="px-4 py-3 text-center text-emerald-400 hidden md:table-cell">
+                      {item.achats > 0 ? `+${item.achats}` : '—'}
+                    </td>
+
+
+                    <td className="px-4 py-3 text-center">
+                      <span className={`font-semibold ${past ? 'text-gray-400' : 'text-white'}`}>
+                        {item.stockActuel}
+                      </span>
+                    </td>
+
+                    <td className="px-4 py-3 text-right text-gray-400 hidden lg:table-cell">
+                      {item.costPrice > 0 ? eur(item.costPrice) : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-right text-white font-semibold">
+                      {item.valeur > 0 ? eur(item.valeur) : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-center hidden sm:table-cell">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium border ${badge.bg} ${badge.color}`}>
+                        {badge.label}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            {data && (
+              <tfoot>
+                <tr className="border-t border-gray-800 bg-dark-bg/40">
+                  <td colSpan={8} className="px-4 py-3 text-xs text-gray-500 uppercase tracking-wider">
+                    Valeur totale
+                  </td>
+                  <td className="px-4 py-3 text-right text-white font-bold">
+                    {eur(data.kpis.valeurTotale)}
+                  </td>
+                  <td />
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StockRecalculatePanel({ onStockReload }: { onStockReload: () => Promise<void> }) {
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleRecalculate() {
+    setLoading(true);
+    setSuccess(false);
+    setError('');
+    try {
+      await fetchJson('/admin/stock/recalculate', { method: 'PUT' });
+      setSuccess(true);
+      await onStockReload();
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (e: any) {
+      setError(e.message ?? 'Erreur lors du recalcul.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-5 space-y-4">
+      <div>
+        <p className="text-sm font-medium text-white">Recalculer le stock actuel</p>
+        <p className="text-xs text-gray-500 mt-1">
+          Repart du stock de début du mois en cours et recalcule le stock actuel
+          en appliquant toutes les ventes et achats depuis cette date.
+        </p>
+      </div>
+
+      <button
+        onClick={handleRecalculate}
+        disabled={loading}
+        className="flex items-center gap-2 px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-lg text-sm font-medium hover:bg-emerald-500/30 transition-colors disabled:opacity-50"
+      >
+        {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+        Recalculer
+      </button>
+
+      {success && (
+        <p className="text-emerald-400 text-xs flex items-center gap-1">
+          <Check size={12} /> Stock recalculé avec succès.
+        </p>
+      )}
+      {error && (
+        <p className="text-red-400 text-xs flex items-center gap-1">
+          <AlertCircle size={12} /> {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ─── Paramètres tab ───────────────────────────────────────────────────────────
 
 interface ParametresTabProps {
   achatCategories: CategorieOption[];
   fournisseurCategories: CategorieOption[];
   onReload: () => Promise<void>;
+  onStockReload: () => Promise<void>;
 }
+
+
+
 
 function CategorieListEditor({
   title,
@@ -1153,7 +1367,7 @@ function CategorieListEditor({
   );
 }
 
-function ParametresTab({ achatCategories, fournisseurCategories, onReload }: ParametresTabProps) {
+function ParametresTab({ achatCategories, fournisseurCategories, onReload, onStockReload }: ParametresTabProps) {
   async function addAchat(label: string) {
     await fetchJson('/admin/comptabilite/categories/achat', {
       method: 'POST',
@@ -1185,219 +1399,25 @@ function ParametresTab({ achatCategories, fournisseurCategories, onReload }: Par
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <CategorieListEditor
-        title="Catégories d'achat"
-        categories={achatCategories}
-        onAdd={addAchat}
-        onRemove={removeAchat}
-      />
-      <CategorieListEditor
-        title="Catégories de fournisseur"
-        categories={fournisseurCategories}
-        onAdd={addFournisseur}
-        onRemove={removeFournisseur}
-      />
-    </div>
-  );
-}
-
-// ─── Helpers stock ────────────────────────────────────────────────────────────
-
-function stockBadge(stock: number) {
-  if (stock === 0) return { label: 'Rupture', color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/30' };
-  if (stock <= 3) return { label: 'Faible', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/30' };
-  return { label: 'OK', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/30' };
-}
-
-// ─── Stock tab ────────────────────────────────────────────────────────────────
-
-interface StockTabProps {
-  data: StockData | null;
-  mois: number;
-  annee: number;
-  onReload: () => Promise<void>;
-}
-
-function StockTab({ data, mois, annee, onReload }: StockTabProps) {
-  const [search, setSearch] = useState('');
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editValue, setEditValue] = useState('');
-  const [savingId, setSavingId] = useState<number | null>(null);
-
-  async function stepStock(productId: number, newVal: number) {
-    setSavingId(productId);
-    try {
-      await fetchJson(`/admin/stock/${productId}`, {
-        method: 'PUT',
-        body: JSON.stringify({ mois, annee, quantite: newVal }),
-      });
-      await onReload();
-    } finally {
-      setSavingId(null);
-    }
-  }
-
-  async function commitEdit(productId: number) {
-    const quantite = parseInt(editValue);
-    if (isNaN(quantite) || quantite < 0) { setEditingId(null); return; }
-    setSavingId(productId);
-    try {
-      await fetchJson(`/admin/stock/${productId}`, {
-        method: 'PUT',
-        body: JSON.stringify({ mois, annee, quantite }),
-      });
-      await onReload();
-    } finally {
-      setSavingId(null);
-      setEditingId(null);
-    }
-  }
-
-  const filtered = (data?.items ?? []).filter((i) =>
-    i.name.toLowerCase().includes(search.toLowerCase()) ||
-    (i.categorie ?? '').toLowerCase().includes(search.toLowerCase())
-  );
-
-  const kpis = data?.kpis;
-
-  return (
     <div className="space-y-4">
 
-      {kpis && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-4 flex flex-col gap-2">
-            <span className="text-xs text-gray-500 uppercase tracking-wider">Valeur stock</span>
-            <p className="text-2xl font-bold text-white">{eur(kpis.valeurTotale)}</p>
-          </div>
-          <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-4 flex flex-col gap-2">
-            <span className="text-xs text-gray-500 uppercase tracking-wider">Produits actifs</span>
-            <p className="text-2xl font-bold text-white">{kpis.nbProduits}</p>
-          </div>
-          <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-4 flex flex-col gap-2">
-            <span className="text-xs text-gray-500 uppercase tracking-wider">Stock faible</span>
-            <p className="text-2xl font-bold text-amber-400">{kpis.nbFaible}</p>
-          </div>
-          <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-4 flex flex-col gap-2">
-            <span className="text-xs text-gray-500 uppercase tracking-wider">Rupture</span>
-            <p className="text-2xl font-bold text-red-400">{kpis.nbRupture}</p>
-          </div>
-        </div>
-      )}
+      <StockRecalculatePanel onStockReload={onStockReload} />
 
-      <input
-        type="text"
-        placeholder="Rechercher un produit ou une catégorie…"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="w-full max-w-sm bg-dark-bg/60 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500/60 transition-colors"
-      />
 
-      {!data ? (
-        <div className="flex items-center justify-center py-24">
-          <Loader2 size={28} className="animate-spin text-emerald-400" />
-        </div>
-      ) : (
-        <div className="bg-dark-bg/60 border border-gray-800 rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
-                <th className="text-left px-4 py-3 font-medium">Produit</th>
-                <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">Catégorie</th>
-                <th className="text-center px-4 py-3 font-medium">Stock</th>
-                <th className="text-center px-4 py-3 font-medium hidden md:table-cell">Ventes mois</th>
-                <th className="text-center px-4 py-3 font-medium hidden md:table-cell">Achats mois</th>
-                <th className="text-right px-4 py-3 font-medium hidden lg:table-cell">Prix achat</th>
-                <th className="text-right px-4 py-3 font-medium">Valeur</th>
-                <th className="text-center px-4 py-3 font-medium hidden sm:table-cell">État</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-4 py-16 text-center text-gray-600">
-                    Aucun produit trouvé.
-                  </td>
-                </tr>
-              ) : filtered.map((item, i) => {
-                const badge = stockBadge(item.stockActuel);
-                const isSaving = savingId === item.productId;
-                const isEditing = editingId === item.productId;
-                return (
-                  <tr
-                    key={item.productId}
-                    className={`border-b border-gray-800/50 hover:bg-white/[0.02] transition-colors ${
-                      i === filtered.length - 1 ? 'border-b-0' : ''
-                    }`}
-                  >
-                    <td className="px-4 py-3 text-white font-medium">{item.name}</td>
-                    <td className="px-4 py-3 text-gray-400 hidden sm:table-cell">
-                      {item.categorie ?? '—'}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <div className="inline-flex items-center border border-gray-700 rounded-lg overflow-hidden">
-                        <button
-                          disabled={isSaving}
-                          onClick={() => stepStock(item.productId, Math.max(0, item.stockActuel - 1))}
-                          className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-40"
-                        >−</button>
-                        <input
-                          type="number"
-                          min="0"
-                          disabled={isSaving}
-                          value={isEditing ? editValue : item.stockActuel}
-                          onChange={(e) => { setEditingId(item.productId); setEditValue(e.target.value); }}
-                          onBlur={() => isEditing && commitEdit(item.productId)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') commitEdit(item.productId);
-                            if (e.key === 'Escape') setEditingId(null);
-                          }}
-                          className="w-11 h-7 bg-transparent border-x border-gray-700 text-center text-sm font-semibold text-white focus:outline-none focus:bg-white/5 disabled:opacity-40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        />
-                        <button
-                          disabled={isSaving}
-                          onClick={() => stepStock(item.productId, item.stockActuel + 1)}
-                          className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-40"
-                        >+</button>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-center text-red-400 hidden md:table-cell">
-                      {item.ventes > 0 ? `−${item.ventes}` : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-center text-emerald-400 hidden md:table-cell">
-                      {item.achats > 0 ? `+${item.achats}` : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-right text-gray-400 hidden lg:table-cell">
-                      {item.costPrice > 0 ? eur(item.costPrice) : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-right text-white font-semibold">
-                      {item.valeur > 0 ? eur(item.valeur) : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-center hidden sm:table-cell">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium border ${badge.bg} ${badge.color}`}>
-                        {badge.label}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            {data && (
-              <tfoot>
-                <tr className="border-t border-gray-800 bg-dark-bg/40">
-                  <td colSpan={6} className="px-4 py-3 text-xs text-gray-500 uppercase tracking-wider">
-                    Valeur totale
-                  </td>
-                  <td className="px-4 py-3 text-right text-white font-bold">
-                    {eur(data.kpis.valeurTotale)}
-                  </td>
-                  <td />
-                </tr>
-              </tfoot>
-            )}
-          </table>
-        </div>
-      )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <CategorieListEditor
+          title="Catégories d'achat"
+          categories={achatCategories}
+          onAdd={addAchat}
+          onRemove={removeAchat}
+        />
+        <CategorieListEditor
+          title="Catégories de fournisseur"
+          categories={fournisseurCategories}
+          onAdd={addFournisseur}
+          onRemove={removeFournisseur}
+        />
+      </div>
     </div>
   );
 }
