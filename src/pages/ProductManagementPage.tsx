@@ -78,19 +78,23 @@ const ProductManagementPage: React.FC = () => {
     fetchCategories();
   }, []);
 
+  const initialFormDataRef = useRef<ProductFormData | null>(null);
+
   const handleOpenCreate = () => {
-    setCurrentProduct(null);
-    uploadedImagesRef.current = [];
-    setFormData({
-      name: '',
-      description: '',
-      price: 0,
-      imageUrl: '',
-      active: true,
-      variants: [],
-      variantCategories: [],
-      subcategoryId: undefined
-    });
+      setCurrentProduct(null);
+      uploadedImagesRef.current = [];
+      const initialData: ProductFormData = {
+        name: '',
+        description: '',
+        price: 0,
+        imageUrl: '',
+        active: true,
+        variants: [],
+        variantCategories: [],
+        subcategoryId: undefined
+      };
+      setFormData(initialData);
+      initialFormDataRef.current = initialData;
     setNewVariant({
       name: '',
       priceModifier: 0,
@@ -108,7 +112,7 @@ const ProductManagementPage: React.FC = () => {
   const handleOpenEdit = (product: Product) => {
     setCurrentProduct(product);
     uploadedImagesRef.current = [];
-    setFormData({
+    const initialData: ProductFormData = {
       name: product.name,
       description: product.description,
       price: product.price,
@@ -117,7 +121,9 @@ const ProductManagementPage: React.FC = () => {
       variants: product.variants || [],
       variantCategories: product.variantCategories || [],
       subcategoryId: product.subcategoryId || undefined
-    });
+    };
+    setFormData(initialData);
+    initialFormDataRef.current = initialData;
     setNewVariant({
       name: '',
       priceModifier: 0,
@@ -131,7 +137,6 @@ const ProductManagementPage: React.FC = () => {
     setEditingOptionId(null);
     setIsModalOpen(true);
   };
-
   const handleOpenDelete = (product: Product) => {
     setProductToDelete(product);
     setIsDeleteModalOpen(true);
@@ -475,6 +480,9 @@ const ProductManagementPage: React.FC = () => {
     currentPage * ITEMS_PER_PAGE
   );
 
+  const isDirty = initialFormDataRef.current !== null &&
+      JSON.stringify(formData) !== JSON.stringify(initialFormDataRef.current);
+
   return (
     <div>
       {/* Header */}
@@ -595,10 +603,12 @@ const ProductManagementPage: React.FC = () => {
       />
 
       {/* Create/Edit Modal */}
+
       <Modal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        title={currentProduct ? "Modifier le produit" : "Ajouter un produit"}
+      isOpen={isModalOpen}
+      onClose={handleCloseModal}
+      title={currentProduct ? "Modifier le produit" : "Ajouter un produit"}
+      isDirty={isDirty}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 gap-4">

@@ -192,20 +192,21 @@ const navSections = [
       { path: '/admin/orders', label: 'Commandes', icon: ClipboardList },
       { path: '/admin/promotions', label: 'Promotions', icon: Gift },
       { path: '/admin/battle-pass', label: 'Battle Pass', icon: Trophy },
-      { path: '/admin/caisse', label: 'Caisse', icon: Receipt },
-      { path: '/admin/comptabilite', label: 'Comptabilité', icon: Receipt }
     ]
   },
   {
     title: 'Finances',
     items: [
+        { path: '/admin/comptabilite', label: 'Comptabilité', icon: Receipt },
       { path: '/admin/transactions', label: 'Transactions', icon: CreditCard },
       { path: '/admin/statistics', label: 'Statistiques', icon: BarChart3 },
+
     ]
   },
   {
     title: 'Systeme',
     items: [
+      { path: '/admin/caisse', label: 'Caisse', icon: Receipt },
       { path: '/admin/banner', label: 'Bandeau', icon: Megaphone },
       { path: '/admin/files', label: 'Fichiers', icon: FolderOpen },
       { path: '/admin/users', label: 'Utilisateurs', icon: Users },

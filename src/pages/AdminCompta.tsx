@@ -461,7 +461,7 @@ export default function ComptabilitePage() {
   const [stockData, setStockData] = useState<StockData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [tab, setTab] = useState<'dashboard' | 'achats' | 'stock' | 'parametres'>('dashboard');
+  const [tab, setTab] = useState<'dashboard' | 'achats' | 'stock' | 'tresorerie' | 'parametres'>('dashboard');
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<AchatFournisseur | null>(null);
@@ -604,6 +604,7 @@ export default function ComptabilitePage() {
           ['dashboard', 'Vue d\'ensemble'],
           ['achats', 'Achats'],
           ['stock', 'Stock'],
+          ['tresorerie', 'Trésorerie'],
           ['parametres', 'Paramètres'],
         ] as const).map(([key, label]) => (
           <button
@@ -642,6 +643,11 @@ export default function ComptabilitePage() {
           mois={parseInt(periode.debut.split('-')[1])}
           annee={parseInt(periode.debut.split('-')[0])}
           onReload={loadStock}
+        />
+      ) : tab === 'tresorerie' ? (
+        <TresoreriePanel
+          mois={parseInt(periode.debut.split('-')[1])}
+          annee={parseInt(periode.debut.split('-')[0])}
         />
       ) : (
         <ParametresTab
@@ -769,7 +775,11 @@ function DashboardTab({ dashboard, achatCategories }: { dashboard: DashboardData
             <p className="text-gray-600 text-sm text-center py-10">Aucune vente</p>
           ) : (
             <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={topProduits} layout="vertical" margin={{ top: 0, right: 4, left: 4, bottom: 0 }}>
+              <BarChart
+                data={topProduits}
+                layout="vertical"
+                margin={{ top: 0, right: 4, left: 4, bottom: 0 }}
+              >
                 <XAxis type="number" tick={{ fill: '#6b7280', fontSize: 11 }}
                   tickFormatter={(v) => `${v}€`} />
                 <YAxis
@@ -780,13 +790,14 @@ function DashboardTab({ dashboard, achatCategories }: { dashboard: DashboardData
                   tickFormatter={(name: string) => name.length > 18 ? `${name.slice(0, 18)}…` : name}
                 />
                 <Tooltip
+                  cursor={false}
                   contentStyle={{ background: '#0f1318', border: '1px solid #1f2937', borderRadius: 8 }}
                   labelStyle={{ color: '#fff', fontWeight: 600, marginBottom: 4 }}
                   itemStyle={{ color: '#9ca3af' }}
                   formatter={(v: number | undefined) => [eur(v ?? 0), 'CA']}
                   labelFormatter={(_, payload) => payload?.[0]?.payload?.name ?? ''}
                 />
-                <Bar dataKey="ca" radius={[0, 4, 4, 0]} activeBar={false}>
+                <Bar dataKey="ca" radius={[0, 4, 4, 0]}>
                   {topProduits.map((_, i) => (
                     <Cell key={i} fill={`hsl(${160 - i * 8}, 60%, ${45 - i * 2}%)`} />
                   ))}
@@ -1220,8 +1231,13 @@ function StockRecalculatePanel({ onStockReload }: { onStockReload: () => Promise
       <div>
         <p className="text-sm font-medium text-white">Recalculer le stock actuel</p>
         <p className="text-xs text-gray-500 mt-1">
-          Repart du stock de début du mois en cours et recalcule le stock actuel
-          en appliquant toutes les ventes et achats depuis cette date.
+          Repart du stock de début du mois saisi manuellement et recalcule le stock actuel
+          en intégrant uniquement les ventes et achats survenus <span className="text-white font-medium">après la date du recalcul</span>.
+          Les mouvements antérieurs sont ignorés.
+        </p>
+        <p className="text-xs text-amber-400/80 flex items-center gap-1 mt-1">
+          <AlertCircle size={11} />
+          Cette action écrase le stock actuel de tous les produits. Elle est irréversible.
         </p>
       </div>
 
@@ -1248,6 +1264,307 @@ function StockRecalculatePanel({ onStockReload }: { onStockReload: () => Promise
   );
 }
 
+// ─── Trésorerie panel ─────────────────────────────────────────────────────────
+
+function TresoreriePanel({ mois, annee }: { mois: number; annee: number }) {
+  const [data, setData] = useState<{
+    solde: number;
+    soldeInitial: number;
+    mouvements: { id: number; type: string; montant: number; date: string }[];
+  } | null>(null);
+  const [type, setType] = useState<'ENTREE' | 'DEPOT_BANQUE'>('ENTREE');
+  const [montant, setMontant] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+
+  // Edition inline
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editMontant, setEditMontant] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+
+  // Suppression
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+
+  const inputCls =
+    'bg-dark-bg border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500/60 transition-colors';
+
+  async function fetchData() {
+    setLoading(true);
+    try {
+      const d = await fetchJson(`/admin/tresorerie/solde?mois=${mois}&annee=${annee}`);
+      setData(d);
+    } catch (e: any) {
+      setError(e.message ?? 'Erreur lors du chargement.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    const dateRef = new Date(annee, mois - 2, 1);
+    const moisRef = dateRef.getMonth() + 1;
+    const anneeRef = dateRef.getFullYear();
+    fetchJson('/admin/tresorerie/cloturer', {
+      method: 'POST',
+      body: JSON.stringify({ mois: moisRef, annee: anneeRef }),
+    }).catch(() => {});
+    fetchData();
+  }, [mois, annee]);
+
+  async function handleAdd() {
+    const val = parseFloat(montant);
+    if (isNaN(val) || val <= 0) return;
+    setSaving(true);
+    setError('');
+    setSuccess(false);
+    try {
+      await fetchJson('/admin/tresorerie/mouvement', {
+        method: 'POST',
+        body: JSON.stringify({ type, montant: val, mois, annee }),
+      });
+      setMontant('');
+      setSuccess(true);
+      await fetchData();
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (e: any) {
+      setError(e.message ?? 'Erreur lors de la saisie.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete(id: number) {
+    setDeleteId(id);
+    try {
+      await fetchJson(`/admin/tresorerie/mouvement/${id}`, { method: 'DELETE' });
+      await fetchData();
+    } catch (e: any) {
+      setError(e.message ?? 'Erreur lors de la suppression.');
+    } finally {
+      setDeleteId(null);
+    }
+  }
+
+  function startEdit(m: { id: number; montant: number }) {
+    setEditId(m.id);
+    setEditMontant(String(m.montant));
+  }
+
+  function cancelEdit() {
+    setEditId(null);
+    setEditMontant('');
+  }
+
+  async function handleEditSave(id: number) {
+    const val = parseFloat(editMontant);
+    if (isNaN(val) || val <= 0) return;
+    setEditSaving(true);
+    try {
+      await fetchJson(`/admin/tresorerie/mouvement/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ montant: val }),
+      });
+      cancelEdit();
+      await fetchData();
+    } catch (e: any) {
+      setError(e.message ?? 'Erreur lors de la modification.');
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  // Solde caisse = soldeInitial (report) + toutes les entrées du mois
+  const totalEntrees = data?.mouvements.filter((m) => m.type === 'ENTREE').reduce((s, m) => s + m.montant, 0) ?? 0;
+  const totalDepots  = data?.mouvements.filter((m) => m.type === 'DEPOT_BANQUE').reduce((s, m) => s + m.montant, 0) ?? 0;
+  // Le solde affiché vient du back (soldeInitial + entrées - dépôts banque)
+
+  return (
+    <div className="space-y-4">
+      {/* Solde + stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-4 flex flex-col gap-1">
+          <span className="text-xs text-gray-500 uppercase tracking-wider">Solde caisse</span>
+          {loading ? (
+            <Loader2 size={16} className="animate-spin text-gray-500 mt-1" />
+          ) : (
+            <p className={`text-2xl font-bold ${(data?.solde ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              {eur(data?.solde ?? 0)}
+            </p>
+          )}
+          <span className="text-xs text-gray-600">Report mois préc. : {eur(data?.soldeInitial ?? 0)}</span>
+        </div>
+
+        <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-4 flex flex-col gap-1">
+          <span className="text-xs text-gray-500 uppercase tracking-wider">Entrées du mois</span>
+          <p className="text-2xl font-bold text-emerald-400">{eur(totalEntrees)}</p>
+        </div>
+
+        <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-4 flex flex-col gap-1">
+          <span className="text-xs text-gray-500 uppercase tracking-wider">Dépôts banque</span>
+          <p className="text-2xl font-bold text-blue-400">{eur(totalDepots)}</p>
+        </div>
+      </div>
+
+      {/* Saisie mouvement */}
+      <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-5 space-y-4">
+        <p className="text-sm font-medium text-white">Enregistrer un mouvement</p>
+
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-gray-500">Type</label>
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value as 'ENTREE' | 'DEPOT_BANQUE')}
+              className={inputCls}
+            >
+              <option value="ENTREE">Entrée espèces</option>
+              <option value="DEPOT_BANQUE">Dépôt banque</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-gray-500">Montant (€)</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+              value={montant}
+              onChange={(e) => setMontant(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
+              className={`${inputCls} w-32`}
+            />
+          </div>
+
+          <button
+            onClick={handleAdd}
+            disabled={saving || !montant || parseFloat(montant) <= 0}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-lg text-sm font-medium hover:bg-emerald-500/30 transition-colors disabled:opacity-50"
+          >
+            {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+            Enregistrer
+          </button>
+        </div>
+
+        {success && (
+          <p className="text-emerald-400 text-xs flex items-center gap-1">
+            <Check size={12} /> Mouvement enregistré.
+          </p>
+        )}
+        {error && (
+          <p className="text-red-400 text-xs flex items-center gap-1">
+            <AlertCircle size={12} /> {error}
+          </p>
+        )}
+      </div>
+
+      {/* Historique */}
+      <div className="bg-dark-bg/60 border border-gray-800 rounded-xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-gray-800">
+          <p className="text-sm font-medium text-white">Historique du mois</p>
+        </div>
+
+        {!data || data.mouvements.length === 0 ? (
+          <p className="text-gray-600 text-sm px-5 py-6">Aucun mouvement ce mois-ci.</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-800">
+                <th className="text-left px-5 py-2 text-xs text-gray-500 font-medium">Date</th>
+                <th className="text-left px-5 py-2 text-xs text-gray-500 font-medium">Type</th>
+                <th className="text-right px-5 py-2 text-xs text-gray-500 font-medium">Montant</th>
+                <th className="px-5 py-2 text-xs text-gray-500 font-medium w-16" />
+              </tr>
+            </thead>
+            <tbody>
+              {data.mouvements.map((m) => (
+                <tr key={m.id} className="border-b border-gray-800/50 hover:bg-white/[0.02] transition-colors group">
+                  <td className="px-5 py-3 text-gray-400">{shortDate(m.date)}</td>
+                  <td className="px-5 py-3">
+                    <span className={`text-xs px-2 py-0.5 rounded-full border ${
+                      m.type === 'ENTREE'
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                        : 'bg-blue-500/10 border-blue-500/30 text-blue-400'
+                    }`}>
+                      {m.type === 'ENTREE' ? 'Entrée' : 'Dépôt banque'}
+                    </span>
+                  </td>
+
+                  {/* Montant — éditable inline */}
+                  <td className="px-5 py-3 text-right font-medium">
+                    {editId === m.id ? (
+                      <div className="flex items-center justify-end gap-2">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={editMontant}
+                          onChange={(e) => setEditMontant(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleEditSave(m.id);
+                            if (e.key === 'Escape') cancelEdit();
+                          }}
+                          autoFocus
+                          className="w-24 bg-dark-bg border border-emerald-500/40 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-emerald-500"
+                        />
+                        <button
+                          onClick={() => handleEditSave(m.id)}
+                          disabled={editSaving}
+                          className="text-emerald-400 hover:text-emerald-300 transition-colors disabled:opacity-50"
+                          title="Valider"
+                        >
+                          {editSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                        </button>
+                        <button
+                          onClick={cancelEdit}
+                          className="text-gray-500 hover:text-gray-300 transition-colors"
+                          title="Annuler"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <span className={m.type === 'ENTREE' ? 'text-emerald-400' : 'text-blue-400'}>
+                        {m.type === 'ENTREE' ? '+' : '-'}{eur(m.montant)}
+                      </span>
+                    )}
+                  </td>
+
+                  {/* Actions */}
+                  <td className="px-5 py-3">
+                    {editId !== m.id && (
+                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => startEdit(m)}
+                          className="text-gray-500 hover:text-white transition-colors"
+                          title="Modifier"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(m.id)}
+                          disabled={deleteId === m.id}
+                          className="text-gray-500 hover:text-red-400 transition-colors disabled:opacity-50"
+                          title="Supprimer"
+                        >
+                          {deleteId === m.id
+                            ? <Loader2 size={13} className="animate-spin" />
+                            : <Trash2 size={13} />}
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
 // ─── Paramètres tab ───────────────────────────────────────────────────────────
 
 interface ParametresTabProps {

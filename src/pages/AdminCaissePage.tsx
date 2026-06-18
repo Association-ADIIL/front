@@ -5,7 +5,7 @@ import { getAllProducts, type Product } from '../api/products';
 import { fetchJson } from '../api/client';
 import {
   Search, ShoppingCart, Trash2, Plus, Minus, Receipt, X,
-  CheckCircle, ChevronRight, History, Undo2, Tag,
+  CheckCircle, ChevronRight, History, Undo2, Tag, Package,
 } from 'lucide-react';
 
 interface CartItem {
@@ -23,7 +23,6 @@ interface SessionOrder {
 
 const fmt = (n: number) => n.toFixed(2).replace('.', ',');
 
-// ── Confirmation overlay shown for ~2.5 s after payment ────────────────────
 const ConfirmationOverlay: React.FC<{ order: { id: number; total: number }; onDone: () => void }> = ({ order, onDone }) => {
   const [progress, setProgress] = useState(0);
   const DURATION = 2500;
@@ -72,7 +71,6 @@ const ConfirmationOverlay: React.FC<{ order: { id: number; total: number }; onDo
   );
 };
 
-// ── Session history panel ───────────────────────────────────────────────────
 const SessionHistory: React.FC<{
   orders: SessionOrder[];
   onCancel: (id: number) => void;
@@ -138,7 +136,6 @@ const SessionHistory: React.FC<{
   );
 };
 
-// ── Main page ───────────────────────────────────────────────────────────────
 const AdminCaissePage: React.FC = () => {
   useDocumentTitle('Admin — Caisse');
   const { addNotification } = useNotification();
@@ -147,7 +144,6 @@ const AdminCaissePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  // productId → total units sold (from API stats or session fallback)
   const [salesScores, setSalesScores] = useState<Record<string, number>>({});
   const [cart, setCart] = useState<CartItem[]>([]);
   const [processing, setProcessing] = useState(false);
@@ -155,6 +151,7 @@ const AdminCaissePage: React.FC = () => {
   const [sessionOrders, setSessionOrders] = useState<SessionOrder[]>([]);
   const [cancelling, setCancelling] = useState<number | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [mobileTab, setMobileTab] = useState<'products' | 'cart' | 'history'>('products');
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -163,7 +160,6 @@ const AdminCaissePage: React.FC = () => {
       .catch(() => addNotification('error', 'Impossible de charger les produits'))
       .finally(() => setLoading(false));
 
-    // Try to fetch sales stats from the API; silently ignore if endpoint doesn't exist
     fetchJson<Array<{ paymentStatus: string; items: Array<{ productId: number; quantity: number; refundedQuantity: number }> }>>('/orders')
       .then(orders => {
         const map: Record<string, number> = {};
@@ -179,18 +175,16 @@ const AdminCaissePage: React.FC = () => {
         setSalesScores(map);
       })
       .catch(() => null);
-    }, []);
+  }, []);
 
   useEffect(() => {
     searchRef.current?.focus();
   }, []);
 
-
   const sessionSalesScores = React.useMemo<Record<string, number>>(() => {
     const map: Record<string, number> = {};
     sessionOrders.filter(o => !o.cancelled).forEach(o => {
       o.items.forEach(item => {
-        // Match by name since session items only carry name, not id
         const product = products.find(p => p.name === item.name);
         if (product) map[product.id] = (map[product.id] ?? 0) + item.quantity;
       });
@@ -206,7 +200,6 @@ const AdminCaissePage: React.FC = () => {
     return merged;
   }, [salesScores, sessionSalesScores]);
 
-  // Derive unique categories from subcategory.category (real data structure)
   const categories = React.useMemo(() => {
     const seen = new Map<number, string>();
     products.forEach(p => {
@@ -226,7 +219,6 @@ const AdminCaissePage: React.FC = () => {
     if (search.trim()) {
       list = list.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
     }
-    // Sort by sales score descending; equal scores keep original order (stable)
     return [...list].sort((a, b) =>
       (effectiveSalesScores[b.id] ?? 0) - (effectiveSalesScores[a.id] ?? 0)
     );
@@ -266,11 +258,13 @@ const AdminCaissePage: React.FC = () => {
   };
 
   const total = cart.reduce((sum, i) => sum + getDiscountedPrice(i.product) * i.quantity, 0);
+  const cartCount = cart.reduce((s, i) => s + i.quantity, 0);
 
   const handleConfirmationDone = useCallback(() => {
     setConfirmation(null);
     setCart([]);
     setSearch('');
+    setMobileTab('products');
     searchRef.current?.focus();
   }, []);
 
@@ -301,7 +295,6 @@ const AdminCaissePage: React.FC = () => {
 
       setSessionOrders(prev => [...prev, sessionOrder]);
       setConfirmation({ id: order.id, total });
-      // cart & search reset happens after confirmation overlay
     } catch (e: any) {
       addNotification('error', e.message ?? 'Erreur lors de la commande');
     } finally {
@@ -332,17 +325,18 @@ const AdminCaissePage: React.FC = () => {
   return (
     <div className="h-[calc(100vh-80px)] flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4 flex-shrink-0">
+      <div className="flex items-center justify-between mb-3 flex-shrink-0">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Receipt size={22} className="text-accent-mint" />
+          <h1 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
+            <Receipt size={20} className="text-accent-mint" />
             Caisse
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">Vente directe — paiement sur place</p>
+          <p className="hidden sm:block text-sm text-slate-500 mt-0.5">Vente directe — paiement sur place</p>
         </div>
+        {/* Bouton historique desktop uniquement */}
         <button
           onClick={() => setShowHistory(h => !h)}
-          className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-all ${
+          className={`hidden md:flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-all ${
             showHistory
               ? 'border-accent-mint/40 bg-accent-mint/10 text-accent-mint'
               : 'border-slate-700/40 bg-slate-800/40 text-slate-400 hover:text-white hover:border-slate-600/60'
@@ -359,8 +353,8 @@ const AdminCaissePage: React.FC = () => {
       </div>
 
       <div className="flex gap-4 flex-1 min-h-0">
-        {/* Left: Product grid */}
-        <div className="flex-1 flex flex-col min-w-0">
+        {/* ── Colonne produits ── */}
+        <div className={`flex-1 flex-col min-w-0 ${mobileTab === 'products' ? 'flex' : 'hidden md:flex'}`}>
           {/* Search */}
           <div className="relative mb-3 flex-shrink-0">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -379,7 +373,7 @@ const AdminCaissePage: React.FC = () => {
             )}
           </div>
 
-          {/* Category filter chips */}
+          {/* Category chips */}
           {categories.length > 0 && (
             <div className="flex gap-2 mb-3 overflow-x-auto flex-shrink-0 pb-1" style={{ scrollbarWidth: 'none' }}>
               <button
@@ -409,59 +403,88 @@ const AdminCaissePage: React.FC = () => {
             </div>
           )}
 
-          {/* Products */}
+          {/* Products grid */}
           {loading ? (
             <div className="flex items-center justify-center flex-1">
               <div className="w-8 h-8 border-2 border-accent-mint border-t-transparent rounded-full animate-spin" />
             </div>
           ) : (
-            <div className="overflow-y-auto flex-1 pr-1" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(100,116,139,0.3) transparent' }}>
+            <div className="overflow-y-auto flex-1 pr-1 pb-20 md:pb-0" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(100,116,139,0.3) transparent' }}>
               {filtered.length === 0 ? (
                 <div className="text-center py-12 text-slate-600 text-sm border border-dashed border-slate-700/30 rounded-xl">
                   Aucun produit trouvé
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-3">
                   {filtered.map((product) => {
                     const discounted = getDiscountedPrice(product);
                     const hasDiscount = discounted < product.price;
                     const inCart = cart.find(i => i.product.id === product.id);
                     return (
-                      <button
-                        key={product.id}
-                        onClick={() => addToCart(product)}
-                        className={`relative text-left rounded-xl border transition-all duration-200 overflow-hidden group hover:-translate-y-0.5 hover:shadow-lg ${
-                          inCart
-                            ? 'border-accent-mint/40 bg-accent-mint/5 shadow-[0_0_15px_rgba(119,241,190,0.1)]'
-                            : 'border-slate-700/30 bg-slate-800/30 hover:border-slate-600/50'
-                        }`}
-                      >
-                        {inCart && (
-                          <div className="absolute top-2 right-2 z-10 w-5 h-5 bg-accent-mint rounded-full flex items-center justify-center text-darker-bg text-[10px] font-black">
-                            {inCart.quantity}
+                      <div key={product.id} className="relative">
+                        <button
+                          onClick={() => addToCart(product)}
+                          className={`relative w-full text-left rounded-xl border transition-all duration-200 overflow-hidden group hover:-translate-y-0.5 hover:shadow-lg ${
+                            inCart
+                              ? 'border-accent-mint/40 bg-accent-mint/5 shadow-[0_0_15px_rgba(119,241,190,0.1)]'
+                              : 'border-slate-700/30 bg-slate-800/30 hover:border-slate-600/50'
+                          }`}
+                        >
+                          {inCart && (
+                            <div className="absolute top-2 right-2 z-10 w-5 h-5 bg-accent-mint rounded-full flex items-center justify-center text-darker-bg text-[10px] font-black">
+                              {inCart.quantity}
+                            </div>
+                          )}
+                          <div className="aspect-square bg-slate-700/30 overflow-hidden">
+                            <img
+                              src={product.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(product.name)}&background=222&color=fff`}
+                              alt={product.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
                           </div>
-                        )}
-                        <div className="aspect-square bg-slate-700/30 overflow-hidden">
-                          <img
-                            src={product.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(product.name)}&background=222&color=fff`}
-                            alt={product.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                        </div>
-                        <div className="p-2">
-                          <p className="text-xs font-medium text-white truncate leading-tight">{product.name}</p>
-                          <div className="mt-1">
-                            {hasDiscount ? (
-                              <div className="flex items-center gap-1">
-                                <span className="text-[10px] text-slate-500 line-through">{fmt(product.price)}€</span>
-                                <span className="text-sm font-black text-red-400">{fmt(discounted)}€</span>
-                              </div>
-                            ) : (
-                              <span className="text-sm font-black text-accent-mint">{fmt(product.price)}€</span>
-                            )}
+                          <div className="p-2 pb-1">
+                            <p className="text-xs font-medium text-white truncate leading-tight">{product.name}</p>
+                            <div className="mt-1">
+                              {hasDiscount ? (
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[10px] text-slate-500 line-through">{fmt(product.price)}€</span>
+                                  <span className="text-sm font-black text-red-400">{fmt(discounted)}€</span>
+                                </div>
+                              ) : (
+                                <span className="text-sm font-black text-accent-mint">{fmt(product.price)}€</span>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </button>
+                          <div
+                            className="px-2 pb-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={e => e.stopPropagation()}
+                          >
+                            <input
+                              type="number"
+                              min="1"
+                              placeholder="1"
+                              className="w-full bg-slate-700/40 border border-slate-600/30 rounded-lg px-2 py-1 text-[11px] text-slate-300 placeholder-slate-600 focus:outline-none focus:border-accent-mint/40 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                  const val = parseInt((e.target as HTMLInputElement).value);
+                                  if (!isNaN(val) && val > 0) {
+                                    setCart(prev => {
+                                      const existing = prev.find(i => i.product.id === product.id);
+                                      if (existing) {
+                                        return prev.map(i =>
+                                          i.product.id === product.id ? { ...i, quantity: i.quantity + val } : i
+                                        );
+                                      }
+                                      return [...prev, { product, quantity: val }];
+                                    });
+                                    (e.target as HTMLInputElement).value = '';
+                                  }
+                                }
+                              }}
+                            />
+                          </div>
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -470,22 +493,19 @@ const AdminCaissePage: React.FC = () => {
           )}
         </div>
 
-        {/* Right: Cart */}
-        <div className="w-72 flex-shrink-0 flex flex-col bg-slate-800/30 border border-slate-700/30 rounded-2xl overflow-hidden relative">
-
-          {/* Quick-service confirmation overlay */}
+        {/* ── Colonne panier ── */}
+        <div className={`md:w-72 md:flex-shrink-0 flex-col bg-slate-800/30 border border-slate-700/30 rounded-2xl overflow-hidden relative ${mobileTab === 'cart' ? 'flex flex-1' : 'hidden md:flex'}`}>
           {confirmation && (
             <ConfirmationOverlay order={confirmation} onDone={handleConfirmationDone} />
           )}
 
-          {/* Cart header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/30 flex-shrink-0">
             <div className="flex items-center gap-2 text-sm font-bold text-white">
               <ShoppingCart size={16} className="text-accent-mint" />
               Panier
               {cart.length > 0 && (
                 <span className="px-1.5 py-0.5 bg-accent-mint/20 text-accent-mint text-[10px] font-black rounded-full">
-                  {cart.reduce((s, i) => s + i.quantity, 0)}
+                  {cartCount}
                 </span>
               )}
             </div>
@@ -496,8 +516,7 @@ const AdminCaissePage: React.FC = () => {
             )}
           </div>
 
-          {/* Cart items */}
-          <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(100,116,139,0.3) transparent' }}>
+          <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2 pb-20 md:pb-2" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(100,116,139,0.3) transparent' }}>
             {cart.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-slate-600 text-xs text-center py-8">
                 <ShoppingCart size={28} className="mb-2 opacity-30" />
@@ -546,7 +565,6 @@ const AdminCaissePage: React.FC = () => {
             )}
           </div>
 
-          {/* Total + Pay */}
           <div className="px-3 pb-3 pt-2 border-t border-slate-700/30 space-y-3 flex-shrink-0">
             <div className="flex items-center justify-between">
               <span className="text-sm text-slate-400">Total</span>
@@ -571,9 +589,9 @@ const AdminCaissePage: React.FC = () => {
           </div>
         </div>
 
-        {/* History panel — slides in from the right */}
-        {showHistory && (
-          <div className="w-64 flex-shrink-0 flex flex-col bg-slate-800/30 border border-slate-700/30 rounded-2xl overflow-hidden">
+        {/* ── Colonne historique ── */}
+        {(showHistory || mobileTab === 'history') && (
+          <div className={`md:w-64 md:flex-shrink-0 flex-col bg-slate-800/30 border border-slate-700/30 rounded-2xl overflow-hidden ${mobileTab === 'history' ? 'flex flex-1' : 'hidden md:flex'}`}>
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/30 flex-shrink-0">
               <div className="flex items-center gap-2 text-sm font-bold text-white">
                 <History size={15} className="text-accent-mint" />
@@ -585,13 +603,16 @@ const AdminCaissePage: React.FC = () => {
                     {fmt(activeSessionOrders.reduce((s, o) => s + o.total, 0))} € encaissés
                   </span>
                 )}
-                <button onClick={() => setShowHistory(false)} className="text-slate-600 hover:text-slate-400 transition-colors">
+                <button
+                  onClick={() => { setShowHistory(false); setMobileTab('products'); }}
+                  className="text-slate-600 hover:text-slate-400 transition-colors"
+                >
                   <X size={14} />
                 </button>
               </div>
             </div>
             <div
-              className="flex-1 overflow-y-auto px-3 py-3"
+              className="flex-1 overflow-y-auto px-3 py-3 pb-20 md:pb-3"
               style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(100,116,139,0.3) transparent' }}
             >
               <SessionHistory
@@ -603,6 +624,55 @@ const AdminCaissePage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* ── Bottom nav mobile ── */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 bg-slate-900/95 backdrop-blur-md border-t border-slate-700/40 flex z-40">
+        <button
+          onClick={() => setMobileTab('products')}
+          className={`flex-1 flex flex-col items-center justify-center py-3 gap-0.5 text-[10px] font-semibold transition-colors ${
+            mobileTab === 'products' ? 'text-accent-mint' : 'text-slate-500'
+          }`}
+        >
+          <Package size={20} />
+          Produits
+        </button>
+        <button
+          onClick={() => setMobileTab('cart')}
+          className={`flex-1 flex flex-col items-center justify-center py-3 gap-0.5 text-[10px] font-semibold transition-colors ${
+            mobileTab === 'cart' ? 'text-accent-mint' : 'text-slate-500'
+          }`}
+        >
+          <div className="relative">
+            <ShoppingCart size={20} />
+            {cartCount > 0 && (
+              <span className="absolute -top-1.5 -right-2 w-4 h-4 bg-accent-mint text-darker-bg text-[9px] font-black rounded-full flex items-center justify-center">
+                {cartCount > 9 ? '9+' : cartCount}
+              </span>
+            )}
+          </div>
+          {cart.length > 0 ? (
+            <span className="text-[10px] font-black text-accent-mint">{fmt(total)}€</span>
+          ) : (
+            <span>Panier</span>
+          )}
+        </button>
+        <button
+          onClick={() => setMobileTab('history')}
+          className={`flex-1 flex flex-col items-center justify-center py-3 gap-0.5 text-[10px] font-semibold transition-colors ${
+            mobileTab === 'history' ? 'text-accent-mint' : 'text-slate-500'
+          }`}
+        >
+          <div className="relative">
+            <History size={20} />
+            {activeSessionOrders.length > 0 && (
+              <span className="absolute -top-1.5 -right-2 w-4 h-4 bg-accent-mint/20 text-accent-mint text-[9px] font-black rounded-full flex items-center justify-center">
+                {activeSessionOrders.length}
+              </span>
+            )}
+          </div>
+          Historique
+        </button>
+      </nav>
     </div>
   );
 };
