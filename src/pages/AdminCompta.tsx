@@ -1293,7 +1293,11 @@ function TresoreriePanel({ mois, annee }: { mois: number; annee: number }) {
   async function fetchData() {
     setLoading(true);
     try {
-      const d = await fetchJson(`/admin/tresorerie/solde?mois=${mois}&annee=${annee}`);
+      const d = await fetchJson<{
+        solde: number;
+        soldeInitial: number;
+        mouvements: { id: number; type: string; montant: number; date: string }[];
+      }>(`/admin/tresorerie/solde?mois=${mois}&annee=${annee}`);
       setData(d);
     } catch (e: any) {
       setError(e.message ?? 'Erreur lors du chargement.');
