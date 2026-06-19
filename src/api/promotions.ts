@@ -39,6 +39,7 @@ export interface Promotion {
   type: PromotionType;
   displayTitle: string;
   displayMessage: string;
+  imageUrl?: string;
   rules: any;
   isActive: boolean;
   startDate?: string;
