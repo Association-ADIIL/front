@@ -3,7 +3,7 @@ import { logger } from '../utils/logger';
 import { getAllProducts, deleteProduct, createProduct, updateProduct, type Product, type ProductFormData, type ProductVariant, type ProductImage, type VariantCategory, type VariantOption } from '../api/products';
 import { getAllOrders, type Order } from '../api/orders';
 import { getAllCategories, type Category } from '../api/categories';
-import { Edit2, Trash2, Plus, X, Search, Images, Download } from 'lucide-react';
+import { Edit2, Trash2, Plus, X, Search, Images, Download, Ban } from 'lucide-react';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
 import ImageUpload from '../components/ImageUpload';
@@ -474,8 +474,13 @@ const ProductManagementPage: React.FC = () => {
     product.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
-  const paginatedProducts = filteredProducts.slice(
+  const sortedProducts = [...filteredProducts].sort((a, b) => {
+    if (a.active !== b.active) return a.active ? -1 : 1;
+    return a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' });
+  });
+
+  const totalPages = Math.ceil(sortedProducts.length / ITEMS_PER_PAGE);
+  const paginatedProducts = sortedProducts.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
@@ -525,14 +530,40 @@ const ProductManagementPage: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {paginatedProducts.map((product) => (
-          <div key={product.id} className={`bg-darker-bg border border-gray-800 rounded-2xl overflow-hidden flex flex-col relative group hover:border-orange-500/30 hover:-translate-y-1 transition-all hover:shadow-lg hover:shadow-orange-500/5 ${!product.active ? 'opacity-60' : ''}`}>
+          <div
+            key={product.id}
+            className={`bg-darker-bg rounded-2xl overflow-hidden flex flex-col relative group transition-all hover:-translate-y-1 hover:shadow-lg
+              ${product.active
+                ? 'border border-gray-800 hover:border-orange-500/30 hover:shadow-orange-500/5'
+                : 'border border-red-500/35 hover:border-red-500/60 hover:shadow-red-500/5'
+              }`}
+          >
             {/* Image Section */}
             <div className="h-32 bg-dark-bg relative overflow-hidden">
               <img
                 src={product.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(product.name)}&background=1E1E1E&color=fff&size=256`}
                 alt={product.name}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300
+                  ${!product.active ? 'grayscale brightness-50' : ''}`}
               />
+
+              {/* Unavailable overlays */}
+              {!product.active && (
+                <>
+                  {/* Diagonal stripes pattern */}
+                  <div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                      backgroundImage: 'repeating-linear-gradient(135deg, rgba(239,68,68,0.10) 0px, rgba(239,68,68,0.10) 4px, transparent 4px, transparent 20px)'
+                    }}
+                  />
+                  {/* Watermark text */}
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-[28deg] pointer-events-none text-red-500/40 text-[11px] font-black tracking-[0.18em] uppercase border border-red-500/25 px-3 py-1 rounded whitespace-nowrap select-none">
+                    Indisponible
+                  </div>
+                </>
+              )}
+
               {/* Action buttons overlay */}
               <div className="absolute top-2 right-2 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                 <button
@@ -550,17 +581,27 @@ const ProductManagementPage: React.FC = () => {
                 <button onClick={() => handleOpenEdit(product)} className="p-2 bg-darker-bg/90 backdrop-blur text-blue-400 hover:bg-blue-500/20 rounded-lg transition-colors"><Edit2 size={16} /></button>
                 <button onClick={() => handleOpenDelete(product)} className="p-2 bg-darker-bg/90 backdrop-blur text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"><Trash2 size={16} /></button>
               </div>
+
               {/* Status badge */}
               <div className="absolute bottom-2 left-2">
-                <span className={`text-[10px] font-bold px-2 py-1 rounded-lg ${product.active ? 'bg-green-500/20 text-green-400 backdrop-blur' : 'bg-red-500/20 text-red-400 backdrop-blur'}`}>
-                  {product.active ? 'Disponible' : 'Indisponible'}
-                </span>
+                {product.active ? (
+                  <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-green-500/20 text-green-400 backdrop-blur">
+                    Disponible
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-red-500/30 text-red-400 backdrop-blur border border-red-500/20">
+                    <Ban size={12} />
+                    Indisponible
+                  </span>
+                )}
               </div>
             </div>
 
             {/* Content */}
-            <div className="p-4 flex-1 flex flex-col">
-              <h3 className="font-bold text-white mb-1 group-hover:text-orange-400 transition-colors">{product.name}</h3>
+            <div className={`p-4 flex-1 flex flex-col ${!product.active ? 'opacity-60' : ''}`}>
+              <h3 className={`font-bold text-white mb-1 transition-colors ${product.active ? 'group-hover:text-orange-400' : 'group-hover:text-red-400'}`}>
+                {product.name}
+              </h3>
               <p className="text-xs text-gray-500 mb-3 line-clamp-2">{product.description}</p>
 
               <div className="mt-auto pt-3 border-t border-gray-800/50 flex items-center justify-between">
@@ -597,7 +638,7 @@ const ProductManagementPage: React.FC = () => {
       <Pagination
         currentPage={currentPage}
         totalPages={totalPages}
-        totalItems={filteredProducts.length}
+        totalItems={sortedProducts.length}
         itemsPerPage={ITEMS_PER_PAGE}
         onPageChange={setCurrentPage}
       />
