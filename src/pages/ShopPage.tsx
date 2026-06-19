@@ -594,10 +594,13 @@ const ShopPage: React.FC = () => {
                 <div className="space-y-5 mb-12">
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-1.5 h-10 bg-gradient-to-b from-accent-mint to-purple-500 rounded-full animate-pulse" />
+                      <div className="w-1.5 h-10 bg-accent-mint rounded-full" />
                       <div>
-                        <h2 className="text-2xl md:text-3xl font-koulen text-transparent bg-clip-text bg-gradient-to-r from-accent-mint to-purple-400 flex items-center gap-2">
-                          <Sparkles size={24} className="text-accent-mint" />
+                        <span className="text-accent-mint/80 text-xs font-bold uppercase tracking-[0.2em]">
+                          Offre promotionnelle
+                        </span>
+                        <h2 className="text-2xl md:text-3xl font-koulen text-white flex items-center gap-2">
+
                           PROMOTIONS EN COURS
                         </h2>
                       </div>
@@ -649,15 +652,18 @@ const ShopPage: React.FC = () => {
                 <div className="space-y-5 mb-12">
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-1.5 h-10 bg-gradient-to-b from-red-500 to-red-500/30 rounded-full animate-pulse" />
+                      <div className="w-1.5 h-10 bg-accent-mint rounded-full" />
                       <div>
-                        <h2 className="text-2xl md:text-3xl font-koulen text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-amber-400 flex items-center gap-2">
-                          <Tag size={24} className="text-red-400" />
+                        <span className="text-accent-mint/80 text-xs font-bold uppercase tracking-[0.2em]">
+                          Offre promotionnelle
+                        </span>
+                        <h2 className="text-2xl md:text-3xl font-koulen text-white flex items-center gap-2">
+
                           PROMOTIONS PRODUITS
                         </h2>
                       </div>
                     </div>
-                    <div className="flex-1 h-px bg-gradient-to-r from-red-500/50 to-transparent" />
+                    <div className="flex-1 h-px bg-gradient-to-r from-accent-mint/50 to-transparent" />
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                     {promotedProducts.map(renderProductCard)}
