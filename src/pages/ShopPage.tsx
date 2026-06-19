@@ -16,7 +16,6 @@ import {
   ShoppingCart,
   Search,
   LogIn,
-  X,
   Tag,
   Coffee,
   Eye,

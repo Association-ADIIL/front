@@ -3,7 +3,7 @@ import { logger } from '../utils/logger';
 import { getAllProducts, type Product, type SelectedOption } from '../api/products';
 import { getAllCategories, type Category } from '../api/categories';
 import { getActiveProductPromotions, getActivePromotionsForPage, type ProductPromotionsMap, type Promotion } from '../api/promotions';
-import { ShoppingBag, Minus, Plus, ShoppingCart, Search, LogIn, X, Tag, Coffee, Eye, Sparkles, Gift } from 'lucide-react';
+import { ShoppingBag, Minus, Plus, ShoppingCart, Search, LogIn, Tag, Coffee, Eye, Sparkles, Gift } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useNotification } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';

@@ -27,7 +27,7 @@ import {
   BarChart3,
   X,
   Gift,
-  Package,
+
   Search,
   Check,
 } from 'lucide-react';
@@ -660,6 +660,10 @@ const PromotionManagementPage: React.FC = () => {
               <div className="relative mb-3">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                 <input type="text" value={productSearch} onChange={(e) => setProductSearch(e.target.value)} placeholder="Rechercher un produit..." className="w-full pl-9 pr-3 py-2 bg-dark-bg border border-gray-700 rounded-lg text-white text-sm" />
+              </div>
+              <div className="flex gap-3 mb-3 text-xs">
+                <button type="button" onClick={selectAllProducts} className="text-rose-400 hover:underline">Tout sélectionner</button>
+                <button type="button" onClick={deselectAllProducts} className="text-gray-400 hover:underline">Tout désélectionner</button>
               </div>
               <div className="max-h-60 overflow-y-auto bg-dark-bg rounded-lg border border-gray-700 divide-y divide-gray-800">
                 {filteredProducts.map((product) => {

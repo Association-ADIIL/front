@@ -132,12 +132,6 @@ export const reorderProductImages = async (productId: string, imageIds: number[]
   });
 };
 
-export interface Subcategory {
-  id: number;
-  name: string;
-  categoryId: number; // Ajoute les autres champs de ton modèle Prisma si besoin
-}
-
 // Fait appel à ta route backend : router.get('/', getAllSubcategories)
 export const getAllSubcategories = async (): Promise<Subcategory[]> => {
   // ⚠️ Attention au chemin : s'il est monté sur /api/subcategories dans ton app.ts,
