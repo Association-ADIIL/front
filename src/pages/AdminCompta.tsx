@@ -1899,7 +1899,7 @@ function CategorieListEditor({
   );
 }
 
-function ParametresTab({ achatCategories, fournisseurCategories, onReload, onStockReload }: ParametresTabProps) {
+function ParametresTab({ achatCategories, fournisseurCategories, onReload }: ParametresTabProps) {
   async function addAchat(label: string) {
     await fetchJson('/admin/comptabilite/categories/achat', {
       method: 'POST',
