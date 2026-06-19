@@ -604,7 +604,7 @@ export default function ComptabilitePage() {
           ['dashboard', 'Vue d\'ensemble'],
           ['achats', 'Achats'],
           ['stock', 'Stock'],
-          ['tresorerie', 'Trésorerie'],
+          ['tresorerie', 'Trésorerie liquide'],
           ['parametres', 'Paramètres'],
         ] as const).map(([key, label]) => (
           <button
@@ -1028,27 +1028,99 @@ interface StockTabProps {
 function StockTab({ data, mois, annee, onReload }: StockTabProps) {
   const [search, setSearch] = useState('');
   const [savingId, setSavingId] = useState<number | null>(null);
-  const [editingDebutId, setEditingDebutId] = useState<number | null>(null);
-  const [editDebutValue, setEditDebutValue] = useState('');
+  const [editingInventaireId, setEditingInventaireId] = useState<number | null>(null);
+  const [editInventaireValue, setEditInventaireValue] = useState('');
+
+  // Écart détecté en attente de confirmation admin avant sauvegarde
+  const [pendingEcart, setPendingEcart] = useState<{
+    productId: number;
+    productName: string;
+    stockPresume: number;
+    inventaireSaisi: number;
+  } | null>(null);
+
+  // Régularisation en cours après confirmation de l'écart
+  const [regularizing, setRegularizing] = useState(false);
+  const [regularizeError, setRegularizeError] = useState('');
 
   // Le mois est-il passé (terminé) ?
   const past = isMonthPast(mois, annee);
-  const stockActuelLabel = past ? 'Stock fin mois' : 'Stock actuel';
+  const stockPresumeLabel = past ? 'Stock présumé fin mois' : 'Stock présumé';
 
-  async function commitDebut(productId: number) {
-    const quantite = parseInt(editDebutValue);
-    if (isNaN(quantite) || quantite < 0) { setEditingDebutId(null); return; }
+  // Sauvegarde directe de l'inventaire, sans régularisation (les valeurs collent déjà)
+  async function saveInventaire(productId: number, quantite: number) {
     setSavingId(productId);
     try {
-      await fetchJson(`/admin/stock/${productId}/debut`, {
+      await fetchJson(`/admin/stock/${productId}/inventaire`, {
         method: 'PUT',
         body: JSON.stringify({ mois, annee, quantite }),
       });
       await onReload();
     } finally {
       setSavingId(null);
-      setEditingDebutId(null);
+      setEditingInventaireId(null);
     }
+  }
+
+  async function commitInventaire(productId: number) {
+    const quantite = parseInt(editInventaireValue);
+    if (isNaN(quantite) || quantite < 0) { setEditingInventaireId(null); return; }
+
+    const item = (data?.items ?? []).find((i) => i.productId === productId);
+    const stockPresume = item?.stockPresume ?? 0;
+
+    if (quantite !== stockPresume) {
+      // Écart entre inventaire saisi et stock présumé : on demande confirmation
+      // avant d'enregistrer quoi que ce soit.
+      setPendingEcart({
+        productId,
+        productName: item?.name ?? '',
+        stockPresume,
+        inventaireSaisi: quantite,
+      });
+      return;
+    }
+
+    await saveInventaire(productId, quantite);
+  }
+
+  // L'admin confirme que l'inventaire saisi est correct malgré l'écart :
+  // on enregistre l'inventaire tel quel (sans toucher au stock présumé).
+  async function confirmEcartSansRegularisation() {
+    if (!pendingEcart) return;
+    await saveInventaire(pendingEcart.productId, pendingEcart.inventaireSaisi);
+    setPendingEcart(null);
+  }
+
+  // L'admin demande la régularisation : une commande d'achat (qty = écart,
+  // peut être négative) est passée par le user système dédié pour que le
+  // stock présumé revienne s'aligner sur l'inventaire réel.
+  async function regulariser() {
+    if (!pendingEcart) return;
+    setRegularizing(true);
+    setRegularizeError('');
+    try {
+      await fetchJson(`/admin/stock/${pendingEcart.productId}/regulariser`, {
+        method: 'POST',
+        body: JSON.stringify({
+          mois,
+          annee,
+          inventaire: pendingEcart.inventaireSaisi,
+        }),
+      });
+      await onReload();
+      setPendingEcart(null);
+    } catch (e: any) {
+      setRegularizeError(e.message ?? 'Erreur lors de la régularisation.');
+    } finally {
+      setRegularizing(false);
+    }
+  }
+
+  function cancelEcart() {
+    setPendingEcart(null);
+    setRegularizeError('');
+    setEditingInventaireId(null);
   }
 
   const filtered = (data?.items ?? []).filter((i) =>
@@ -1101,10 +1173,10 @@ function StockTab({ data, mois, annee, onReload }: StockTabProps) {
               <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
                 <th className="text-left px-4 py-3 font-medium">Produit</th>
                 <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">Catégorie</th>
-                <th className="text-center px-4 py-3 font-medium hidden md:table-cell">Début mois</th>
                 <th className="text-center px-4 py-3 font-medium hidden md:table-cell">Ventes</th>
                 <th className="text-center px-4 py-3 font-medium hidden md:table-cell">Achats</th>
-                <th className="text-center px-4 py-3 font-medium">{stockActuelLabel}</th>
+                <th className="text-center px-4 py-3 font-medium">{stockPresumeLabel}</th>
+                <th className="text-center px-4 py-3 font-medium">Inventaire</th>
                 <th className="text-right px-4 py-3 font-medium hidden lg:table-cell">Prix achat</th>
                 <th className="text-right px-4 py-3 font-medium">Valeur</th>
                 <th className="text-center px-4 py-3 font-medium hidden sm:table-cell">État</th>
@@ -1118,8 +1190,13 @@ function StockTab({ data, mois, annee, onReload }: StockTabProps) {
                   </td>
                 </tr>
               ) : filtered.map((item, i) => {
-                const badge = stockBadge(item.stockActuel);
+                const badge = stockBadge(item.stockPresume);
                 const isSaving = savingId === item.productId;
+                // Tant que l'inventaire n'a pas été saisi pour ce mois, il affiche
+                // par défaut la valeur du stock présumé.
+                const inventaireAffiche = item.inventaire ?? item.stockPresume;
+                const inventaireSaisiCeMois = item.inventaire !== null && item.inventaire !== undefined;
+                const ecartNonRegularise = inventaireSaisiCeMois && item.inventaire !== item.stockPresume;
 
                 return (
                   <tr
@@ -1133,41 +1210,46 @@ function StockTab({ data, mois, annee, onReload }: StockTabProps) {
                       {item.categorie ?? '—'}
                     </td>
 
-
-                    <td className="px-4 py-3 text-center hidden md:table-cell">
-                      {isSaving ? (
-                        <Loader2 size={14} className="animate-spin text-emerald-400 mx-auto" />
-                      ) : (
-                        <input
-                          type="number"
-                          min="0"
-                          value={editingDebutId === item.productId ? editDebutValue : (item.stockDebut ?? 0)}
-                          onChange={(e) => { setEditingDebutId(item.productId); setEditDebutValue(e.target.value); }}
-                          onBlur={() => editingDebutId === item.productId && commitDebut(item.productId)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') commitDebut(item.productId);
-                            if (e.key === 'Escape') setEditingDebutId(null);
-                          }}
-                          className="w-16 h-7 bg-transparent border border-gray-700 rounded text-center text-sm font-semibold text-white focus:outline-none focus:border-emerald-500/60 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        />
-                      )}
-                    </td>
-
-
                     <td className="px-4 py-3 text-center text-red-400 hidden md:table-cell">
                       {item.ventes > 0 ? `−${item.ventes}` : '—'}
                     </td>
-
 
                     <td className="px-4 py-3 text-center text-emerald-400 hidden md:table-cell">
                       {item.achats > 0 ? `+${item.achats}` : '—'}
                     </td>
 
-
                     <td className="px-4 py-3 text-center">
                       <span className={`font-semibold ${past ? 'text-gray-400' : 'text-white'}`}>
-                        {item.stockActuel}
+                        {item.stockPresume}
                       </span>
+                    </td>
+
+                    <td className="px-4 py-3 text-center">
+                      {isSaving ? (
+                        <Loader2 size={14} className="animate-spin text-emerald-400 mx-auto" />
+                      ) : (
+                        <div className="flex items-center justify-center gap-1.5">
+                          <input
+                            type="number"
+                            min="0"
+                            value={editingInventaireId === item.productId ? editInventaireValue : inventaireAffiche}
+                            onChange={(e) => { setEditingInventaireId(item.productId); setEditInventaireValue(e.target.value); }}
+                            onBlur={() => editingInventaireId === item.productId && commitInventaire(item.productId)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') commitInventaire(item.productId);
+                              if (e.key === 'Escape') setEditingInventaireId(null);
+                            }}
+                            className={`w-16 h-7 bg-transparent border rounded text-center text-sm font-semibold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                              ecartNonRegularise
+                                ? 'border-amber-500/60 text-amber-300 focus:border-amber-400'
+                                : 'border-gray-700 text-white focus:border-emerald-500/60'
+                            }`}
+                          />
+                          {ecartNonRegularise && (
+                            <AlertCircle size={13} className="text-amber-400 shrink-0" />
+                          )}
+                        </div>
+                      )}
                     </td>
 
                     <td className="px-4 py-3 text-right text-gray-400 hidden lg:table-cell">
@@ -1201,91 +1283,120 @@ function StockTab({ data, mois, annee, onReload }: StockTabProps) {
           </table>
         </div>
       )}
+
+      {pendingEcart && (
+        <EcartInventaireModal
+          ecart={pendingEcart}
+          loading={regularizing}
+          error={regularizeError}
+          onConfirmSansRegularisation={confirmEcartSansRegularisation}
+          onRegulariser={regulariser}
+          onCancel={cancelEcart}
+        />
+      )}
     </div>
   );
 }
 
-function StockRecalculatePanel({ onStockReload }: { onStockReload: () => Promise<void> }) {
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState('');
-
-  async function handleRecalculate() {
-    setLoading(true);
-    setSuccess(false);
-    setError('');
-    try {
-      await fetchJson('/admin/stock/recalculate', { method: 'PUT' });
-      setSuccess(true);
-      await onStockReload();
-      setTimeout(() => setSuccess(false), 3000);
-    } catch (e: any) {
-      setError(e.message ?? 'Erreur lors du recalcul.');
-    } finally {
-      setLoading(false);
-    }
-  }
+function EcartInventaireModal({
+  ecart,
+  loading,
+  error,
+  onConfirmSansRegularisation,
+  onRegulariser,
+  onCancel,
+}: {
+  ecart: { productName: string; stockPresume: number; inventaireSaisi: number };
+  loading: boolean;
+  error: string;
+  onConfirmSansRegularisation: () => void;
+  onRegulariser: () => void;
+  onCancel: () => void;
+}) {
+  const diff = ecart.inventaireSaisi - ecart.stockPresume;
+  const diffLabel = diff > 0 ? `+${diff}` : `${diff}`;
 
   return (
-    <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-5 space-y-4">
-      <div>
-        <p className="text-sm font-medium text-white">Recalculer le stock actuel</p>
-        <p className="text-xs text-gray-500 mt-1">
-          Repart du stock de début du mois saisi manuellement et recalcule le stock actuel
-          en intégrant uniquement les ventes et achats survenus <span className="text-white font-medium">après la date du recalcul</span>.
-          Les mouvements antérieurs sont ignorés.
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+      <div className="bg-dark-bg border border-gray-800 rounded-xl p-6 max-w-md w-full space-y-4">
+        <div className="flex items-start gap-3">
+          <div className="shrink-0 mt-0.5">
+            <AlertCircle size={20} className="text-amber-400" />
+          </div>
+          <div>
+            <p className="text-white font-medium">Écart détecté</p>
+            <p className="text-sm text-gray-400 mt-1">
+              Pour <span className="text-white">{ecart.productName}</span>, l'inventaire saisi
+              ({ecart.inventaireSaisi}) ne correspond pas au stock présumé ({ecart.stockPresume}),
+              soit un écart de <span className={diff > 0 ? 'text-emerald-400' : 'text-red-400'}>{diffLabel}</span>.
+            </p>
+          </div>
+        </div>
+
+        <p className="text-xs text-gray-500">
+          Vérifiez d'abord que le compte d'inventaire est correct. Si vous êtes certain du chiffre saisi,
+          vous pouvez régulariser le stock présumé : une commande d'ajustement sera passée automatiquement
+          pour faire correspondre les deux valeurs.
         </p>
-        <p className="text-xs text-amber-400/80 flex items-center gap-1 mt-1">
-          <AlertCircle size={11} />
-          Cette action écrase le stock actuel de tous les produits. Elle est irréversible.
-        </p>
+
+        {error && (
+          <p className="text-red-400 text-xs flex items-center gap-1">
+            <AlertCircle size={12} /> {error}
+          </p>
+        )}
+
+        <div className="flex flex-col sm:flex-row gap-2 pt-1">
+          <button
+            onClick={onCancel}
+            disabled={loading}
+            className="flex-1 px-4 py-2 border border-gray-700 text-gray-300 rounded-lg text-sm font-medium hover:bg-white/[0.03] transition-colors disabled:opacity-50"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={onConfirmSansRegularisation}
+            disabled={loading}
+            className="flex-1 px-4 py-2 border border-gray-700 text-gray-300 rounded-lg text-sm font-medium hover:bg-white/[0.03] transition-colors disabled:opacity-50"
+          >
+            Enregistrer quand même
+          </button>
+          <button
+            onClick={onRegulariser}
+            disabled={loading}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-lg text-sm font-medium hover:bg-emerald-500/30 transition-colors disabled:opacity-50"
+          >
+            {loading ? <Loader2 size={14} className="animate-spin" /> : null}
+            Régulariser
+          </button>
+        </div>
       </div>
-
-      <button
-        onClick={handleRecalculate}
-        disabled={loading}
-        className="flex items-center gap-2 px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-lg text-sm font-medium hover:bg-emerald-500/30 transition-colors disabled:opacity-50"
-      >
-        {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-        Recalculer
-      </button>
-
-      {success && (
-        <p className="text-emerald-400 text-xs flex items-center gap-1">
-          <Check size={12} /> Stock recalculé avec succès.
-        </p>
-      )}
-      {error && (
-        <p className="text-red-400 text-xs flex items-center gap-1">
-          <AlertCircle size={12} /> {error}
-        </p>
-      )}
     </div>
   );
 }
-
 // ─── Trésorerie panel ─────────────────────────────────────────────────────────
 
 function TresoreriePanel({ mois, annee }: { mois: number; annee: number }) {
-  const [data, setData] = useState<{
-    solde: number;
-    soldeInitial: number;
-    mouvements: { id: number; type: string; montant: number; date: string }[];
-  } | null>(null);
-  const [type, setType] = useState<'ENTREE' | 'DEPOT_BANQUE'>('ENTREE');
-  const [montant, setMontant] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
+  // --- Caisse ---
+  const [soldeCaisse, setSoldeCaisse] = useState<number | null>(null);
+  const [soldeCaisseInput, setSoldeCaisseInput] = useState('');
+  const [caisseMode, setCaisseMode] = useState<'view' | 'edit'>('view');
+  const [caisseSaving, setCaisseSaving] = useState(false);
+  const [caisseError, setCaisseError] = useState('');
+  const [caisseSuccess, setCaisseSuccess] = useState(false);
+  const [reportMoisPrec, setReportMoisPrec] = useState<number | null>(null);
 
-  // Edition inline
+  // --- Dépôts banque ---
+  const [depots, setDepots] = useState<{ id: number; montant: number; date: string }[]>([]);
+  const [depotMontant, setDepotMontant] = useState('');
+  const [depotSaving, setDepotSaving] = useState(false);
+  const [depotError, setDepotError] = useState('');
+  const [depotSuccess, setDepotSuccess] = useState(false);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
   const [editId, setEditId] = useState<number | null>(null);
   const [editMontant, setEditMontant] = useState('');
   const [editSaving, setEditSaving] = useState(false);
 
-  // Suppression
-  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const inputCls =
     'bg-dark-bg border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500/60 transition-colors';
@@ -1294,13 +1405,18 @@ function TresoreriePanel({ mois, annee }: { mois: number; annee: number }) {
     setLoading(true);
     try {
       const d = await fetchJson<{
-        solde: number;
+        soldeCaisse: number | null;
         soldeInitial: number;
         mouvements: { id: number; type: string; montant: number; date: string }[];
       }>(`/admin/tresorerie/solde?mois=${mois}&annee=${annee}`);
-      setData(d);
+
+      setSoldeCaisse(d.soldeCaisse ?? null);
+      setSoldeCaisseInput(d.soldeCaisse != null ? String(d.soldeCaisse) : '');
+      setCaisseMode(d.soldeCaisse != null ? 'view' : 'edit');
+      setReportMoisPrec(d.soldeInitial);
+      setDepots(d.mouvements.filter((m) => m.type === 'DEPOT_BANQUE').map(({ id, montant, date }) => ({ id, montant, date })));
     } catch (e: any) {
-      setError(e.message ?? 'Erreur lors du chargement.');
+      setCaisseError(e.message ?? 'Erreur lors du chargement.');
     } finally {
       setLoading(false);
     }
@@ -1308,52 +1424,74 @@ function TresoreriePanel({ mois, annee }: { mois: number; annee: number }) {
 
   useEffect(() => {
     const dateRef = new Date(annee, mois - 2, 1);
-    const moisRef = dateRef.getMonth() + 1;
-    const anneeRef = dateRef.getFullYear();
     fetchJson('/admin/tresorerie/cloturer', {
       method: 'POST',
-      body: JSON.stringify({ mois: moisRef, annee: anneeRef }),
+      body: JSON.stringify({ mois: dateRef.getMonth() + 1, annee: dateRef.getFullYear() }),
     }).catch(() => {});
     fetchData();
   }, [mois, annee]);
 
-  async function handleAdd() {
-    const val = parseFloat(montant);
-    if (isNaN(val) || val <= 0) return;
-    setSaving(true);
-    setError('');
-    setSuccess(false);
+  // --- Caisse handlers ---
+  async function handleCaisseSave() {
+    const val = parseFloat(soldeCaisseInput);
+    if (isNaN(val) || val < 0) return;
+    setCaisseSaving(true);
+    setCaisseError('');
+    setCaisseSuccess(false);
     try {
-      await fetchJson('/admin/tresorerie/mouvement', {
+      await fetchJson('/admin/tresorerie/caisse', {
         method: 'POST',
-        body: JSON.stringify({ type, montant: val, mois, annee }),
+        body: JSON.stringify({ mois, annee, solde: val }),
       });
-      setMontant('');
-      setSuccess(true);
-      await fetchData();
-      setTimeout(() => setSuccess(false), 3000);
+      setSoldeCaisse(val);
+      setCaisseMode('view');
+      setCaisseSuccess(true);
+      setTimeout(() => setCaisseSuccess(false), 3000);
     } catch (e: any) {
-      setError(e.message ?? 'Erreur lors de la saisie.');
+      setCaisseError(e.message ?? 'Erreur lors de la saisie.');
     } finally {
-      setSaving(false);
+      setCaisseSaving(false);
     }
   }
 
-  async function handleDelete(id: number) {
+  // --- Dépôt handlers ---
+  async function handleDepotAdd() {
+    const val = parseFloat(depotMontant);
+    if (isNaN(val) || val <= 0) return;
+    setDepotSaving(true);
+    setDepotError('');
+    setDepotSuccess(false);
+    try {
+      await fetchJson('/admin/tresorerie/mouvement', {
+        method: 'POST',
+        body: JSON.stringify({ type: 'DEPOT_BANQUE', montant: val, mois, annee }),
+      });
+      setDepotMontant('');
+      setDepotSuccess(true);
+      await fetchData();
+      setTimeout(() => setDepotSuccess(false), 3000);
+    } catch (e: any) {
+      setDepotError(e.message ?? 'Erreur lors de la saisie.');
+    } finally {
+      setDepotSaving(false);
+    }
+  }
+
+  async function handleDepotDelete(id: number) {
     setDeleteId(id);
     try {
       await fetchJson(`/admin/tresorerie/mouvement/${id}`, { method: 'DELETE' });
       await fetchData();
     } catch (e: any) {
-      setError(e.message ?? 'Erreur lors de la suppression.');
+      setDepotError(e.message ?? 'Erreur lors de la suppression.');
     } finally {
       setDeleteId(null);
     }
   }
 
-  function startEdit(m: { id: number; montant: number }) {
-    setEditId(m.id);
-    setEditMontant(String(m.montant));
+  function startEdit(d: { id: number; montant: number }) {
+    setEditId(d.id);
+    setEditMontant(String(d.montant));
   }
 
   function cancelEdit() {
@@ -1373,202 +1511,273 @@ function TresoreriePanel({ mois, annee }: { mois: number; annee: number }) {
       cancelEdit();
       await fetchData();
     } catch (e: any) {
-      setError(e.message ?? 'Erreur lors de la modification.');
+      setDepotError(e.message ?? 'Erreur lors de la modification.');
     } finally {
       setEditSaving(false);
     }
   }
 
-  // Solde caisse = soldeInitial (report) + toutes les entrées du mois
-  const totalEntrees = data?.mouvements.filter((m) => m.type === 'ENTREE').reduce((s, m) => s + m.montant, 0) ?? 0;
-  const totalDepots  = data?.mouvements.filter((m) => m.type === 'DEPOT_BANQUE').reduce((s, m) => s + m.montant, 0) ?? 0;
-  // Le solde affiché vient du back (soldeInitial + entrées - dépôts banque)
+  const totalDepots = depots.reduce((s, d) => s + d.montant, 0);
+  const ecart = soldeCaisse != null && reportMoisPrec != null ? soldeCaisse - reportMoisPrec : null;
 
   return (
-    <div className="space-y-4">
-      {/* Solde + stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-4 flex flex-col gap-1">
-          <span className="text-xs text-gray-500 uppercase tracking-wider">Solde caisse</span>
-          {loading ? (
-            <Loader2 size={16} className="animate-spin text-gray-500 mt-1" />
-          ) : (
-            <p className={`text-2xl font-bold ${(data?.solde ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-              {eur(data?.solde ?? 0)}
-            </p>
-          )}
-          <span className="text-xs text-gray-600">Report mois préc. : {eur(data?.soldeInitial ?? 0)}</span>
-        </div>
+    <div className="space-y-5">
 
-        <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-4 flex flex-col gap-1">
-          <span className="text-xs text-gray-500 uppercase tracking-wider">Entrées du mois</span>
-          <p className="text-2xl font-bold text-emerald-400">{eur(totalEntrees)}</p>
-        </div>
-
-        <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-4 flex flex-col gap-1">
-          <span className="text-xs text-gray-500 uppercase tracking-wider">Dépôts banque</span>
-          <p className="text-2xl font-bold text-blue-400">{eur(totalDepots)}</p>
-        </div>
-      </div>
-
-      {/* Saisie mouvement */}
-      <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-5 space-y-4">
-        <p className="text-sm font-medium text-white">Enregistrer un mouvement</p>
-
-        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-gray-500">Type</label>
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value as 'ENTREE' | 'DEPOT_BANQUE')}
-              className={inputCls}
-            >
-              <option value="ENTREE">Entrée espèces</option>
-              <option value="DEPOT_BANQUE">Dépôt banque</option>
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-gray-500">Montant (€)</label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="0.00"
-              value={montant}
-              onChange={(e) => setMontant(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
-              className={`${inputCls} w-32`}
-            />
-          </div>
-
-          <button
-            onClick={handleAdd}
-            disabled={saving || !montant || parseFloat(montant) <= 0}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-lg text-sm font-medium hover:bg-emerald-500/30 transition-colors disabled:opacity-50"
-          >
-            {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-            Enregistrer
-          </button>
-        </div>
-
-        {success && (
-          <p className="text-emerald-400 text-xs flex items-center gap-1">
-            <Check size={12} /> Mouvement enregistré.
-          </p>
-        )}
-        {error && (
-          <p className="text-red-400 text-xs flex items-center gap-1">
-            <AlertCircle size={12} /> {error}
-          </p>
-        )}
-      </div>
-
-      {/* Historique */}
+      {/* ── SECTION 1 : Caisse ── */}
       <div className="bg-dark-bg/60 border border-gray-800 rounded-xl overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-800">
-          <p className="text-sm font-medium text-white">Historique du mois</p>
+        <div className="flex items-center gap-3 px-5 py-3 border-b border-gray-800">
+          <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+            <TrendingUp size={14} className="text-emerald-400" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-white">Solde de caisse</p>
+            <p className="text-xs text-gray-500">Saisie unique mensuelle — montant total constaté en caisse</p>
+          </div>
         </div>
 
-        {!data || data.mouvements.length === 0 ? (
-          <p className="text-gray-600 text-sm px-5 py-6">Aucun mouvement ce mois-ci.</p>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-800">
-                <th className="text-left px-5 py-2 text-xs text-gray-500 font-medium">Date</th>
-                <th className="text-left px-5 py-2 text-xs text-gray-500 font-medium">Type</th>
-                <th className="text-right px-5 py-2 text-xs text-gray-500 font-medium">Montant</th>
-                <th className="px-5 py-2 text-xs text-gray-500 font-medium w-16" />
-              </tr>
-            </thead>
-            <tbody>
-              {data.mouvements.map((m) => (
-                <tr key={m.id} className="border-b border-gray-800/50 hover:bg-white/[0.02] transition-colors group">
-                  <td className="px-5 py-3 text-gray-400">{shortDate(m.date)}</td>
-                  <td className="px-5 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full border ${
-                      m.type === 'ENTREE'
-                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                        : 'bg-blue-500/10 border-blue-500/30 text-blue-400'
-                    }`}>
-                      {m.type === 'ENTREE' ? 'Entrée' : 'Dépôt banque'}
-                    </span>
-                  </td>
+        <div className="p-5 space-y-4">
+          {/* Stats */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-dark-bg border border-gray-800 rounded-xl p-3 space-y-1">
+              <span className="text-xs text-gray-500 uppercase tracking-wider">Report mois préc.</span>
+              {loading ? (
+                <Loader2 size={14} className="animate-spin text-gray-500" />
+              ) : (
+                <p className="text-lg font-bold text-gray-300">{eur(reportMoisPrec ?? 0)}</p>
+              )}
+            </div>
+            <div className="bg-dark-bg border border-gray-800 rounded-xl p-3 space-y-1">
+              <span className="text-xs text-gray-500 uppercase tracking-wider">Écart constaté</span>
+              {loading || ecart === null ? (
+                <p className="text-lg font-bold text-gray-600">—</p>
+              ) : (
+                <p className={`text-lg font-bold ${ecart >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {ecart >= 0 ? '+' : ''}{eur(ecart)}
+                </p>
+              )}
+            </div>
+          </div>
 
-                  {/* Montant — éditable inline */}
-                  <td className="px-5 py-3 text-right font-medium">
-                    {editId === m.id ? (
-                      <div className="flex items-center justify-end gap-2">
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={editMontant}
-                          onChange={(e) => setEditMontant(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleEditSave(m.id);
-                            if (e.key === 'Escape') cancelEdit();
-                          }}
-                          autoFocus
-                          className="w-24 bg-dark-bg border border-emerald-500/40 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-emerald-500"
-                        />
-                        <button
-                          onClick={() => handleEditSave(m.id)}
-                          disabled={editSaving}
-                          className="text-emerald-400 hover:text-emerald-300 transition-colors disabled:opacity-50"
-                          title="Valider"
-                        >
-                          {editSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                        </button>
-                        <button
-                          onClick={cancelEdit}
-                          className="text-gray-500 hover:text-gray-300 transition-colors"
-                          title="Annuler"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-                    ) : (
-                      <span className={m.type === 'ENTREE' ? 'text-emerald-400' : 'text-blue-400'}>
-                        {m.type === 'ENTREE' ? '+' : '-'}{eur(m.montant)}
-                      </span>
-                    )}
-                  </td>
+          {/* Valeur enregistrée */}
+          {caisseMode === 'view' && soldeCaisse != null && (
+            <div className="flex items-center justify-between bg-dark-bg border border-gray-800 rounded-xl px-4 py-3">
+              <div className="space-y-0.5">
+                <p className="text-xs text-gray-500">Solde saisi ce mois</p>
+                <p className="text-2xl font-bold text-emerald-400">{eur(soldeCaisse)}</p>
+              </div>
+              <button
+                onClick={() => setCaisseMode('edit')}
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 rounded-lg text-xs transition-colors"
+              >
+                <Pencil size={12} /> Modifier
+              </button>
+            </div>
+          )}
 
-                  {/* Actions */}
-                  <td className="px-5 py-3">
-                    {editId !== m.id && (
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => startEdit(m)}
-                          className="text-gray-500 hover:text-white transition-colors"
-                          title="Modifier"
-                        >
-                          <Pencil size={13} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(m.id)}
-                          disabled={deleteId === m.id}
-                          className="text-gray-500 hover:text-red-400 transition-colors disabled:opacity-50"
-                          title="Supprimer"
-                        >
-                          {deleteId === m.id
-                            ? <Loader2 size={13} className="animate-spin" />
-                            : <Trash2 size={13} />}
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+          {/* Formulaire saisie / édition */}
+          {(caisseMode === 'edit' || soldeCaisse === null) && (
+            <div className="space-y-3">
+              {soldeCaisse === null && (
+                <p className="text-xs text-gray-500">Aucun relevé de caisse ce mois-ci.</p>
+              )}
+              <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-gray-500">Solde total constaté (€)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={soldeCaisseInput}
+                    onChange={(e) => setSoldeCaisseInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleCaisseSave(); }}
+                    className={`${inputCls} w-36`}
+                    autoFocus={caisseMode === 'edit'}
+                  />
+                </div>
+                <button
+                  onClick={handleCaisseSave}
+                  disabled={caisseSaving || !soldeCaisseInput || parseFloat(soldeCaisseInput) < 0}
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-lg text-sm font-medium hover:bg-emerald-500/30 transition-colors disabled:opacity-50"
+                >
+                  {caisseSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                  Enregistrer
+                </button>
+                {caisseMode === 'edit' && soldeCaisse != null && (
+                  <button
+                    onClick={() => { setCaisseMode('view'); setSoldeCaisseInput(String(soldeCaisse)); }}
+                    className="flex items-center gap-1.5 px-3 py-2 border border-gray-700 text-gray-500 hover:text-white rounded-lg text-sm transition-colors"
+                  >
+                    <X size={14} /> Annuler
+                  </button>
+                )}
+              </div>
+              {caisseSuccess && (
+                <p className="text-emerald-400 text-xs flex items-center gap-1">
+                  <Check size={12} /> Solde de caisse enregistré.
+                </p>
+              )}
+              {caisseError && (
+                <p className="text-red-400 text-xs flex items-center gap-1">
+                  <AlertCircle size={12} /> {caisseError}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── SECTION 2 : Dépôts banque ── */}
+      <div className="bg-dark-bg/60 border border-gray-800 rounded-xl overflow-hidden">
+        <div className="flex items-center gap-3 px-5 py-3 border-b border-gray-800">
+          <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+            <Euro size={14} className="text-blue-400" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-white">Dépôts banque</p>
+            <p className="text-xs text-gray-500">Enregistrer les virements espèces vers le compte bancaire</p>
+          </div>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {/* Total */}
+          <div className="bg-dark-bg border border-gray-800 rounded-xl p-3 space-y-1">
+            <span className="text-xs text-gray-500 uppercase tracking-wider">Total déposé ce mois</span>
+            <p className="text-2xl font-bold text-blue-400">{eur(totalDepots)}</p>
+          </div>
+
+          {/* Formulaire ajout */}
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-gray-500">Montant à déposer (€)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={depotMontant}
+                  onChange={(e) => setDepotMontant(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleDepotAdd(); }}
+                  className={`${inputCls} w-36`}
+                />
+              </div>
+              <button
+                onClick={handleDepotAdd}
+                disabled={depotSaving || !depotMontant || parseFloat(depotMontant) <= 0}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-500/20 border border-blue-500/30 text-blue-400 rounded-lg text-sm font-medium hover:bg-blue-500/30 transition-colors disabled:opacity-50"
+              >
+                {depotSaving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                Ajouter un dépôt
+              </button>
+            </div>
+            {depotSuccess && (
+              <p className="text-emerald-400 text-xs flex items-center gap-1">
+                <Check size={12} /> Dépôt enregistré.
+              </p>
+            )}
+            {depotError && (
+              <p className="text-red-400 text-xs flex items-center gap-1">
+                <AlertCircle size={12} /> {depotError}
+              </p>
+            )}
+          </div>
+
+          {/* Historique */}
+          <div className="border border-gray-800 rounded-xl overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-gray-800">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Historique du mois</p>
+            </div>
+            {depots.length === 0 ? (
+              <p className="text-gray-600 text-sm px-4 py-5">Aucun dépôt ce mois-ci.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-800">
+                    <th className="text-left px-4 py-2 text-xs text-gray-500 font-medium">Date</th>
+                    <th className="text-right px-4 py-2 text-xs text-gray-500 font-medium">Montant</th>
+                    <th className="px-4 py-2 w-16" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {depots.map((d) => (
+                    <tr key={d.id} className="border-b border-gray-800/50 hover:bg-white/[0.02] transition-colors group">
+                      <td className="px-4 py-3 text-gray-400">{shortDate(d.date)}</td>
+
+                      {/* Montant éditable inline */}
+                      <td className="px-4 py-3 text-right font-medium">
+                        {editId === d.id ? (
+                          <div className="flex items-center justify-end gap-2">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={editMontant}
+                              onChange={(e) => setEditMontant(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleEditSave(d.id);
+                                if (e.key === 'Escape') cancelEdit();
+                              }}
+                              autoFocus
+                              className="w-24 bg-dark-bg border border-blue-500/40 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-blue-500"
+                            />
+                            <button
+                              onClick={() => handleEditSave(d.id)}
+                              disabled={editSaving}
+                              className="text-blue-400 hover:text-blue-300 transition-colors disabled:opacity-50"
+                              title="Valider"
+                            >
+                              {editSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                            </button>
+                            <button
+                              onClick={cancelEdit}
+                              className="text-gray-500 hover:text-gray-300 transition-colors"
+                              title="Annuler"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-blue-400">-{eur(d.montant)}</span>
+                        )}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-4 py-3">
+                        {editId !== d.id && (
+                          <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => startEdit(d)}
+                              className="text-gray-500 hover:text-white transition-colors"
+                              title="Modifier"
+                            >
+                              <Pencil size={13} />
+                            </button>
+                            <button
+                              onClick={() => handleDepotDelete(d.id)}
+                              disabled={deleteId === d.id}
+                              className="text-gray-500 hover:text-red-400 transition-colors disabled:opacity-50"
+                              title="Supprimer"
+                            >
+                              {deleteId === d.id
+                                ? <Loader2 size={13} className="animate-spin" />
+                                : <Trash2 size={13} />}
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
 }
+
 // ─── Paramètres tab ───────────────────────────────────────────────────────────
 
 interface ParametresTabProps {
