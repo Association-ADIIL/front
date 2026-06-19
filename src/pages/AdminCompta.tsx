@@ -927,7 +927,7 @@ function AchatsTab({ achats, deletingId, achatCategories, onAdd, onEdit, onDelet
                 <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">Catégorie</th>
                 <th className="text-left px-4 py-3 font-medium hidden md:table-cell">Articles</th>
                 <th className="text-right px-4 py-3 font-medium hidden lg:table-cell">Prix unitaire</th>
-                <th className="text-right px-4 py-3 font-medium hidden lg:table-cell">Total articles</th>
+                <th className="text-right px-4 py-3 font-medium hidden lg:table-cell">nb articles</th>
                 <th className="text-right px-4 py-3 font-medium">Montant</th>
                 <th className="px-4 py-3" />
               </tr>
@@ -954,7 +954,7 @@ function AchatsTab({ achats, deletingId, achatCategories, onAdd, onEdit, onDelet
                     </td>
                     <td className="px-4 py-3 text-gray-400 hidden md:table-cell">
                       {a.items.map((it) => (
-                        <div key={it.id}>{it.product.name} ×{it.quantite}</div>
+                        <div key={it.id}>{it.product.name}</div>
                       ))}
                     </td>
                     <td className="px-4 py-3 text-right hidden lg:table-cell">
@@ -964,7 +964,7 @@ function AchatsTab({ achats, deletingId, achatCategories, onAdd, onEdit, onDelet
                     </td>
                     <td className="px-4 py-3 text-right hidden lg:table-cell">
                       {a.items.map((it) => (
-                        <div key={it.id} className="text-white/70">{eur(it.prixUnitaire * it.quantite)}</div>
+                        <div key={it.id} className="text-white/70">{it.quantite}</div>
                       ))}
                     </td>
                     <td className="px-4 py-3 text-right text-white font-semibold whitespace-nowrap">

@@ -6,7 +6,8 @@ export type PromotionType =
   | 'FIXED_DISCOUNT'
   | 'FREE_SHIPPING'
   | 'BUY_X_GET_Y'
-  | 'PRODUCT_DISCOUNT';
+  | 'PRODUCT_DISCOUNT'
+  | 'BUNDLE_DISCOUNT';
 
 export interface BalanceRechargeTier {
   minAmount: number;
@@ -124,6 +125,22 @@ export const updatePromotion = async (
   });
 };
 
+export const getPromotionWithProducts = async (id: number) => {
+  // Remplace "api" ou l'URL de base selon ta configuration existante (ex: axiosInstance.get)
+  const response = await fetch(`/api/promotions/${id}/products`, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      'Content-Type': 'application/json'
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error('Erreur lors de la récupération de la promotion et de ses produits');
+  }
+
+  return response.json();
+};
+
 export const deletePromotion = async (id: number): Promise<void> => {
   return fetchJson(`/promotions/${id}`, {
     method: 'DELETE',
@@ -155,10 +172,10 @@ export interface CartDiscountCheck {
   type?: PromotionType;
 }
 
-export const checkCartDiscount = async (cartTotal: number): Promise<CartDiscountCheck> => {
+export const checkCartDiscount = async (cartTotal: number, items: any[] = []): Promise<CartDiscountCheck> => {
   return fetchJson('/promotions/check-cart-discount', {
     method: 'POST',
-    body: JSON.stringify({ cartTotal }),
+    body: JSON.stringify({ cartTotal, items }),
   });
 };
 
@@ -233,3 +250,10 @@ export const updateProductPromotion = async (
 export const getProductPromotionById = async (id: number): Promise<ProductPromotionWithProducts> => {
   return fetchJson(`/promotions/products/${id}`);
 };
+
+// Récupère les promotions actives pour une page spécifique (ex: 'shop')
+export const getActivePromotionsForPage = async (page: string): Promise<Promotion[]> => {
+  // CORRECTION ICI : On utilise /active/ au lieu de /page/
+  return fetchJson(`/promotions/active/${page}`);
+};
+

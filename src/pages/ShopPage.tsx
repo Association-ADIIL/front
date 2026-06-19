@@ -2,8 +2,30 @@ import React, { useEffect, useState } from 'react';
 import { logger } from '../utils/logger';
 import { getAllProducts, type Product, type SelectedOption } from '../api/products';
 import { getAllCategories, type Category } from '../api/categories';
-import { getActiveProductPromotions, type ProductPromotionsMap } from '../api/promotions';
-import { ShoppingBag, Minus, Plus, ShoppingCart, Search, LogIn, X, Tag, Coffee, Eye } from 'lucide-react';
+import {
+  getActiveProductPromotions,
+  getActivePromotionsForPage,
+  type ProductPromotionsMap,
+  type Promotion,
+  type PromotionType,
+} from '../api/promotions';
+import {
+  ShoppingBag,
+  Minus,
+  Plus,
+  ShoppingCart,
+  Search,
+  LogIn,
+  X,
+  Tag,
+  Coffee,
+  Eye,
+  Sparkles,
+  Gift,
+  Truck,
+  Repeat,
+  Percent,
+} from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useNotification } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
@@ -12,19 +34,79 @@ import BonusBubble from '../components/BonusBubble';
 import { Link, useNavigate } from 'react-router-dom';
 import SEO from '../components/SEO';
 
+// Visuel (icône, couleurs, label) associé à chaque type de promotion.
+// Ajouter un nouveau type backend ne nécessite qu'une entrée ici.
+const PROMO_VISUALS: Record<
+  PromotionType,
+  { icon: React.ElementType; gradient: string; border: string; glow: string; label: string }
+> = {
+  BUNDLE_DISCOUNT: {
+    icon: Gift,
+    gradient: 'from-purple-500/10 to-pink-500/10',
+    border: 'border-purple-500/30 hover:border-purple-400/50',
+    glow: 'bg-purple-500/20',
+    label: 'Combo Gagnant',
+  },
+  PERCENTAGE_DISCOUNT: {
+    icon: Percent,
+    gradient: 'from-amber-500/10 to-orange-500/10',
+    border: 'border-amber-500/30 hover:border-amber-400/50',
+    glow: 'bg-amber-500/20',
+    label: 'Réduction %',
+  },
+  FIXED_DISCOUNT: {
+    icon: Tag,
+    gradient: 'from-emerald-500/10 to-teal-500/10',
+    border: 'border-emerald-500/30 hover:border-emerald-400/50',
+    glow: 'bg-emerald-500/20',
+    label: 'Remise fixe',
+  },
+  FREE_SHIPPING: {
+    icon: Truck,
+    gradient: 'from-sky-500/10 to-blue-500/10',
+    border: 'border-sky-500/30 hover:border-sky-400/50',
+    glow: 'bg-sky-500/20',
+    label: 'Livraison offerte',
+  },
+  BUY_X_GET_Y: {
+    icon: Repeat,
+    gradient: 'from-rose-500/10 to-red-500/10',
+    border: 'border-rose-500/30 hover:border-rose-400/50',
+    glow: 'bg-rose-500/20',
+    label: 'Offre cumulée',
+  },
+  PRODUCT_DISCOUNT: {
+    icon: Tag,
+    gradient: 'from-red-500/10 to-amber-500/10',
+    border: 'border-red-500/30 hover:border-red-400/50',
+    glow: 'bg-red-500/20',
+    label: 'Promo produit',
+  },
+  // Non utilisé sur la boutique (concerne la recharge de solde) mais présent
+  // pour satisfaire l'exhaustivité du Record<PromotionType, ...>
+  BALANCE_RECHARGE_BONUS: {
+    icon: Sparkles,
+    gradient: 'from-gray-500/10 to-gray-500/10',
+    border: 'border-gray-500/30',
+    glow: 'bg-gray-500/20',
+    label: 'Bonus recharge',
+  },
+};
+
 const ShopPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [productPromotions, setProductPromotions] = useState<ProductPromotionsMap>({});
+  const [pagePromotions, setPagePromotions] = useState<Promotion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [quantities, setQuantities] = useState<{ [key: string]: number }>({});
   const [selectedVariants, setSelectedVariants] = useState<{ [key: string]: number | undefined }>({});
-  // For variant categories: { productId: { categoryId: optionId } }
   const [selectedCategoryOptions, setSelectedCategoryOptions] = useState<{ [productId: string]: { [categoryId: number]: number } }>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<number | null>(null);
+
   const { addToCart, items: cartItems } = useCart();
   const { addNotification } = useNotification();
   const { user } = useAuth();
@@ -33,14 +115,20 @@ const ShopPage: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [productsData, categoriesData, promotionsData] = await Promise.all([
+        const [productsData, categoriesData, promotionsData, pagePromosData] = await Promise.all([
           getAllProducts(),
           getAllCategories(),
-          getActiveProductPromotions()
+          getActiveProductPromotions(),
+          getActivePromotionsForPage('shop').catch((e) => {
+            logger.error('Failed to fetch page promotions', e);
+            return [];
+          })
         ]);
+
         const activeProducts = productsData.filter(p => p.active);
         setProducts(activeProducts);
-        // Sort categories and subcategories by order
+
+        // Sort categories
         const sortedCategories = [...categoriesData].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
         sortedCategories.forEach(cat => {
           if (cat.subcategories) {
@@ -50,6 +138,13 @@ const ShopPage: React.FC = () => {
         setCategories(sortedCategories);
         setProductPromotions(promotionsData);
 
+        // On garde toutes les promos "page" sauf celles liées à la recharge
+        // de solde (hors-sujet sur la boutique)
+        const relevantPromos = pagePromosData.filter(
+          (p: Promotion) => p.type !== 'BALANCE_RECHARGE_BONUS' && p.type !== 'PRODUCT_DISCOUNT'
+        );
+        setPagePromotions(relevantPromos);
+
         const initialQuantities: { [key: string]: number } = {};
         activeProducts.forEach(product => {
           initialQuantities[product.id] = 1;
@@ -57,7 +152,7 @@ const ShopPage: React.FC = () => {
         setQuantities(initialQuantities);
       } catch (err) {
         logger.error('Failed to fetch data', err);
-        setError("Impossible de charger les produits.");
+        setError("Impossible de charger les données de la boutique.");
       } finally {
         setLoading(false);
       }
@@ -120,7 +215,6 @@ const ShopPage: React.FC = () => {
         return;
       }
 
-      // Build display text: "Taille: M, Couleur: Rouge"
       const optionsText = selectedOptions.map(o => `${o.categoryName}: ${o.optionName}`).join(', ');
       addToCart(product, quantity, undefined, selectedOptions);
       addNotification('success', `${quantity}x ${product.name} (${optionsText}) ajouté au panier !`);
@@ -129,9 +223,8 @@ const ShopPage: React.FC = () => {
       return;
     }
 
-    // Legacy format: single variant
+    // Legacy format
     const variantId = selectedVariants[product.id];
-
     if (product.variants && product.variants.length > 0 && !variantId) {
       addNotification('error', 'Veuillez sélectionner une variante');
       return;
@@ -146,25 +239,19 @@ const ShopPage: React.FC = () => {
   };
 
   const filteredProducts = products.filter(product => {
-    // Text search
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
-
-    // Category filter
-    const matchesCategory = !selectedCategoryId ||
-      (product.subcategory?.category?.id === selectedCategoryId);
-
-    // Subcategory filter
-    const matchesSubcategory = !selectedSubcategoryId ||
-      (product.subcategoryId === selectedSubcategoryId);
-
+    const matchesCategory = !selectedCategoryId || (product.subcategory?.category?.id === selectedCategoryId);
+    const matchesSubcategory = !selectedSubcategoryId || (product.subcategoryId === selectedSubcategoryId);
     return matchesSearch && matchesCategory && matchesSubcategory;
   });
 
   const selectedCategory = categories.find(c => c.id === selectedCategoryId);
-
   const cartItemsCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Group products by subcategory for better organization
+  const promotedProducts = React.useMemo(() => {
+    return filteredProducts.filter(product => !!productPromotions[parseInt(product.id)]);
+  }, [filteredProducts, productPromotions]);
+
   const groupedProducts = React.useMemo(() => {
     const groups: { [key: string]: { name: string; categoryName: string; categoryOrder: number; subcategoryOrder: number; products: Product[] } } = {};
 
@@ -175,7 +262,6 @@ const ShopPage: React.FC = () => {
       const categoryName = category?.name || '';
       const key = `${categoryName}-${subcategoryName}`;
 
-      // Find order from categories state (more reliable than product.subcategory which may not have order)
       const categoryFromState = categories.find(c => c.name === categoryName);
       const subcategoryFromState = categoryFromState?.subcategories?.find(s => s.name === subcategoryName);
 
@@ -191,7 +277,6 @@ const ShopPage: React.FC = () => {
       groups[key].products.push(product);
     });
 
-    // Sort groups by category order then subcategory order
     return Object.values(groups).sort((a, b) => {
       if (a.categoryOrder !== b.categoryOrder) {
         return a.categoryOrder - b.categoryOrder;
@@ -199,6 +284,164 @@ const ShopPage: React.FC = () => {
       return a.subcategoryOrder - b.subcategoryOrder;
     });
   }, [filteredProducts, categories]);
+
+  const renderProductCard = (product: Product) => {
+    const quantity = quantities[product.id] || 1;
+    let basePrice = product.price;
+
+    if (product.variantCategories && product.variantCategories.length > 0) {
+      const productSelections = selectedCategoryOptions[product.id] || {};
+      for (const category of product.variantCategories) {
+        const selectedOptionId = productSelections[category.id];
+        if (selectedOptionId) {
+          const option = category.options.find(o => o.id === selectedOptionId);
+          if (option) {
+            basePrice += option.priceModifier;
+          }
+        }
+      }
+    } else if (product.variants) {
+      const variant = product.variants.find(v => v.id === selectedVariants[product.id]);
+      if (variant) {
+        basePrice += variant.priceModifier;
+      }
+    }
+
+    const promotion = productPromotions[parseInt(product.id)];
+    const discountedPrice = promotion
+      ? Math.round(basePrice * (1 - promotion.discountPercent / 100) * 100) / 100
+      : basePrice;
+    const hasPromotion = !!promotion;
+
+    return (
+      <div
+        key={product.id}
+        className={`bg-darker-bg rounded-2xl border transition-all duration-300 overflow-hidden group flex flex-col hover:-translate-y-1 hover:shadow-[0_10px_40px_rgba(0,0,0,0.3)] ${
+          hasPromotion ? 'border-red-500/50 hover:border-red-400' : 'border-gray-800 hover:border-accent-mint/40'
+        }`}
+      >
+        <Link to={`/shop/${product.id}`} className="aspect-square bg-gray-900 relative overflow-hidden block">
+          <img
+            src={product.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(product.name)}&background=1E1E1E&color=fff&size=200`}
+            alt={product.name}
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-darker-bg/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="px-3 py-2 bg-darker-bg/90 backdrop-blur-sm rounded-lg border border-accent-mint/50 flex items-center gap-2 text-accent-mint text-sm font-medium">
+              <Eye size={14} />
+              Voir détails
+            </div>
+          </div>
+          {product.images && product.images.length > 0 && (
+            <div className="absolute bottom-2 left-2 px-2 py-1 bg-darker-bg/90 backdrop-blur-sm rounded-lg text-xs text-gray-300 border border-gray-700/50">
+              +{product.images.length} photo{product.images.length > 1 ? 's' : ''}
+            </div>
+          )}
+          {hasPromotion && (
+            <div className="absolute top-2 left-2 bg-gradient-to-r from-red-500 to-red-600 text-white px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-lg">
+              <Tag size={12} />
+              <span className="font-bold text-xs">-{promotion.discountPercent}%</span>
+            </div>
+          )}
+          <div className="absolute top-2 right-2 bg-darker-bg/95 backdrop-blur-sm px-2.5 py-1.5 rounded-lg border border-gray-700/50">
+            {hasPromotion ? (
+              <div className="flex flex-col items-end">
+                <span className="text-gray-500 line-through text-xs">{basePrice.toFixed(2)}€</span>
+                <span className="text-red-400 font-koulen text-lg leading-tight">{discountedPrice.toFixed(2)}€</span>
+              </div>
+            ) : (
+              <span className="text-accent-mint font-koulen text-lg">{basePrice.toFixed(2)}€</span>
+            )}
+          </div>
+        </Link>
+
+        <div className="p-3 flex flex-col flex-1 border-t border-gray-800/50">
+          <Link to={`/shop/${product.id}`} className="font-bold text-white text-sm leading-tight mb-1 line-clamp-2 group-hover:text-accent-mint transition-colors block hover:underline">
+            {product.name}
+          </Link>
+          {product.description && (
+            <p className="text-gray-500 text-xs line-clamp-2 mb-2">{product.description}</p>
+          )}
+
+          {product.variantCategories && product.variantCategories.length > 0 && (
+            <div className="space-y-1.5 mb-2">
+              {product.variantCategories.map((category) => (
+                <select
+                  key={category.id}
+                  value={selectedCategoryOptions[product.id]?.[category.id] || ''}
+                  onChange={(e) => {
+                    const value = e.target.value ? parseInt(e.target.value) : null;
+                    setSelectedCategoryOptions(prev => {
+                      const productSelections = { ...(prev[product.id] || {}) };
+                      if (value === null) delete productSelections[category.id];
+                      else productSelections[category.id] = value;
+                      return { ...prev, [product.id]: productSelections };
+                    });
+                  }}
+                  className="w-full bg-dark-bg border border-gray-700 rounded-lg p-1.5 text-white text-xs focus:border-accent-mint outline-none cursor-pointer hover:border-gray-600 transition-colors"
+                >
+                  <option value="">{category.name}</option>
+                  {category.options.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.name}{opt.priceModifier !== 0 ? ` (${opt.priceModifier > 0 ? '+' : ''}${opt.priceModifier.toFixed(2)}€)` : ''}
+                    </option>
+                  ))}
+                </select>
+              ))}
+            </div>
+          )}
+
+          {(!product.variantCategories || product.variantCategories.length === 0) && product.variants && product.variants.length > 0 && (
+            <select
+              value={selectedVariants[product.id] || ''}
+              onChange={(e) => setSelectedVariants(prev => ({
+                ...prev,
+                [product.id]: e.target.value ? parseInt(e.target.value) : undefined
+              }))}
+              className="w-full bg-dark-bg border border-gray-700 rounded-lg p-1.5 text-white text-xs focus:border-accent-mint outline-none mb-2 cursor-pointer hover:border-gray-600 transition-colors"
+            >
+              <option value="">Variante</option>
+              {product.variants.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name}
+                </option>
+              ))}
+            </select>
+          )}
+
+          <div className="flex-1" />
+
+          <div className="flex items-center gap-2">
+            <div className="flex items-center bg-dark-bg rounded-lg border border-gray-800">
+              <button
+                onClick={() => updateQuantity(product.id, -1)}
+                disabled={quantity <= 1}
+                className="w-7 h-8 flex items-center justify-center text-accent-mint hover:bg-accent-mint/10 rounded-l-lg disabled:text-gray-600 disabled:hover:bg-transparent transition-colors"
+              >
+                <Minus size={12} />
+              </button>
+              <span className="w-6 text-center text-white font-bold text-sm">{quantity}</span>
+              <button
+                onClick={() => updateQuantity(product.id, 1)}
+                className="w-7 h-8 flex items-center justify-center text-accent-mint hover:bg-accent-mint/10 rounded-r-lg transition-colors"
+              >
+                <Plus size={12} />
+              </button>
+            </div>
+
+            <button
+              onClick={() => handleAddToCart(product)}
+              className="flex-1 py-2 bg-accent-mint text-darker-bg font-bold text-xs rounded-lg hover:bg-white transition-all hover:shadow-[0_0_20px_rgba(119,241,190,0.3)] flex items-center justify-center gap-1"
+            >
+              <ShoppingCart size={12} />
+              <span className="hidden sm:inline">Ajouter</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen">
@@ -208,6 +451,7 @@ const ShopPage: React.FC = () => {
         keywords="boutique ADIIL, snacks, boissons, goodies, IUT Laval, BDE, prix etudiants, cafeteria"
         url="/shop"
       />
+
       {/* Header Section */}
       <section className="bg-darker-bg py-16 border-b border-gray-800 relative overflow-hidden">
         {/* Background effects */}
@@ -216,13 +460,7 @@ const ShopPage: React.FC = () => {
           <div className="absolute bottom-0 left-1/4 w-[300px] h-[300px] bg-amber-500/5 rounded-full blur-[80px]" />
         </div>
         <div className="absolute inset-0 opacity-[0.02]" style={{
-          backgroundImage: `repeating-linear-gradient(
-            -45deg,
-            transparent,
-            transparent 40px,
-            rgba(119,241,190,0.5) 40px,
-            rgba(119,241,190,0.5) 41px
-          )`
+          backgroundImage: `repeating-linear-gradient(-45deg, transparent, transparent 40px, rgba(119,241,190,0.5) 40px, rgba(119,241,190,0.5) 41px)`
         }} />
 
         <div className="container mx-auto px-4 relative z-10">
@@ -247,10 +485,7 @@ const ShopPage: React.FC = () => {
                     <BonusBubble variant="overlay" className="-top-3 -right-3" />
                   </div>
                   {cartItemsCount > 0 && (
-                    <Link
-                      to="/cart"
-                      className="relative flex items-center gap-2 px-4 py-2.5 bg-accent-mint text-darker-bg font-bold rounded-xl hover:bg-white transition-colors shadow-lg shadow-accent-mint/20"
-                    >
+                    <Link to="/cart" className="relative flex items-center gap-2 px-4 py-2.5 bg-accent-mint text-darker-bg font-bold rounded-xl hover:bg-white transition-colors shadow-lg shadow-accent-mint/20">
                       <ShoppingCart size={20} />
                       <span className="hidden sm:inline">Panier</span>
                       <span className="absolute -top-2 -right-2 w-6 h-6 bg-white text-darker-bg text-xs font-bold rounded-full flex items-center justify-center shadow-md">
@@ -260,10 +495,7 @@ const ShopPage: React.FC = () => {
                   )}
                 </>
               ) : (
-                <Link
-                  to="/login"
-                  className="flex items-center gap-2 px-4 py-2.5 bg-accent-mint text-darker-bg font-bold rounded-xl hover:bg-white transition-colors shadow-lg shadow-accent-mint/20"
-                >
+                <Link to="/login" className="flex items-center gap-2 px-4 py-2.5 bg-accent-mint text-darker-bg font-bold rounded-xl hover:bg-white transition-colors shadow-lg shadow-accent-mint/20">
                   <LogIn size={18} />
                   <span>Se connecter</span>
                 </Link>
@@ -291,11 +523,7 @@ const ShopPage: React.FC = () => {
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => handleCategoryClick(null)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                    !selectedCategoryId
-                      ? 'bg-accent-mint text-darker-bg'
-                      : 'bg-dark-bg text-gray-400 hover:text-accent-mint hover:border-accent-mint/50 border border-gray-700'
-                  }`}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${!selectedCategoryId ? 'bg-accent-mint text-darker-bg' : 'bg-dark-bg text-gray-400 hover:text-accent-mint hover:border-accent-mint/50 border border-gray-700'}`}
                 >
                   Tout
                 </button>
@@ -303,11 +531,7 @@ const ShopPage: React.FC = () => {
                   <button
                     key={category.id}
                     onClick={() => handleCategoryClick(category.id)}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                      selectedCategoryId === category.id
-                        ? 'bg-accent-mint text-darker-bg'
-                        : 'bg-dark-bg text-gray-400 hover:text-accent-mint hover:border-accent-mint/50 border border-gray-700'
-                    }`}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${selectedCategoryId === category.id ? 'bg-accent-mint text-darker-bg' : 'bg-dark-bg text-gray-400 hover:text-accent-mint hover:border-accent-mint/50 border border-gray-700'}`}
                   >
                     {category.name}
                   </button>
@@ -319,11 +543,7 @@ const ShopPage: React.FC = () => {
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
                     onClick={() => handleSubcategoryClick(null)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                      !selectedSubcategoryId
-                        ? 'bg-accent-mint/20 text-accent-mint border border-accent-mint/30'
-                        : 'bg-dark-bg text-gray-500 hover:text-accent-mint hover:border-accent-mint/30 border border-gray-700'
-                    }`}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${!selectedSubcategoryId ? 'bg-accent-mint/20 text-accent-mint border border-accent-mint/30' : 'bg-dark-bg text-gray-500 hover:text-accent-mint hover:border-accent-mint/30 border border-gray-700'}`}
                   >
                     Tous les {selectedCategory.name.toLowerCase()}
                   </button>
@@ -331,40 +551,11 @@ const ShopPage: React.FC = () => {
                     <button
                       key={subcategory.id}
                       onClick={() => handleSubcategoryClick(subcategory.id)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                        selectedSubcategoryId === subcategory.id
-                          ? 'bg-accent-mint/20 text-accent-mint border border-accent-mint/30'
-                          : 'bg-dark-bg text-gray-500 hover:text-accent-mint hover:border-accent-mint/30 border border-gray-700'
-                      }`}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${selectedSubcategoryId === subcategory.id ? 'bg-accent-mint/20 text-accent-mint border border-accent-mint/30' : 'bg-dark-bg text-gray-500 hover:text-accent-mint hover:border-accent-mint/30 border border-gray-700'}`}
                     >
                       {subcategory.name}
                     </button>
                   ))}
-                </div>
-              )}
-
-              {/* Active filter indicator */}
-              {(selectedCategoryId || selectedSubcategoryId) && (
-                <div className="mt-3 flex items-center gap-2">
-                  <span className="text-xs text-gray-500">Filtres actifs:</span>
-                  {selectedCategoryId && (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-accent-mint/20 text-accent-mint text-xs rounded-full">
-                      {selectedCategory?.name}
-                      {!selectedSubcategoryId && (
-                        <button onClick={() => handleCategoryClick(null)} className="hover:text-white">
-                          <X size={12} />
-                        </button>
-                      )}
-                    </span>
-                  )}
-                  {selectedSubcategoryId && (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-accent-mint/10 text-accent-mint/80 text-xs rounded-full">
-                      {selectedCategory?.subcategories?.find(s => s.id === selectedSubcategoryId)?.name}
-                      <button onClick={() => handleSubcategoryClick(null)} className="hover:text-white">
-                        <X size={12} />
-                      </button>
-                    </span>
-                  )}
                 </div>
               )}
             </div>
@@ -393,25 +584,79 @@ const ShopPage: React.FC = () => {
                 <ShoppingBag size={32} className="text-gray-600" />
               </div>
               <p className="text-gray-400 text-lg font-montserrat">
-                {searchQuery ? "Aucun produit trouve." : "La boutique est vide pour le moment."}
+                {searchQuery ? "Aucun produit trouvé." : "La boutique est vide pour le moment."}
               </p>
             </div>
           ) : (
             <div className="space-y-12">
-              {/* Results count */}
-              <div className="flex items-center justify-between bg-darker-bg/50 backdrop-blur-sm rounded-xl px-4 py-3 border border-gray-800/50">
-                <p className="text-gray-400 text-sm">
-                  <span className="text-accent-mint font-bold">{filteredProducts.length}</span> produit{filteredProducts.length > 1 ? 's' : ''} disponible{filteredProducts.length > 1 ? 's' : ''}
-                  {groupedProducts.length > 1 && (
-                    <span className="text-gray-500"> dans {groupedProducts.length} categories</span>
-                  )}
-                </p>
-              </div>
+
+              {/* PROMOTIONS EN COURS - tous types confondus (bundle, %, fixe, livraison, BOGO...) */}
+              {pagePromotions.length > 0 && (
+                <div className="space-y-5 mb-12">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-1.5 h-10 bg-gradient-to-b from-accent-mint to-purple-500 rounded-full animate-pulse" />
+                      <div>
+                        <h2 className="text-2xl md:text-3xl font-koulen text-transparent bg-clip-text bg-gradient-to-r from-accent-mint to-purple-400 flex items-center gap-2">
+                          <Sparkles size={24} className="text-accent-mint" />
+                          PROMOTIONS EN COURS
+                        </h2>
+                      </div>
+                    </div>
+                    <div className="flex-1 h-px bg-gradient-to-r from-accent-mint/50 to-transparent" />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {pagePromotions.map((promo) => {
+                      const visual = PROMO_VISUALS[promo.type];
+                      const Icon = visual.icon;
+                      return (
+                        <div
+                          key={promo.id}
+                          className={`bg-gradient-to-br ${visual.gradient} border ${visual.border} rounded-2xl p-5 relative overflow-hidden group transition-all shadow-lg`}
+                        >
+                          <div className={`absolute -right-10 -top-10 w-32 h-32 ${visual.glow} rounded-full blur-2xl group-hover:opacity-80 transition-opacity`} />
+                          <div className="relative z-10">
+                            <div className="flex items-center gap-2 mb-3">
+                              <span className="px-2.5 py-1 bg-white/10 text-white text-xs font-bold rounded-lg uppercase tracking-wide flex items-center gap-1">
+                                <Icon size={12} />
+                                {visual.label}
+                              </span>
+                            </div>
+                            <h3 className="text-xl font-bold text-white mb-2">{promo.displayTitle}</h3>
+                            <p className="text-gray-300 text-sm leading-relaxed">{promo.displayMessage}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* OFFRES SPÉCIALES SECTION (Single Products) */}
+              {promotedProducts.length > 0 && (
+                <div className="space-y-5 mb-12">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-1.5 h-10 bg-gradient-to-b from-red-500 to-red-500/30 rounded-full animate-pulse" />
+                      <div>
+                        <h2 className="text-2xl md:text-3xl font-koulen text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-amber-400 flex items-center gap-2">
+                          <Tag size={24} className="text-red-400" />
+                          PROMOTIONS PRODUITS
+                        </h2>
+                      </div>
+                    </div>
+                    <div className="flex-1 h-px bg-gradient-to-r from-red-500/50 to-transparent" />
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                    {promotedProducts.map(renderProductCard)}
+                  </div>
+                </div>
+              )}
 
               {/* Grouped products by subcategory */}
               {groupedProducts.map((group) => (
                 <div key={`${group.categoryName}-${group.name}`} className="space-y-5">
-                  {/* Section header */}
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-3">
                       <div className="w-1.5 h-10 bg-gradient-to-b from-accent-mint to-accent-mint/30 rounded-full" />
@@ -428,180 +673,8 @@ const ShopPage: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* Products grid */}
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                    {group.products.map((product) => {
-                      const quantity = quantities[product.id] || 1;
-
-                      // Calculate base price based on variant type
-                      let basePrice = product.price;
-                      if (product.variantCategories && product.variantCategories.length > 0) {
-                        // New format: sum modifiers from all selected options
-                        const productSelections = selectedCategoryOptions[product.id] || {};
-                        for (const category of product.variantCategories) {
-                          const selectedOptionId = productSelections[category.id];
-                          if (selectedOptionId) {
-                            const option = category.options.find(o => o.id === selectedOptionId);
-                            if (option) {
-                              basePrice += option.priceModifier;
-                            }
-                          }
-                        }
-                      } else if (product.variants) {
-                        // Legacy format: single variant
-                        const variant = product.variants.find(v => v.id === selectedVariants[product.id]);
-                        if (variant) {
-                          basePrice += variant.priceModifier;
-                        }
-                      }
-                      const promotion = productPromotions[parseInt(product.id)];
-                      const discountedPrice = promotion
-                        ? Math.round(basePrice * (1 - promotion.discountPercent / 100) * 100) / 100
-                        : basePrice;
-                      const hasPromotion = !!promotion;
-
-                      return (
-                        <div
-                          key={product.id}
-                          className={`bg-darker-bg rounded-2xl border transition-all duration-300 overflow-hidden group flex flex-col hover:-translate-y-1 hover:shadow-[0_10px_40px_rgba(0,0,0,0.3)] ${
-                            hasPromotion ? 'border-red-500/50 hover:border-red-400' : 'border-gray-800 hover:border-accent-mint/40'
-                          }`}
-                        >
-                          {/* Image */}
-                          <Link to={`/shop/${product.id}`} className="aspect-square bg-gray-900 relative overflow-hidden block">
-                            <img
-                              src={product.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(product.name)}&background=1E1E1E&color=fff&size=200`}
-                              alt={product.name}
-                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                            />
-                            {/* Gradient overlay */}
-                            <div className="absolute inset-0 bg-gradient-to-t from-darker-bg/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                            {/* View details overlay */}
-                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              <div className="px-3 py-2 bg-darker-bg/90 backdrop-blur-sm rounded-lg border border-accent-mint/50 flex items-center gap-2 text-accent-mint text-sm font-medium">
-                                <Eye size={14} />
-                                Voir détails
-                              </div>
-                            </div>
-                            {/* Multiple images indicator */}
-                            {product.images && product.images.length > 0 && (
-                              <div className="absolute bottom-2 left-2 px-2 py-1 bg-darker-bg/90 backdrop-blur-sm rounded-lg text-xs text-gray-300 border border-gray-700/50">
-                                +{product.images.length} photo{product.images.length > 1 ? 's' : ''}
-                              </div>
-                            )}
-                            {/* Promotion badge */}
-                            {hasPromotion && (
-                              <div className="absolute top-2 left-2 bg-gradient-to-r from-red-500 to-red-600 text-white px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-lg">
-                                <Tag size={12} />
-                                <span className="font-bold text-xs">-{promotion.discountPercent}%</span>
-                              </div>
-                            )}
-                            {/* Price tag overlay */}
-                            <div className="absolute top-2 right-2 bg-darker-bg/95 backdrop-blur-sm px-2.5 py-1.5 rounded-lg border border-gray-700/50">
-                              {hasPromotion ? (
-                                <div className="flex flex-col items-end">
-                                  <span className="text-gray-500 line-through text-xs">{basePrice.toFixed(2)}€</span>
-                                  <span className="text-red-400 font-koulen text-lg leading-tight">{discountedPrice.toFixed(2)}€</span>
-                                </div>
-                              ) : (
-                                <span className="text-accent-mint font-koulen text-lg">{basePrice.toFixed(2)}€</span>
-                              )}
-                            </div>
-                          </Link>
-
-                          {/* Content */}
-                          <div className="p-3 flex flex-col flex-1 border-t border-gray-800/50">
-                            <Link to={`/shop/${product.id}`} className="font-bold text-white text-sm leading-tight mb-1 line-clamp-2 group-hover:text-accent-mint transition-colors block hover:underline">{product.name}</Link>
-                            {product.description && (
-                              <p className="text-gray-500 text-xs line-clamp-2 mb-2">{product.description}</p>
-                            )}
-
-                            {/* Variant category selectors (new format) */}
-                            {product.variantCategories && product.variantCategories.length > 0 && (
-                              <div className="space-y-1.5 mb-2">
-                                {product.variantCategories.map((category) => (
-                                  <select
-                                    key={category.id}
-                                    value={selectedCategoryOptions[product.id]?.[category.id] || ''}
-                                    onChange={(e) => {
-                                      const value = e.target.value ? parseInt(e.target.value) : null;
-                                      setSelectedCategoryOptions(prev => {
-                                        const productSelections = { ...(prev[product.id] || {}) };
-                                        if (value === null) {
-                                          delete productSelections[category.id];
-                                        } else {
-                                          productSelections[category.id] = value;
-                                        }
-                                        return { ...prev, [product.id]: productSelections };
-                                      });
-                                    }}
-                                    className="w-full bg-dark-bg border border-gray-700 rounded-lg p-1.5 text-white text-xs focus:border-accent-mint outline-none cursor-pointer hover:border-gray-600 transition-colors"
-                                  >
-                                    <option value="">{category.name}</option>
-                                    {category.options.map((opt) => (
-                                      <option key={opt.id} value={opt.id}>
-                                        {opt.name}{opt.priceModifier !== 0 ? ` (${opt.priceModifier > 0 ? '+' : ''}${opt.priceModifier.toFixed(2)}€)` : ''}
-                                      </option>
-                                    ))}
-                                  </select>
-                                ))}
-                              </div>
-                            )}
-
-                            {/* Legacy variant selector */}
-                            {(!product.variantCategories || product.variantCategories.length === 0) && product.variants && product.variants.length > 0 && (
-                              <select
-                                value={selectedVariants[product.id] || ''}
-                                onChange={(e) => setSelectedVariants(prev => ({
-                                  ...prev,
-                                  [product.id]: e.target.value ? parseInt(e.target.value) : undefined
-                                }))}
-                                className="w-full bg-dark-bg border border-gray-700 rounded-lg p-1.5 text-white text-xs focus:border-accent-mint outline-none mb-2 cursor-pointer hover:border-gray-600 transition-colors"
-                              >
-                                <option value="">Variante</option>
-                                {product.variants.map((v) => (
-                                  <option key={v.id} value={v.id}>
-                                    {v.name}
-                                  </option>
-                                ))}
-                              </select>
-                            )}
-
-                            {/* Spacer to push controls to bottom */}
-                            <div className="flex-1" />
-
-                            {/* Quantity and add button in row */}
-                            <div className="flex items-center gap-2">
-                              <div className="flex items-center bg-dark-bg rounded-lg border border-gray-800">
-                                <button
-                                  onClick={() => updateQuantity(product.id, -1)}
-                                  disabled={quantity <= 1}
-                                  className="w-7 h-8 flex items-center justify-center text-accent-mint hover:bg-accent-mint/10 rounded-l-lg disabled:text-gray-600 disabled:hover:bg-transparent transition-colors"
-                                >
-                                  <Minus size={12} />
-                                </button>
-                                <span className="w-6 text-center text-white font-bold text-sm">{quantity}</span>
-                                <button
-                                  onClick={() => updateQuantity(product.id, 1)}
-                                  className="w-7 h-8 flex items-center justify-center text-accent-mint hover:bg-accent-mint/10 rounded-r-lg transition-colors"
-                                >
-                                  <Plus size={12} />
-                                </button>
-                              </div>
-
-                              {/* Add to cart button */}
-                              <button
-                                onClick={() => handleAddToCart(product)}
-                                className="flex-1 py-2 bg-accent-mint text-darker-bg font-bold text-xs rounded-lg hover:bg-white transition-all hover:shadow-[0_0_20px_rgba(119,241,190,0.3)] flex items-center justify-center gap-1"
-                              >
-                                <ShoppingCart size={12} />
-                                <span className="hidden sm:inline">Ajouter</span>
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
+                    {group.products.map(renderProductCard)}
                   </div>
                 </div>
               ))}
@@ -612,10 +685,7 @@ const ShopPage: React.FC = () => {
 
       {/* Floating cart button (mobile) */}
       {user && cartItemsCount > 0 && (
-        <Link
-          to="/cart"
-          className="fixed bottom-6 right-6 md:hidden flex items-center gap-2 px-5 py-3 bg-accent-mint text-darker-bg font-bold rounded-full shadow-lg hover:bg-white transition-colors z-50"
-        >
+        <Link to="/cart" className="fixed bottom-6 right-6 md:hidden flex items-center gap-2 px-5 py-3 bg-accent-mint text-darker-bg font-bold rounded-full shadow-lg hover:bg-white transition-colors z-50">
           <ShoppingCart size={20} />
           <span>{cartItemsCount}</span>
         </Link>
