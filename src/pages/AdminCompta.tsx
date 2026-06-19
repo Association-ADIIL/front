@@ -76,6 +76,8 @@ interface StockItem {
   ventes: number;
   achats: number;
   valeur: number;
+  stockPresume: number;       // ← ajout
+  inventaire: number | null;  // ← ajout
 }
 
 interface StockKPIs {
@@ -1931,7 +1933,7 @@ function ParametresTab({ achatCategories, fournisseurCategories, onReload, onSto
   return (
     <div className="space-y-4">
 
-      <StockRecalculatePanel onStockReload={onStockReload} />
+
 
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
