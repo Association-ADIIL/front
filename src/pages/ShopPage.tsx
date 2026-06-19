@@ -606,28 +606,47 @@ const ShopPage: React.FC = () => {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {pagePromotions.map((promo) => {
-                      const visual = PROMO_VISUALS[promo.type];
-                      const Icon = visual.icon;
-                      return (
-                        <div
-                          key={promo.id}
-                          className={`bg-gradient-to-br ${visual.gradient} border ${visual.border} rounded-2xl p-5 relative overflow-hidden group transition-all shadow-lg`}
-                        >
-                          <div className={`absolute -right-10 -top-10 w-32 h-32 ${visual.glow} rounded-full blur-2xl group-hover:opacity-80 transition-opacity`} />
-                          <div className="relative z-10">
-                            <div className="flex items-center gap-2 mb-3">
-                              <span className="px-2.5 py-1 bg-white/10 text-white text-xs font-bold rounded-lg uppercase tracking-wide flex items-center gap-1">
-                                <Icon size={12} />
-                                {visual.label}
-                              </span>
-                            </div>
-                            <h3 className="text-xl font-bold text-white mb-2">{promo.displayTitle}</h3>
-                            <p className="text-gray-300 text-sm leading-relaxed">{promo.displayMessage}</p>
-                          </div>
-                        </div>
-                      );
-                    })}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {pagePromotions.map((promo) => {
+                                  const visual = PROMO_VISUALS[promo.type];
+                                  const Icon = visual.icon;
+
+                                  return (
+                                    <div
+                                      key={promo.id}
+                                      className={`bg-gradient-to-br ${visual.gradient} border ${visual.border} rounded-2xl overflow-hidden relative group transition-all shadow-lg flex flex-col`}
+                                    >
+                                      {/* Halo lumineux */}
+                                      <div className={`absolute -right-10 -top-10 w-32 h-32 ${visual.glow} rounded-full blur-2xl group-hover:opacity-80 transition-opacity pointer-events-none`} />
+
+                                      {/* Affichage de l'image si elle est présente */}
+                                      {promo.imageUrl && (
+                                        <div className="aspect-video w-full relative shrink-0">
+                                          <img
+                                            src={promo.imageUrl}
+                                            alt={promo.displayTitle}
+                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                          />
+                                          {/* Petit dégradé sombre en bas de l'image pour faire la transition avec le fond de la carte */}
+                                          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
+                                        </div>
+                                      )}
+
+                                      {/* Contenu texte */}
+                                      <div className="relative z-10 p-5 flex flex-col flex-1">
+                                        <div className="flex items-center gap-2 mb-3">
+                                          <span className="px-2.5 py-1 bg-white/10 backdrop-blur-sm text-white text-xs font-bold rounded-lg uppercase tracking-wide flex items-center gap-1">
+                                            <Icon size={12} />
+                                            {visual.label}
+                                          </span>
+                                        </div>
+                                        <h3 className="text-xl font-bold text-white mb-2">{promo.displayTitle}</h3>
+                                        <p className="text-gray-300 text-sm leading-relaxed">{promo.displayMessage}</p>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                   </div>
                 </div>
               )}
