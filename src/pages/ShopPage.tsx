@@ -620,11 +620,14 @@ const ShopPage: React.FC = () => {
                            className={`bg-gradient-to-br ${visual.gradient} border ${visual.border} rounded-2xl overflow-hidden relative group transition-all shadow-lg`}
                          >
                            {promoImageUrl && (
-                             <div className="aspect-square w-full overflow-hidden relative shrink-0">
+                             <div
+                               className="w-full overflow-hidden relative shrink-0"
+                               style={{ aspectRatio: '1 / 1' }}
+                             >
                                <img
                                  src={promoImageUrl}
                                  alt={promo.displayTitle}
-                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                 className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                />
                                <div className="absolute inset-0 bg-gradient-to-t from-darker-bg/80 via-transparent to-transparent" />
                              </div>
