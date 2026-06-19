@@ -620,7 +620,7 @@ const ShopPage: React.FC = () => {
                            className={`bg-gradient-to-br ${visual.gradient} border ${visual.border} rounded-2xl overflow-hidden relative group transition-all shadow-lg`}
                          >
                            {promoImageUrl && (
-                             <div className="aspect-video w-full overflow-hidden relative">
+                             <div className="aspect-square w-full overflow-hidden relative shrink-0">
                                <img
                                  src={promoImageUrl}
                                  alt={promo.displayTitle}
