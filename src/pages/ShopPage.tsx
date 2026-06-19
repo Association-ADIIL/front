@@ -605,7 +605,7 @@ const ShopPage: React.FC = () => {
                     <div className="flex-1 h-px bg-gradient-to-r from-accent-mint/50 to-transparent" />
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                      {pagePromotions.map((promo) => {
                        const visual = PROMO_VISUALS[promo.type];
