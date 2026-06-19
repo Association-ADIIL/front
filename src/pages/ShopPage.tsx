@@ -284,6 +284,41 @@ const ShopPage: React.FC = () => {
     });
   }, [filteredProducts, categories]);
 
+  const renderPagePromoCard = (promo: Promotion) => {
+    const visual = PROMO_VISUALS[promo.type];
+    const Icon = visual.icon;
+    const promoImageUrl = promo.imageUrl;
+
+    return (
+      <div
+        key={`page-promo-${promo.id}`}
+        className={`bg-gradient-to-br ${visual.gradient} border ${visual.border} rounded-2xl overflow-hidden relative group transition-all shadow-lg flex flex-col`}
+      >
+        {promoImageUrl && (
+          <div className="aspect-square bg-gray-900 relative overflow-hidden shrink-0">
+            <img
+              src={promoImageUrl}
+              alt={promo.displayTitle}
+              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-darker-bg/80 via-transparent to-transparent" />
+          </div>
+        )}
+        <div className={`absolute -right-10 -top-10 w-32 h-32 ${visual.glow} rounded-full blur-2xl group-hover:opacity-80 transition-opacity`} />
+        <div className="relative z-10 p-3 flex flex-col flex-1">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="px-2 py-1 bg-white/10 text-white text-[10px] font-bold rounded-lg uppercase tracking-wide flex items-center gap-1">
+              <Icon size={11} />
+              {visual.label}
+            </span>
+          </div>
+          <h3 className="text-sm font-bold text-white mb-1 line-clamp-2">{promo.displayTitle}</h3>
+          <p className="text-gray-300 text-xs leading-relaxed line-clamp-3">{promo.displayMessage}</p>
+        </div>
+      </div>
+    );
+  };
+
   const renderProductCard = (product: Product) => {
     const quantity = quantities[product.id] || 1;
     let basePrice = product.price;
@@ -442,6 +477,8 @@ const ShopPage: React.FC = () => {
     );
   };
 
+  const hasAnyPromotions = pagePromotions.length > 0 || promotedProducts.length > 0;
+
   return (
     <div className="min-h-screen">
       <SEO
@@ -589,8 +626,8 @@ const ShopPage: React.FC = () => {
           ) : (
             <div className="space-y-12">
 
-              {/* PROMOTIONS EN COURS - tous types confondus (bundle, %, fixe, livraison, BOGO...) */}
-              {pagePromotions.length > 0 && (
+              {/* PROMOTIONS (page promos + produits en promo fusionnés dans une seule grille) */}
+              {hasAnyPromotions && (
                 <div className="space-y-5 mb-12">
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-3">
@@ -600,7 +637,6 @@ const ShopPage: React.FC = () => {
                           Offre promotionnelle
                         </span>
                         <h2 className="text-2xl md:text-3xl font-koulen text-white flex items-center gap-2">
-
                           PROMOTIONS EN COURS
                         </h2>
                       </div>
@@ -608,67 +644,8 @@ const ShopPage: React.FC = () => {
                     <div className="flex-1 h-px bg-gradient-to-r from-accent-mint/50 to-transparent" />
                   </div>
 
-
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                     {pagePromotions.map((promo) => {
-                       const visual = PROMO_VISUALS[promo.type];
-                       const Icon = visual.icon;
-                       const promoImageUrl = promo.imageUrl;
-                       return (
-                         <div
-                           key={promo.id}
-                           className={`bg-gradient-to-br ${visual.gradient} border ${visual.border} rounded-2xl overflow-hidden relative group transition-all shadow-lg`}
-                         >
-                           {promoImageUrl && (
-                             <div
-                               className="w-full overflow-hidden relative shrink-0"
-                               style={{ aspectRatio: '1 / 1' }}
-                             >
-                               <img
-                                 src={promoImageUrl}
-                                 alt={promo.displayTitle}
-                                 className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                               />
-                               <div className="absolute inset-0 bg-gradient-to-t from-darker-bg/80 via-transparent to-transparent" />
-                             </div>
-                           )}
-                           <div className={`absolute -right-10 -top-10 w-32 h-32 ${visual.glow} rounded-full blur-2xl group-hover:opacity-80 transition-opacity`} />
-                           <div className="relative z-10 p-5">
-                             <div className="flex items-center gap-2 mb-3">
-                               <span className="px-2.5 py-1 bg-white/10 text-white text-xs font-bold rounded-lg uppercase tracking-wide flex items-center gap-1">
-                                 <Icon size={12} />
-                                 {visual.label}
-                               </span>
-                             </div>
-                             <h3 className="text-xl font-bold text-white mb-2">{promo.displayTitle}</h3>
-                             <p className="text-gray-300 text-sm leading-relaxed">{promo.displayMessage}</p>
-                           </div>
-                         </div>
-                       );
-                     })}
-                  </div>
-                </div>
-              )}
-
-              {/* OFFRES SPÉCIALES SECTION (Single Products) */}
-              {promotedProducts.length > 0 && (
-                <div className="space-y-5 mb-12">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-1.5 h-10 bg-accent-mint rounded-full" />
-                      <div>
-                        <span className="text-accent-mint/80 text-xs font-bold uppercase tracking-[0.2em]">
-                          Offre promotionnelle
-                        </span>
-                        <h2 className="text-2xl md:text-3xl font-koulen text-white flex items-center gap-2">
-
-                          PROMOTIONS PRODUITS
-                        </h2>
-                      </div>
-                    </div>
-                    <div className="flex-1 h-px bg-gradient-to-r from-accent-mint/50 to-transparent" />
-                  </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                    {pagePromotions.map(renderPagePromoCard)}
                     {promotedProducts.map(renderProductCard)}
                   </div>
                 </div>
