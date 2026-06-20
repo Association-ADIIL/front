@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   TrendingUp, TrendingDown, ShoppingCart, Euro,
   Plus, Trash2, Pencil, X, Check, ChevronLeft, ChevronRight,
-  BarChart3, Package, RefreshCw, AlertCircle, Loader2,} from 'lucide-react';
+  BarChart3, Package, RefreshCw, AlertCircle,CheckCircle, Loader2,} from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip,
   ResponsiveContainer, Cell,
@@ -1046,8 +1046,7 @@ function StockTab({ data, mois, annee, onReload }: StockTabProps) {
   const [regularizeError, setRegularizeError] = useState('');
 
   // Le mois est-il passé (terminé) ?
-  const past = isMonthPast(mois, annee);
-  const stockPresumeLabel = past ? 'Stock présumé fin mois' : 'Stock présumé';
+  const stockDebutLabel = 'Stock présumé début de mois';
 
   // Sauvegarde directe de l'inventaire, sans régularisation (les valeurs collent déjà)
   async function saveInventaire(productId: number, quantite: number) {
@@ -1069,15 +1068,15 @@ function StockTab({ data, mois, annee, onReload }: StockTabProps) {
     if (isNaN(quantite) || quantite < 0) { setEditingInventaireId(null); return; }
 
     const item = (data?.items ?? []).find((i) => i.productId === productId);
-    const stockPresume = item?.stockPresume ?? 0;
+    const stockDebut = item?.stockDebut ?? 0;
 
-    if (quantite !== stockPresume) {
+    if (quantite !== stockDebut) {
       // Écart entre inventaire saisi et stock présumé : on demande confirmation
       // avant d'enregistrer quoi que ce soit.
       setPendingEcart({
         productId,
         productName: item?.name ?? '',
-        stockPresume,
+        stockPresume: stockDebut,
         inventaireSaisi: quantite,
       });
       return;
@@ -1177,8 +1176,11 @@ function StockTab({ data, mois, annee, onReload }: StockTabProps) {
                 <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">Catégorie</th>
                 <th className="text-center px-4 py-3 font-medium hidden md:table-cell">Ventes</th>
                 <th className="text-center px-4 py-3 font-medium hidden md:table-cell">Achats</th>
-                <th className="text-center px-4 py-3 font-medium">{stockPresumeLabel}</th>
-                <th className="text-center px-4 py-3 font-medium">Inventaire</th>
+                <th className="text-center px-4 py-3 font-medium">{stockDebutLabel}</th>
+                <th className="text-center px-4 py-3 font-medium">
+                Inventaire
+                <span className="block text-[10px] normal-case font-normal text-gray-600">compté le 1er du mois</span>
+                </th>
                 <th className="text-right px-4 py-3 font-medium hidden lg:table-cell">Prix achat</th>
                 <th className="text-right px-4 py-3 font-medium">Valeur</th>
                 <th className="text-center px-4 py-3 font-medium hidden sm:table-cell">État</th>
@@ -1196,9 +1198,10 @@ function StockTab({ data, mois, annee, onReload }: StockTabProps) {
                 const isSaving = savingId === item.productId;
                 // Tant que l'inventaire n'a pas été saisi pour ce mois, il affiche
                 // par défaut la valeur du stock présumé.
-                const inventaireAffiche = item.inventaire ?? item.stockPresume;
+                const inventaireAffiche = item.inventaire ?? item.stockDebut;
                 const inventaireSaisiCeMois = item.inventaire !== null && item.inventaire !== undefined;
-                const ecartNonRegularise = inventaireSaisiCeMois && item.inventaire !== item.stockPresume;
+                const ecartNonRegularise = inventaireSaisiCeMois && item.inventaire !== item.stockDebut;
+                const inventaireConfirme = inventaireSaisiCeMois && item.inventaire === item.stockDebut;
 
                 return (
                   <tr
@@ -1221,9 +1224,9 @@ function StockTab({ data, mois, annee, onReload }: StockTabProps) {
                     </td>
 
                     <td className="px-4 py-3 text-center">
-                      <span className={`font-semibold ${past ? 'text-gray-400' : 'text-white'}`}>
-                        {item.stockPresume}
-                      </span>
+                    <span className="font-semibold text-gray-300">
+                    {item.stockDebut}
+                    </span>
                     </td>
 
                     <td className="px-4 py-3 text-center">
@@ -1244,11 +1247,16 @@ function StockTab({ data, mois, annee, onReload }: StockTabProps) {
                             className={`w-16 h-7 bg-transparent border rounded text-center text-sm font-semibold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
                               ecartNonRegularise
                                 ? 'border-amber-500/60 text-amber-300 focus:border-amber-400'
-                                : 'border-gray-700 text-white focus:border-emerald-500/60'
+                                : inventaireConfirme
+                                  ? 'border-emerald-500/60 text-emerald-300 focus:border-emerald-400'
+                                  : 'border-gray-700 text-white focus:border-emerald-500/60'
                             }`}
                           />
                           {ecartNonRegularise && (
                             <AlertCircle size={13} className="text-amber-400 shrink-0" />
+                          )}
+                          {inventaireConfirme && (
+                            <CheckCircle size={13} className="text-emerald-400 shrink-0" />
                           )}
                         </div>
                       )}
