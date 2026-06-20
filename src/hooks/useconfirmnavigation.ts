@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 const CONFIRM_MESSAGE = 'Des champs ont été remplis. Voulez-vous vraiment quitter sans enregistrer ?';
 
@@ -14,7 +13,6 @@ const CONFIRM_MESSAGE = 'Des champs ont été remplis. Voulez-vous vraiment quit
  * @param isDirty - true si des données non sauvegardées doivent bloquer la navigation
  */
 export function useConfirmNavigation(isDirty: boolean) {
-  const navigate = useNavigate();
   const isDirtyRef = useRef(isDirty);
 
   useEffect(() => {
