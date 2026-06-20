@@ -7,20 +7,11 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   zIndex?: number;
-  isDirty?: boolean; // true si des champs ont été remplis -> demande confirmation avant de fermer
+  isDirty?: boolean;
+  footer?: React.ReactNode;
 }
 
-interface ModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  title: string;
-  children: React.ReactNode;
-  zIndex?: number;
-  isDirty?: boolean; // true si des champs ont été remplis -> demande confirmation avant de fermer
-}
-
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, zIndex = 1000, isDirty = false }) => {
-  // Lock body scroll when modal is open
+const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, zIndex = 1000, isDirty = false, footer }) => {
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -32,7 +23,6 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, zIndex 
     };
   }, [isOpen]);
 
-  // Avertit avant fermeture d'onglet / rafraîchissement si la modale est ouverte avec des données non enregistrées
   useEffect(() => {
     if (!isOpen || !isDirty) return;
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -72,10 +62,18 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, zIndex 
             <X size={18} />
           </button>
         </div>
+
         {/* Content */}
         <div className="p-5 overflow-y-auto custom-scrollbar flex-1">
           {children}
         </div>
+
+        {/* Footer */}
+        {footer && (
+          <div className="flex-shrink-0 border-t border-gray-800 p-4 bg-darker-bg rounded-b-2xl">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -913,7 +913,35 @@ const OrderManagementPage: React.FC = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={currentOrder ? `Modifier la commande #${currentOrder.id.toString()}` : `Modifier l\'inscription #${currentInscription?.id}`}
+        title={
+          currentOrder
+            ? `Détails de la Commande #${currentOrder.id.toString().padStart(6, '0')}`
+            : currentInscription
+              ? `Détails de l'Inscription #${currentInscription.id}`
+              : 'Détails'
+        }
+        footer={
+          currentOrder ? (
+            <div className="flex justify-between">
+              <button
+                onClick={() => currentOrder && handleDeleteOrder(currentOrder)}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-colors flex items-center gap-2"
+              >
+                <Trash2 size={16} />
+                Supprimer la commande
+              </button>
+              <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-300 hover:text-white">
+                Fermer
+              </button>
+            </div>
+          ) : currentInscription ? (
+            <div className="flex justify-end">
+              <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-300 hover:text-white">
+                Fermer
+              </button>
+            </div>
+          ) : undefined
+        }
       >
         <div className="space-y-6">
           {currentOrder ? (
@@ -1201,17 +1229,6 @@ const OrderManagementPage: React.FC = () => {
                     </div>
                 </div>
             )}
-
-             <div className="flex justify-between pt-4 border-t border-gray-700">
-                <button
-                  onClick={() => currentOrder && handleDeleteOrder(currentOrder)}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-colors flex items-center gap-2"
-                >
-                  <Trash2 size={16} />
-                  Supprimer la commande
-                </button>
-                <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-300 hover:text-white">Fermer</button>
-            </div>
             </>
           ) : currentInscription ? (
             <>
@@ -1326,10 +1343,6 @@ const OrderManagementPage: React.FC = () => {
                 </p>
               </div>
             )}
-
-             <div className="flex justify-end pt-4 border-t border-gray-700">
-                <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-300 hover:text-white">Fermer</button>
-            </div>
             </>
           ) : null}
         </div>

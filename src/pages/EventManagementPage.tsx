@@ -512,45 +512,64 @@ const EventManagementPage: React.FC = () => {
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         title={currentEvent ? "Modifier l'evenement" : "Creer un evenement"}
+        isDirty={!!(formData.title || formData.description || formData.location || formData.date)}
+        footer={
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={handleCloseModal}
+              className="px-4 py-2 text-gray-300 hover:text-white"
+            >
+              Annuler
+            </button>
+            <button
+              type="submit"
+              form="event-form"
+              className="bg-purple-400 text-darker-bg font-bold py-2 px-6 rounded hover:bg-white transition-colors"
+            >
+              Enregistrer
+            </button>
+          </div>
+        }
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form id="event-form" onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-                <label className="block text-gray-400 mb-1">Titre</label>
-                <input type="text" name="title" value={formData.title} onChange={handleChange} required className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
+              <label className="block text-gray-400 mb-1">Titre</label>
+              <input type="text" name="title" value={formData.title} onChange={handleChange} required className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
             </div>
             <div className="md:col-span-2">
-                <label className="block text-gray-400 mb-1">Description</label>
-                <textarea name="description" value={formData.description} onChange={handleChange} required className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white h-24" />
+              <label className="block text-gray-400 mb-1">Description</label>
+              <textarea name="description" value={formData.description} onChange={handleChange} required className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white h-24" />
             </div>
             <div>
-                <label className="block text-gray-400 mb-1">Date de l'evenement</label>
-                <input type="datetime-local" name="date" value={formData.date} onChange={handleChange} required max="9999-12-31T23:59" className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
+              <label className="block text-gray-400 mb-1">Date de l'evenement</label>
+              <input type="datetime-local" name="date" value={formData.date} onChange={handleChange} required max="9999-12-31T23:59" className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
             </div>
             <div>
-                <label className="block text-gray-400 mb-1">Date limite inscription</label>
-                <input type="datetime-local" name="registrationDeadline" value={formData.registrationDeadline} onChange={handleChange} required max="9999-12-31T23:59" className={`w-full bg-dark-bg border rounded p-2 text-white ${isDeadlineAfterEvent ? 'border-orange-500' : 'border-gray-600'}`} />
-                {isDeadlineAfterEvent && (
-                  <p className="text-orange-400 text-xs mt-1">La date limite est apres la date de l'evenement</p>
-                )}
+              <label className="block text-gray-400 mb-1">Date limite inscription</label>
+              <input type="datetime-local" name="registrationDeadline" value={formData.registrationDeadline} onChange={handleChange} required max="9999-12-31T23:59" className={`w-full bg-dark-bg border rounded p-2 text-white ${isDeadlineAfterEvent ? 'border-orange-500' : 'border-gray-600'}`} />
+              {isDeadlineAfterEvent && (
+                <p className="text-orange-400 text-xs mt-1">La date limite est apres la date de l'evenement</p>
+              )}
             </div>
             <div>
-                <label className="block text-gray-400 mb-1">Lieu</label>
-                <input type="text" name="location" value={formData.location} onChange={handleChange} required className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
+              <label className="block text-gray-400 mb-1">Lieu</label>
+              <input type="text" name="location" value={formData.location} onChange={handleChange} required className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
             </div>
             <div>
-                <label className="block text-gray-400 mb-1">Prix (€)</label>
-                <NumberInput value={formData.price} onChange={(val) => setFormData(prev => ({ ...prev, price: parseFloat(val) || 0 }))} required className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
+              <label className="block text-gray-400 mb-1">Prix (€)</label>
+              <NumberInput value={formData.price} onChange={(val) => setFormData(prev => ({ ...prev, price: parseFloat(val) || 0 }))} required className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
             </div>
             <div>
-                <label className="block text-gray-400 mb-1">Places Totales</label>
-                <NumberInput value={formData.totalPlaces} onChange={(val) => setFormData(prev => ({ ...prev, totalPlaces: parseInt(val) || 0 }))} allowDecimals={false} required className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
-                <p className="text-gray-500 text-xs mt-1">0 = places illimitees</p>
+              <label className="block text-gray-400 mb-1">Places Totales</label>
+              <NumberInput value={formData.totalPlaces} onChange={(val) => setFormData(prev => ({ ...prev, totalPlaces: parseInt(val) || 0 }))} allowDecimals={false} required className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
+              <p className="text-gray-500 text-xs mt-1">0 = places illimitees</p>
             </div>
             <div>
-                <label className="block text-gray-400 mb-1">Max places / pers</label>
-                <NumberInput value={formData.maxPlacesPerPerson} onChange={(val) => setFormData(prev => ({ ...prev, maxPlacesPerPerson: parseInt(val) || 0 }))} allowDecimals={false} required className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
-                <p className="text-gray-500 text-xs mt-1">0 = illimite</p>
+              <label className="block text-gray-400 mb-1">Max places / pers</label>
+              <NumberInput value={formData.maxPlacesPerPerson} onChange={(val) => setFormData(prev => ({ ...prev, maxPlacesPerPerson: parseInt(val) || 0 }))} allowDecimals={false} required className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white" />
+              <p className="text-gray-500 text-xs mt-1">0 = illimite</p>
             </div>
             <div>
               <label className="block text-gray-400 mb-1">Statut</label>
@@ -570,15 +589,15 @@ const EventManagementPage: React.FC = () => {
               </select>
             </div>
             <div className="md:col-span-2">
-                <ImageUpload
-                  value={formData.coverImage || ''}
-                  onChange={(url) => setFormData(prev => ({ ...prev, coverImage: url || '' }))}
-                  folder="events"
-                  label="Image de couverture"
-                  aspectRatio="16:9"
-                  onCleanup={handleImageCleanup}
-                  accentColor="purple"
-                />
+              <ImageUpload
+                value={formData.coverImage || ''}
+                onChange={(url) => setFormData(prev => ({ ...prev, coverImage: url || '' }))}
+                folder="events"
+                label="Image de couverture"
+                aspectRatio="16:9"
+                onCleanup={handleImageCleanup}
+                accentColor="purple"
+              />
             </div>
 
             {/* Custom Form Fields Section */}
@@ -586,7 +605,6 @@ const EventManagementPage: React.FC = () => {
               <h3 className="text-lg font-bold text-white mb-3">Champs personnalises pour l'inscription</h3>
               <p className="text-sm text-gray-400 mb-4">Ajoutez des questions personnalisees pour les participants (ex: preferences alimentaires, taille de t-shirt, etc.)</p>
 
-              {/* Existing fields */}
               {formData.formFields && formData.formFields.length > 0 && (
                 <div className="space-y-2 mb-4">
                   {formData.formFields.map((field) => (
@@ -610,7 +628,6 @@ const EventManagementPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Add new field */}
               <div className="bg-darker-bg p-4 rounded border border-gray-700">
                 <p className="text-sm font-bold text-white mb-3">Ajouter un nouveau champ</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -685,10 +702,6 @@ const EventManagementPage: React.FC = () => {
                 </button>
               </div>
             </div>
-          </div>
-          <div className="flex justify-end pt-4">
-              <button type="button" onClick={handleCloseModal} className="mr-4 px-4 py-2 text-gray-300 hover:text-white">Annuler</button>
-              <button type="submit" className="bg-purple-400 text-darker-bg font-bold py-2 px-6 rounded hover:bg-white transition-colors">Enregistrer</button>
           </div>
         </form>
       </Modal>

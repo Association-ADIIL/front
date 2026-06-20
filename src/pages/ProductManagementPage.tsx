@@ -646,12 +646,18 @@ const ProductManagementPage: React.FC = () => {
       {/* Create/Edit Modal */}
 
       <Modal
-      isOpen={isModalOpen}
-      onClose={handleCloseModal}
-      title={currentProduct ? "Modifier le produit" : "Ajouter un produit"}
-      isDirty={isDirty}
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        title={currentProduct ? "Modifier le produit" : "Ajouter un produit"}
+        isDirty={isDirty}
+        footer={
+          <div className="flex justify-end gap-3">
+            <button type="button" onClick={handleCloseModal} className="px-4 py-2 text-gray-300 hover:text-white">Annuler</button>
+            <button type="submit" form="product-form" className="bg-orange-400 text-darker-bg font-bold py-2 px-6 rounded hover:bg-white transition-colors">Enregistrer</button>
+          </div>
+        }
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form id="product-form" onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 gap-4">
             <div>
                 <label className="block text-gray-400 mb-1">Nom</label>
@@ -1030,10 +1036,7 @@ const ProductManagementPage: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="flex justify-end pt-4">
-              <button type="button" onClick={handleCloseModal} className="mr-4 px-4 py-2 text-gray-300 hover:text-white">Annuler</button>
-              <button type="submit" className="bg-orange-400 text-darker-bg font-bold py-2 px-6 rounded hover:bg-white transition-colors">Enregistrer</button>
-          </div>
+
         </form>
       </Modal>
 
