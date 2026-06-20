@@ -12,6 +12,7 @@ import NumberInput from '../components/NumberInput';
 import { deleteImage } from '../api/upload';
 import { useNotification } from '../context/NotificationContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { useConfirmNavigation } from '../hooks/useConfirmNavigation';
 
 const ITEMS_PER_PAGE = 50;
 
@@ -487,7 +488,7 @@ const ProductManagementPage: React.FC = () => {
 
   const isDirty = initialFormDataRef.current !== null &&
       JSON.stringify(formData) !== JSON.stringify(initialFormDataRef.current);
-
+ useConfirmNavigation(isModalOpen && isDirty);
   return (
     <div>
       {/* Header */}

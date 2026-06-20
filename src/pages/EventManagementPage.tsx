@@ -9,6 +9,7 @@ import NumberInput from '../components/NumberInput';
 import { deleteImage } from '../api/upload';
 import { useNotification } from '../context/NotificationContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { useConfirmNavigation } from '../hooks/useConfirmNavigation';
 
 const EventManagementPage: React.FC = () => {
   useDocumentTitle('Admin - Events');
@@ -58,6 +59,12 @@ const EventManagementPage: React.FC = () => {
 
   // Track if user manually edited the registration deadline
   const [deadlineManuallyEdited, setDeadlineManuallyEdited] = useState(false);
+
+  // L'événement-modal est "dirty" dès que des champs significatifs sont remplis.
+  // Le Modal gère déjà beforeunload + confirm() sur la croix/overlay ;
+  // ce hook couvre en plus la navigation interne (liens) et le bouton précédent.
+  const isEventFormDirty = !!(formData.title || formData.description || formData.location || formData.date);
+  useConfirmNavigation(isModalOpen && isEventFormDirty);
 
   const fetchEvents = async () => {
     try {
@@ -429,10 +436,10 @@ const EventManagementPage: React.FC = () => {
           <div key={event.id} className="bg-darker-bg border border-gray-800 rounded-2xl p-6 flex flex-col relative group hover:border-gray-700 transition-colors">
              <div className="flex items-start justify-between mb-4">
                  <div className="w-16 h-16 rounded bg-dark-bg flex items-center justify-center overflow-hidden">
-                     <img 
-                        src={event.coverImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(event.title)}&background=1E1E1E&color=fff&size=64`} 
-                        alt={event.title} 
-                        className="w-full h-full object-cover" 
+                     <img
+                        src={event.coverImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(event.title)}&background=1E1E1E&color=fff&size=64`}
+                        alt={event.title}
+                        className="w-full h-full object-cover"
                      />
                  </div>
                  <div className="flex space-x-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity bg-darker-bg p-1 rounded absolute top-4 right-4 shadow-lg">
@@ -481,7 +488,7 @@ const EventManagementPage: React.FC = () => {
                 <MapPin size={14} className="mr-2" />
                 {event.location}
             </div>
-            
+
             <div className="mt-auto pt-4 border-t border-gray-800 space-y-2">
               <div className="flex justify-between text-sm items-center">
                 <span className="text-gray-400">
@@ -512,7 +519,7 @@ const EventManagementPage: React.FC = () => {
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         title={currentEvent ? "Modifier l'evenement" : "Creer un evenement"}
-        isDirty={!!(formData.title || formData.description || formData.location || formData.date)}
+        isDirty={isEventFormDirty}
         footer={
           <div className="flex justify-end gap-3">
             <button
