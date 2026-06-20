@@ -1,606 +1,725 @@
-import React, { useEffect, useState } from 'react';
-import { logger } from '../utils/logger';
-import { getAllProducts, type Product, type SelectedOption } from '../api/products';
-import { getAllCategories, type Category } from '../api/categories';
-import { getActiveProductPromotions, getActivePromotionsForPage, type ProductPromotionsMap, type Promotion } from '../api/promotions';
-import { ShoppingBag, Minus, Plus, ShoppingCart, Search, LogIn, Tag, Coffee, Eye, Sparkles, Gift } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useNotification } from '../context/NotificationContext';
+import { Minus, Plus, Trash2, ShoppingBag, CreditCard, Heart, ArrowLeft, ChevronRight, Gift, Tag, Wallet, CheckCircle2, Banknote, Package } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import BalanceDisplay from '../components/BalanceDisplay';
-import BonusBubble from '../components/BonusBubble';
-import { Link, useNavigate } from 'react-router-dom';
-import SEO from '../components/SEO';
+import { createOrder, type OrderItem as ApiOrderItem } from '../api/orders';
+import { getMyBalance, purchaseWithBalance } from '../api/balance';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { checkBalanceRechargeBonus, checkCartDiscount, getActiveProductPromotions, type CartDiscountCheck, type ProductPromotionsMap } from '../api/promotions';
+import LegalAcceptance from '../components/LegalAcceptance';
+import { logger } from '../utils/logger';
+import { getErrorMessage } from '../types/errors';
 
-const ShopPage: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [productPromotions, setProductPromotions] = useState<ProductPromotionsMap>({});
-  const [bundlePromotions, setBundlePromotions] = useState<Promotion[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [quantities, setQuantities] = useState<{ [key: string]: number }>({});
-  const [selectedVariants, setSelectedVariants] = useState<{ [key: string]: number | undefined }>({});
-  const [selectedCategoryOptions, setSelectedCategoryOptions] = useState<{ [productId: string]: { [categoryId: number]: number } }>({});
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
-  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<number | null>(null);
-
-  const { addToCart, items: cartItems } = useCart();
+const CartPage: React.FC = () => {
+  useDocumentTitle('Panier');
+  const { items, updateQuantity, removeFromCart, totalPrice, clearCart } = useCart();
   const { addNotification } = useNotification();
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'PAYPAL' | 'HELLOASSO' | 'CASH_CB' | 'BALANCE' | null>(null);
+  const [isProcessingOrder, setIsProcessingOrder] = useState(false);
+  const [balance, setBalance] = useState<number>(0);
+  const [maxBonusPercent, setMaxBonusPercent] = useState<number | null>(null);
+  const [discountInfo, setDiscountInfo] = useState<CartDiscountCheck | null>(null);
+  const [productPromotions, setProductPromotions] = useState<ProductPromotionsMap>({});
+  const [legalAccepted, setLegalAccepted] = useState(false);
+
+  // Calculate total with product promotions
+  const totalWithProductPromotions = items.reduce((sum, item) => {
+    let basePrice = item.product.price;
+    // New format: selectedOptions
+    if (item.selectedOptions && item.selectedOptions.length > 0) {
+      const totalModifier = item.selectedOptions.reduce((acc, opt) => acc + (opt.priceModifier || 0), 0);
+      basePrice += totalModifier;
+    }
+    // Legacy format: variantId
+    else if (item.variantId && item.product.variants) {
+      const variant = item.product.variants.find(v => v.id === item.variantId);
+      if (variant) {
+        basePrice += variant.priceModifier || 0;
+      }
+    }
+    const promotion = productPromotions[parseInt(item.product.id)];
+    const discountedPrice = promotion
+      ? Math.round(basePrice * (1 - promotion.discountPercent / 100) * 100) / 100
+      : basePrice;
+    return sum + discountedPrice * item.quantity;
+  }, 0);
+
+  // Total savings from product promotions
+  const productPromotionsSavings = totalPrice - totalWithProductPromotions;
+
+  // Calculate final price with discount (cart discount applies on top of product promotions)
+  const finalPrice = discountInfo?.eligible ? discountInfo.finalAmount : totalWithProductPromotions;
+
+  // Compare balance with rounded values to avoid floating point precision issues
+  const hasEnoughBalance = Math.round(balance * 100) >= Math.round(finalPrice * 100);
+
+  // Auto-deselect HelloAsso if below minimum
   useEffect(() => {
-    const fetchData = async () => {
+    if (selectedPaymentMethod === 'HELLOASSO' && finalPrice < 0.50) {
+      setSelectedPaymentMethod(null);
+    }
+  }, [finalPrice, selectedPaymentMethod]);
+
+  // Fetch product promotions
+  useEffect(() => {
+    const fetchPromotions = async () => {
       try {
-        const [productsData, categoriesData, promotionsData, pagePromosData] = await Promise.all([
-          getAllProducts(),
-          getAllCategories(),
-          getActiveProductPromotions(),
-          getActivePromotionsForPage('shop').catch((e) => {
-            logger.error('Failed to fetch page promotions', e);
-            return [];
-          })
-        ]);
-
-        const activeProducts = productsData.filter(p => p.active);
-        setProducts(activeProducts);
-
-        // Sort categories
-        const sortedCategories = [...categoriesData].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-        sortedCategories.forEach(cat => {
-          if (cat.subcategories) {
-            cat.subcategories.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-          }
-        });
-        setCategories(sortedCategories);
-        setProductPromotions(promotionsData);
-
-        // Filter out bundles specifically
-        const bundles = pagePromosData.filter((p: Promotion) => p.type === 'BUNDLE_DISCOUNT');
-        setBundlePromotions(bundles);
-
-        const initialQuantities: { [key: string]: number } = {};
-        activeProducts.forEach(product => {
-          initialQuantities[product.id] = 1;
-        });
-        setQuantities(initialQuantities);
-      } catch (err) {
-        logger.error('Failed to fetch data', err);
-        setError("Impossible de charger les données de la boutique.");
-      } finally {
-        setLoading(false);
+        const promotions = await getActiveProductPromotions();
+        setProductPromotions(promotions || {});
+      } catch (error) {
+        logger.error('Error fetching product promotions', error);
+        setProductPromotions({});
       }
     };
-
-    fetchData();
+    fetchPromotions();
   }, []);
 
-  const handleCategoryClick = (categoryId: number | null) => {
-    setSelectedCategoryId(categoryId);
-    setSelectedSubcategoryId(null);
-  };
+  useEffect(() => {
+    if (user) {
+      const fetchData = async () => {
+        try {
+          const [balanceData, bonusData] = await Promise.all([
+            getMyBalance(),
+            checkBalanceRechargeBonus(10) // Check for max bonus with reasonable amount
+          ]);
+          setBalance(balanceData.balance);
+          if (bonusData.eligible) {
+            // Get max bonus percent from tiers if available, otherwise use the direct value
+            let bonusPercent = bonusData.bonusPercent;
+            if (bonusData.tiers && bonusData.tiers.length > 0) {
+              const maxFromTiers = Math.max(...bonusData.tiers.map(tier => tier.bonusPercent));
+              bonusPercent = Math.max(bonusPercent || 0, maxFromTiers);
+            }
+            if (bonusPercent && bonusPercent > 0) {
+              setMaxBonusPercent(bonusPercent);
+            }
+          }
+        } catch (error) {
+          logger.error('Error fetching balance data', error);
+        }
+      };
+      fetchData();
+    }
+  }, [user]);
 
-  const handleSubcategoryClick = (subcategoryId: number | null) => {
-    setSelectedSubcategoryId(subcategoryId);
-  };
+  // Check for cart discounts when total changes (use total after product promotions)
+  useEffect(() => {
+    if (user && totalWithProductPromotions > 0) {
+      const checkDiscount = async () => {
+        try {
+          const discount = await checkCartDiscount(totalWithProductPromotions);
+          setDiscountInfo(discount);
+        } catch (error) {
+          logger.error('Error checking discount', error);
+          setDiscountInfo(null);
+        }
+      };
+      checkDiscount();
+    } else {
+      setDiscountInfo(null);
+    }
+  }, [user, totalWithProductPromotions]);
 
-  const updateQuantity = (productId: string, delta: number) => {
-    setQuantities(prev => ({
-      ...prev,
-      [productId]: Math.max(1, (prev[productId] || 1) + delta)
-    }));
-  };
-
-  const handleAddToCart = (product: Product) => {
+  const handleCheckout = async () => {
     if (!user) {
-      addNotification('info', 'Connectez-vous pour ajouter des produits au panier');
+      addNotification('error', 'Vous devez être connecté pour passer commande.');
       navigate('/login');
       return;
     }
 
-    const quantity = quantities[product.id] || 1;
+    if (items.length === 0) {
+      addNotification('error', 'Votre panier est vide.');
+      return;
+    }
 
-    // New format: variant categories
-    if (product.variantCategories && product.variantCategories.length > 0) {
-      const productSelections = selectedCategoryOptions[product.id] || {};
-      const selectedOptions: SelectedOption[] = [];
-      const missingCategories: string[] = [];
+    // Free order - use BALANCE if selected, otherwise FREE payment method
+    if (totalPrice === 0) {
+      // If user selected BALANCE, use balance method (will debit 0€)
+      if (selectedPaymentMethod === 'BALANCE') {
+        setIsProcessingOrder(true);
+        try {
+          await purchaseWithBalance({
+            items: items.map(item => ({
+              productId: parseInt(item.product.id),
+              quantity: item.quantity,
+              variantId: item.variantId,
+              selectedOptions: item.selectedOptions,
+            })),
+            promotionId: discountInfo?.eligible ? discountInfo.promotionId : undefined,
+          });
 
-      for (const category of product.variantCategories) {
-        const selectedOptionId = productSelections[category.id];
-        if (!selectedOptionId) {
-          missingCategories.push(category.name);
-        } else {
-          const option = category.options.find(o => o.id === selectedOptionId);
-          if (option) {
-            selectedOptions.push({
-              categoryId: category.id,
-              categoryName: category.name,
-              optionId: option.id,
-              optionName: option.name,
-              priceModifier: option.priceModifier
-            });
-          }
+          addNotification('success', 'Commande confirmée via Solde ADIIL !');
+          clearCart();
+          navigate('/my-account');
+        } catch (error) {
+          addNotification('error', getErrorMessage(error));
+        } finally {
+          setIsProcessingOrder(false);
         }
-      }
-
-      if (missingCategories.length > 0) {
-        addNotification('error', `Veuillez sélectionner: ${missingCategories.join(', ')}`);
         return;
       }
 
-      const optionsText = selectedOptions.map(o => `${o.categoryName}: ${o.optionName}`).join(', ');
-      addToCart(product, quantity, undefined, selectedOptions);
-      addNotification('success', `${quantity}x ${product.name} (${optionsText}) ajouté au panier !`);
-      setQuantities(prev => ({ ...prev, [product.id]: 1 }));
-      setSelectedCategoryOptions(prev => ({ ...prev, [product.id]: {} }));
+      // Otherwise use FREE payment method
+      setIsProcessingOrder(true);
+      try {
+        const orderItems: ApiOrderItem[] = items.map(item => ({
+          productId: item.product.id,
+          quantity: item.quantity,
+          variantId: item.variantId,
+          selectedOptions: item.selectedOptions,
+        }));
+
+        const returnUrl = `${window.location.origin}/payment/callback`;
+        const cancelUrl = `${window.location.origin}/cart`;
+
+        await createOrder({
+          items: orderItems,
+          paymentMethod: 'FREE',
+          returnUrl,
+          cancelUrl,
+          promotionId: discountInfo?.eligible ? discountInfo.promotionId : undefined,
+        });
+
+        addNotification('success', 'Commande confirmée !');
+        clearCart();
+        navigate('/my-account');
+      } catch (error) {
+        logger.error('Erreur lors de la commande', error);
+        addNotification('error', getErrorMessage(error));
+      } finally {
+        setIsProcessingOrder(false);
+      }
       return;
     }
 
-    // Legacy format
-    const variantId = selectedVariants[product.id];
-    if (product.variants && product.variants.length > 0 && !variantId) {
-      addNotification('error', 'Veuillez sélectionner une variante');
+    if (!selectedPaymentMethod) {
+      addNotification('error', 'Veuillez sélectionner une méthode de paiement.');
       return;
     }
 
-    const variant = product.variants?.find(v => v.id === variantId);
-    const variantText = variant ? ` (${variant.name})` : '';
-
-    addToCart(product, quantity, variantId);
-    addNotification('success', `${quantity}x ${product.name}${variantText} ajouté au panier !`);
-    setQuantities(prev => ({ ...prev, [product.id]: 1 }));
-  };
-
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = !selectedCategoryId || (product.subcategory?.category?.id === selectedCategoryId);
-    const matchesSubcategory = !selectedSubcategoryId || (product.subcategoryId === selectedSubcategoryId);
-    return matchesSearch && matchesCategory && matchesSubcategory;
-  });
-
-  const selectedCategory = categories.find(c => c.id === selectedCategoryId);
-  const cartItemsCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-
-  const promotedProducts = React.useMemo(() => {
-    return filteredProducts.filter(product => !!productPromotions[parseInt(product.id)]);
-  }, [filteredProducts, productPromotions]);
-
-  const groupedProducts = React.useMemo(() => {
-    const groups: { [key: string]: { name: string; categoryName: string; categoryOrder: number; subcategoryOrder: number; products: Product[] } } = {};
-
-    filteredProducts.forEach(product => {
-      const subcategory = product.subcategory;
-      const category = subcategory?.category;
-      const subcategoryName = subcategory?.name || 'Autres';
-      const categoryName = category?.name || '';
-      const key = `${categoryName}-${subcategoryName}`;
-
-      const categoryFromState = categories.find(c => c.name === categoryName);
-      const subcategoryFromState = categoryFromState?.subcategories?.find(s => s.name === subcategoryName);
-
-      if (!groups[key]) {
-        groups[key] = {
-          name: subcategoryName,
-          categoryName: categoryName,
-          categoryOrder: categoryFromState?.order ?? 999,
-          subcategoryOrder: subcategoryFromState?.order ?? 999,
-          products: []
-        };
+    if (selectedPaymentMethod === 'BALANCE') {
+      // Use finalPrice (after discount) for balance check
+      if (!hasEnoughBalance) {
+        addNotification('error', 'Solde insuffisant. Rechargez votre solde ADIIL.');
+        navigate('/balance');
+        return;
       }
-      groups[key].products.push(product);
-    });
 
-    return Object.values(groups).sort((a, b) => {
-      if (a.categoryOrder !== b.categoryOrder) {
-        return a.categoryOrder - b.categoryOrder;
-      }
-      return a.subcategoryOrder - b.subcategoryOrder;
-    });
-  }, [filteredProducts, categories]);
+      setIsProcessingOrder(true);
+      try {
+        await purchaseWithBalance({
+          items: items.map(item => ({
+            productId: parseInt(item.product.id),
+            quantity: item.quantity,
+            variantId: item.variantId,
+            selectedOptions: item.selectedOptions,
+          })),
+          promotionId: discountInfo?.eligible ? discountInfo.promotionId : undefined,
+        });
 
-  const renderProductCard = (product: Product) => {
-    const quantity = quantities[product.id] || 1;
-    let basePrice = product.price;
-
-    if (product.variantCategories && product.variantCategories.length > 0) {
-      const productSelections = selectedCategoryOptions[product.id] || {};
-      for (const category of product.variantCategories) {
-        const selectedOptionId = productSelections[category.id];
-        if (selectedOptionId) {
-          const option = category.options.find(o => o.id === selectedOptionId);
-          if (option) {
-            basePrice += option.priceModifier;
-          }
-        }
+        addNotification('success', 'Achat effectué avec succès ! Votre solde a été débité.');
+        clearCart();
+        navigate('/my-account');
+      } catch (error) {
+        addNotification('error', getErrorMessage(error));
+      } finally {
+        setIsProcessingOrder(false);
       }
-    } else if (product.variants) {
-      const variant = product.variants.find(v => v.id === selectedVariants[product.id]);
-      if (variant) {
-        basePrice += variant.priceModifier;
-      }
+      return;
     }
 
-    const promotion = productPromotions[parseInt(product.id)];
-    const discountedPrice = promotion
-      ? Math.round(basePrice * (1 - promotion.discountPercent / 100) * 100) / 100
-      : basePrice;
-    const hasPromotion = !!promotion;
+    setIsProcessingOrder(true);
+    try {
+      const orderItems: ApiOrderItem[] = items.map(item => ({
+        productId: item.product.id,
+        quantity: item.quantity,
+        variantId: item.variantId,
+        selectedOptions: item.selectedOptions,
+      }));
 
-    return (
-      <div
-        key={product.id}
-        className={`bg-darker-bg rounded-2xl border transition-all duration-300 overflow-hidden group flex flex-col hover:-translate-y-1 hover:shadow-[0_10px_40px_rgba(0,0,0,0.3)] ${
-          hasPromotion ? 'border-red-500/50 hover:border-red-400' : 'border-gray-800 hover:border-accent-mint/40'
-        }`}
-      >
-        <Link to={`/shop/${product.id}`} className="aspect-square bg-gray-900 relative overflow-hidden block">
-          <img
-            src={product.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(product.name)}&background=1E1E1E&color=fff&size=200`}
-            alt={product.name}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-darker-bg/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-            <div className="px-3 py-2 bg-darker-bg/90 backdrop-blur-sm rounded-lg border border-accent-mint/50 flex items-center gap-2 text-accent-mint text-sm font-medium">
-              <Eye size={14} />
-              Voir détails
-            </div>
-          </div>
-          {product.images && product.images.length > 0 && (
-            <div className="absolute bottom-2 left-2 px-2 py-1 bg-darker-bg/90 backdrop-blur-sm rounded-lg text-xs text-gray-300 border border-gray-700/50">
-              +{product.images.length} photo{product.images.length > 1 ? 's' : ''}
-            </div>
-          )}
-          {hasPromotion && (
-            <div className="absolute top-2 left-2 bg-gradient-to-r from-red-500 to-red-600 text-white px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-lg">
-              <Tag size={12} />
-              <span className="font-bold text-xs">-{promotion.discountPercent}%</span>
-            </div>
-          )}
-          <div className="absolute top-2 right-2 bg-darker-bg/95 backdrop-blur-sm px-2.5 py-1.5 rounded-lg border border-gray-700/50">
-            {hasPromotion ? (
-              <div className="flex flex-col items-end">
-                <span className="text-gray-500 line-through text-xs">{basePrice.toFixed(2)}€</span>
-                <span className="text-red-400 font-koulen text-lg leading-tight">{discountedPrice.toFixed(2)}€</span>
-              </div>
-            ) : (
-              <span className="text-accent-mint font-koulen text-lg">{basePrice.toFixed(2)}€</span>
-            )}
-          </div>
-        </Link>
+      const returnUrl = `${window.location.origin}/payment/callback`;
+      const cancelUrl = `${window.location.origin}/cart`;
 
-        <div className="p-3 flex flex-col flex-1 border-t border-gray-800/50">
-          <Link to={`/shop/${product.id}`} className="font-bold text-white text-sm leading-tight mb-1 line-clamp-2 group-hover:text-accent-mint transition-colors block hover:underline">
-            {product.name}
-          </Link>
-          {product.description && (
-            <p className="text-gray-500 text-xs line-clamp-2 mb-2">{product.description}</p>
-          )}
+      const orderData = await createOrder({
+        items: orderItems,
+        paymentMethod: selectedPaymentMethod,
+        returnUrl,
+        cancelUrl,
+        promotionId: discountInfo?.eligible ? discountInfo.promotionId : undefined,
+      });
 
-          {product.variantCategories && product.variantCategories.length > 0 && (
-            <div className="space-y-1.5 mb-2">
-              {product.variantCategories.map((category) => (
-                <select
-                  key={category.id}
-                  value={selectedCategoryOptions[product.id]?.[category.id] || ''}
-                  onChange={(e) => {
-                    const value = e.target.value ? parseInt(e.target.value) : null;
-                    setSelectedCategoryOptions(prev => {
-                      const productSelections = { ...(prev[product.id] || {}) };
-                      if (value === null) delete productSelections[category.id];
-                      else productSelections[category.id] = value;
-                      return { ...prev, [product.id]: productSelections };
-                    });
-                  }}
-                  className="w-full bg-dark-bg border border-gray-700 rounded-lg p-1.5 text-white text-xs focus:border-accent-mint outline-none cursor-pointer hover:border-gray-600 transition-colors"
-                >
-                  <option value="">{category.name}</option>
-                  {category.options.map((opt) => (
-                    <option key={opt.id} value={opt.id}>
-                      {opt.name}{opt.priceModifier !== 0 ? ` (${opt.priceModifier > 0 ? '+' : ''}${opt.priceModifier.toFixed(2)}€)` : ''}
-                    </option>
-                  ))}
-                </select>
-              ))}
-            </div>
-          )}
+      if (orderData.payment?.approvalUrl) {
+        sessionStorage.setItem('paypal_order_id', orderData.order.id.toString());
+        window.location.href = orderData.payment.approvalUrl;
+      } else if (orderData.payment?.redirectUrl) {
+        sessionStorage.setItem('helloasso_order_id', orderData.order.id.toString());
+        window.location.href = orderData.payment.redirectUrl;
+      } else {
+        addNotification('success', orderData.message || 'Commande passée avec succès !');
+        clearCart();
+        navigate('/my-account');
+      }
 
-          {(!product.variantCategories || product.variantCategories.length === 0) && product.variants && product.variants.length > 0 && (
-            <select
-              value={selectedVariants[product.id] || ''}
-              onChange={(e) => setSelectedVariants(prev => ({
-                ...prev,
-                [product.id]: e.target.value ? parseInt(e.target.value) : undefined
-              }))}
-              className="w-full bg-dark-bg border border-gray-700 rounded-lg p-1.5 text-white text-xs focus:border-accent-mint outline-none mb-2 cursor-pointer hover:border-gray-600 transition-colors"
-            >
-              <option value="">Variante</option>
-              {product.variants.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.name}
-                </option>
-              ))}
-            </select>
-          )}
-
-          <div className="flex-1" />
-
-          <div className="flex items-center gap-2">
-            <div className="flex items-center bg-dark-bg rounded-lg border border-gray-800">
-              <button
-                onClick={() => updateQuantity(product.id, -1)}
-                disabled={quantity <= 1}
-                className="w-7 h-8 flex items-center justify-center text-accent-mint hover:bg-accent-mint/10 rounded-l-lg disabled:text-gray-600 disabled:hover:bg-transparent transition-colors"
-              >
-                <Minus size={12} />
-              </button>
-              <span className="w-6 text-center text-white font-bold text-sm">{quantity}</span>
-              <button
-                onClick={() => updateQuantity(product.id, 1)}
-                className="w-7 h-8 flex items-center justify-center text-accent-mint hover:bg-accent-mint/10 rounded-r-lg transition-colors"
-              >
-                <Plus size={12} />
-              </button>
-            </div>
-
-            <button
-              onClick={() => handleAddToCart(product)}
-              className="flex-1 py-2 bg-accent-mint text-darker-bg font-bold text-xs rounded-lg hover:bg-white transition-all hover:shadow-[0_0_20px_rgba(119,241,190,0.3)] flex items-center justify-center gap-1"
-            >
-              <ShoppingCart size={12} />
-              <span className="hidden sm:inline">Ajouter</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+    } catch (error) {
+      logger.error('Erreur lors de la commande', error);
+      addNotification('error', getErrorMessage(error));
+    } finally {
+      setIsProcessingOrder(false);
+    }
   };
 
   return (
-    <div className="min-h-screen">
-      <SEO
-        title="Boutique"
-        description="Boutique ADIIL - Snacks, boissons et goodies pour les etudiants de l'IUT de Laval. Departement Informatique. Prix etudiants."
-        keywords="boutique ADIIL, snacks, boissons, goodies, IUT Laval, BDE, prix etudiants, cafeteria"
-        url="/shop"
-      />
-
+    <div className="min-h-screen bg-dark-bg">
       {/* Header Section */}
-      <section className="bg-darker-bg py-16 border-b border-gray-800 relative overflow-hidden">
+      <section className="bg-darker-bg py-12 border-b border-gray-800 relative overflow-hidden">
         {/* Background effects */}
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-20 -right-20 w-[400px] h-[400px] bg-accent-mint/5 rounded-full blur-[100px]" />
-          <div className="absolute bottom-0 left-1/4 w-[300px] h-[300px] bg-amber-500/5 rounded-full blur-[80px]" />
+          <div className="absolute -top-20 -left-20 w-[300px] h-[300px] bg-accent-mint/5 rounded-full blur-[100px]" />
+          <div className="absolute bottom-0 right-1/4 w-[200px] h-[200px] bg-blue-500/5 rounded-full blur-[80px]" />
         </div>
-        <div className="absolute inset-0 opacity-[0.02]" style={{
-          backgroundImage: `repeating-linear-gradient(-45deg, transparent, transparent 40px, rgba(119,241,190,0.5) 40px, rgba(119,241,190,0.5) 41px)`
-        }} />
+        <div
+          className="absolute inset-0 opacity-[0.02]"
+          style={{
+            backgroundImage: `repeating-linear-gradient(
+              -45deg,
+              transparent,
+              transparent 40px,
+              rgba(119,241,190,0.5) 40px,
+              rgba(119,241,190,0.5) 41px
+            )`
+          }}
+        />
 
         <div className="container mx-auto px-4 relative z-10">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+          <Link to="/shop" className="inline-flex items-center gap-2 text-gray-400 hover:text-accent-mint transition-colors mb-6 group">
+            <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+            <span className="text-sm font-medium">Retour à la boutique</span>
+          </Link>
+          <div className="flex items-center gap-4">
+            <div className="w-1 h-12 bg-accent-mint rounded-full hidden sm:block" />
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-accent-mint/10 border border-accent-mint/30 rounded-full mb-4">
-                <Coffee size={14} className="text-accent-mint" />
-                <span className="text-xs text-accent-mint font-medium">Boutique ADIIL</span>
-              </div>
-              <h1 className="text-5xl md:text-7xl font-koulen text-white">
-                SNACKS & <span className="text-accent-mint">DRINKS</span>
-              </h1>
-              <p className="text-gray-400 mt-4 max-w-xl font-montserrat">
-                Un petit creux entre deux cours ? Boissons fraîches et snacks disponibles pour tous les étudiants.
-              </p>
-            </div>
-            <div className="flex-shrink-0 flex items-center gap-4">
-              {user ? (
-                <>
-                  <div className="relative overflow-visible">
-                    <BalanceDisplay variant="compact" showRechargeButton={true} />
-                    <BonusBubble variant="overlay" className="-top-3 -right-3" />
-                  </div>
-                  {cartItemsCount > 0 && (
-                    <Link to="/cart" className="relative flex items-center gap-2 px-4 py-2.5 bg-accent-mint text-darker-bg font-bold rounded-xl hover:bg-white transition-colors shadow-lg shadow-accent-mint/20">
-                      <ShoppingCart size={20} />
-                      <span className="hidden sm:inline">Panier</span>
-                      <span className="absolute -top-2 -right-2 w-6 h-6 bg-white text-darker-bg text-xs font-bold rounded-full flex items-center justify-center shadow-md">
-                        {cartItemsCount}
-                      </span>
-                    </Link>
-                  )}
-                </>
-              ) : (
-                <Link to="/login" className="flex items-center gap-2 px-4 py-2.5 bg-accent-mint text-darker-bg font-bold rounded-xl hover:bg-white transition-colors shadow-lg shadow-accent-mint/20">
-                  <LogIn size={18} />
-                  <span>Se connecter</span>
-                </Link>
-              )}
+              <span className="text-accent-mint text-sm font-bold uppercase tracking-wider">Panier</span>
+              <h1 className="text-5xl md:text-6xl font-koulen text-white mt-1">VOTRE COMMANDE</h1>
             </div>
           </div>
-
-          {/* Search bar */}
-          <div className="mt-8 max-w-md">
-            <div className="relative group">
-              <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-accent-mint transition-colors" />
-              <input
-                type="text"
-                placeholder="Rechercher un produit..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-dark-bg border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:border-accent-mint focus:outline-none transition-colors"
-              />
-            </div>
-          </div>
-
-          {/* Category filters */}
-          {categories.length > 0 && (
-            <div className="mt-6">
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => handleCategoryClick(null)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${!selectedCategoryId ? 'bg-accent-mint text-darker-bg' : 'bg-dark-bg text-gray-400 hover:text-accent-mint hover:border-accent-mint/50 border border-gray-700'}`}
-                >
-                  Tout
-                </button>
-                {categories.map(category => (
-                  <button
-                    key={category.id}
-                    onClick={() => handleCategoryClick(category.id)}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${selectedCategoryId === category.id ? 'bg-accent-mint text-darker-bg' : 'bg-dark-bg text-gray-400 hover:text-accent-mint hover:border-accent-mint/50 border border-gray-700'}`}
-                  >
-                    {category.name}
-                  </button>
-                ))}
-              </div>
-
-              {/* Subcategory filters */}
-              {selectedCategory && selectedCategory.subcategories && selectedCategory.subcategories.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button
-                    onClick={() => handleSubcategoryClick(null)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${!selectedSubcategoryId ? 'bg-accent-mint/20 text-accent-mint border border-accent-mint/30' : 'bg-dark-bg text-gray-500 hover:text-accent-mint hover:border-accent-mint/30 border border-gray-700'}`}
-                  >
-                    Tous les {selectedCategory.name.toLowerCase()}
-                  </button>
-                  {selectedCategory.subcategories.map(subcategory => (
-                    <button
-                      key={subcategory.id}
-                      onClick={() => handleSubcategoryClick(subcategory.id)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${selectedSubcategoryId === subcategory.id ? 'bg-accent-mint/20 text-accent-mint border border-accent-mint/30' : 'bg-dark-bg text-gray-500 hover:text-accent-mint hover:border-accent-mint/30 border border-gray-700'}`}
-                    >
-                      {subcategory.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </section>
 
-      {/* Products Grid */}
-      <section className="py-12 bg-dark-bg relative overflow-hidden">
-        {/* Background decoration */}
-        <div className="absolute top-1/4 right-0 w-[300px] h-[300px] bg-accent-mint/3 rounded-full blur-[150px]" />
-        <div className="absolute bottom-1/4 left-0 w-[250px] h-[250px] bg-amber-500/3 rounded-full blur-[120px]" />
-
-        <div className="container mx-auto px-4 relative z-10">
-          {loading ? (
-            <div className="flex justify-center py-20">
-              <div className="w-12 h-12 border-2 border-accent-mint border-t-transparent rounded-full animate-spin"></div>
-            </div>
-          ) : error ? (
-            <div className="text-center py-16 bg-darker-bg rounded-2xl border border-red-900/30">
-              <p className="text-red-400 font-montserrat">{error}</p>
-            </div>
-          ) : filteredProducts.length === 0 ? (
-            <div className="text-center py-20 bg-darker-bg rounded-2xl border border-gray-800">
+      {/* Content */}
+      <section className="py-8">
+        <div className="container mx-auto px-4">
+          {items.length === 0 ? (
+            <div className="text-center py-16 bg-darker-bg rounded-2xl border border-gray-800 max-w-md mx-auto">
               <div className="w-16 h-16 bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <ShoppingBag size={32} className="text-gray-600" />
+                <ShoppingBag size={28} className="text-gray-600" />
               </div>
-              <p className="text-gray-400 text-lg font-montserrat">
-                {searchQuery ? "Aucun produit trouvé." : "La boutique est vide pour le moment."}
-              </p>
+              <p className="text-gray-400 text-lg mb-6">Votre panier est vide</p>
+              <Link
+                to="/shop"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-accent-mint text-darker-bg font-bold rounded-xl hover:bg-white transition-colors shadow-lg shadow-accent-mint/20"
+              >
+                Découvrir la boutique
+                <ChevronRight size={18} />
+              </Link>
             </div>
           ) : (
-            <div className="space-y-12">
+            <div className="max-w-5xl mx-auto">
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
-              {/* BONS PLANS / BUNDLES SECTION (NEW!) */}
-              {bundlePromotions.length > 0 && (
-                <div className="space-y-5 mb-12">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-1.5 h-10 bg-gradient-to-b from-purple-500 to-purple-500/30 rounded-full animate-pulse" />
-                      <div>
-                        <h2 className="text-2xl md:text-3xl font-koulen text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 flex items-center gap-2">
-                          <Gift size={24} className="text-purple-400" />
-                          BONS PLANS & MENUS
-                        </h2>
-                      </div>
-                    </div>
-                    <div className="flex-1 h-px bg-gradient-to-r from-purple-500/50 to-transparent" />
-                  </div>
+                {/* Cart items */}
+                <div className="lg:col-span-3 space-y-3">
+                  {items.map((cartItem) => {
+                    // Calculate price based on variant type
+                    let basePrice = cartItem.product.price;
+                    let variantDisplay: string | null = null;
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {bundlePromotions.map((promo) => (
-                      <div key={promo.id} className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-2xl p-5 relative overflow-hidden group hover:border-purple-400/50 transition-all shadow-lg shadow-purple-500/5">
-                        <div className="absolute -right-10 -top-10 w-32 h-32 bg-purple-500/20 rounded-full blur-2xl group-hover:bg-purple-500/30 transition-colors" />
-                        <div className="relative z-10">
-                          <div className="flex items-center gap-2 mb-3">
-                            <span className="px-2.5 py-1 bg-purple-500/20 text-purple-400 text-xs font-bold rounded-lg uppercase tracking-wide flex items-center gap-1">
-                              <Sparkles size={12} />
-                              Combo Gagnant
-                            </span>
+                    // New format: selectedOptions
+                    if (cartItem.selectedOptions && cartItem.selectedOptions.length > 0) {
+                      const totalModifier = cartItem.selectedOptions.reduce((acc, opt) => acc + (opt.priceModifier || 0), 0);
+                      basePrice += totalModifier;
+                      // Build display: "Taille: M, Couleur: Rouge"
+                      variantDisplay = cartItem.selectedOptions.map(o => `${o.categoryName}: ${o.optionName}`).join(', ');
+                    }
+                    // Legacy format: variantId
+                    else if (cartItem.variantId && cartItem.product.variants) {
+                      const variant = cartItem.product.variants.find(v => v.id === cartItem.variantId);
+                      if (variant) {
+                        basePrice += variant.priceModifier || 0;
+                        variantDisplay = variant.name;
+                      }
+                    }
+
+                    const promotion = productPromotions[parseInt(cartItem.product.id)];
+                    const discountedPrice = promotion
+                      ? Math.round(basePrice * (1 - promotion.discountPercent / 100) * 100) / 100
+                      : basePrice;
+                    const hasPromotion = !!promotion;
+
+                    // Generate unique key that accounts for selectedOptions
+                    let cartItemKey = cartItem.product.id;
+                    if (cartItem.selectedOptions && cartItem.selectedOptions.length > 0) {
+                      cartItemKey += '-' + cartItem.selectedOptions.map(o => `${o.categoryId}:${o.optionId}`).join('-');
+                    } else if (cartItem.variantId) {
+                      cartItemKey += '-' + cartItem.variantId;
+                    } else {
+                      cartItemKey += '-no-variant';
+                    }
+
+                    return (
+                      <div
+                        key={cartItemKey}
+                        className={`bg-darker-bg rounded-2xl border p-4 ${
+                          hasPromotion ? 'border-red-500/30' : 'border-gray-800'
+                        }`}
+                      >
+                        <div className="flex items-center gap-4">
+                          {/* Image */}
+                          <div className="w-20 h-20 flex-shrink-0 bg-gray-800 rounded-xl overflow-hidden relative">
+                            <img
+                              src={cartItem.product.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(cartItem.product.name)}&background=1E1E1E&color=fff&size=200`}
+                              alt={cartItem.product.name}
+                              className="w-full h-full object-cover"
+                            />
+                            {hasPromotion && (
+                              <div className="absolute top-1 left-1 bg-red-500 text-white px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-0.5">
+                                <Tag size={8} />
+                                -{promotion.discountPercent}%
+                              </div>
+                            )}
                           </div>
-                          <h3 className="text-xl font-bold text-white mb-2">{promo.displayTitle}</h3>
-                          <p className="text-gray-300 text-sm leading-relaxed">{promo.displayMessage}</p>
+
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-bold text-white text-sm truncate">{cartItem.product.name}</h3>
+                            {variantDisplay && (
+                              <span className="text-accent-mint text-xs">{variantDisplay}</span>
+                            )}
+                            {hasPromotion ? (
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-gray-500 line-through text-xs">{basePrice.toFixed(2)}€</span>
+                                <span className="text-red-400 font-bold">{discountedPrice.toFixed(2)}€</span>
+                              </div>
+                            ) : (
+                              <p className="text-accent-mint font-bold mt-1">{basePrice.toFixed(2)}€</p>
+                            )}
+                          </div>
+
+                          {/* Quantity */}
+                          <div className="flex items-center bg-dark-bg rounded-xl border border-gray-800">
+                            <button
+                              onClick={() => updateQuantity(cartItem.product.id, cartItem.quantity - 1, cartItem.variantId, cartItem.selectedOptions)}
+                              disabled={cartItem.quantity <= 1}
+                              className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-accent-mint disabled:text-gray-700 transition-colors"
+                            >
+                              <Minus size={14} />
+                            </button>
+                            <span className="w-8 text-center text-white font-bold text-sm">{cartItem.quantity}</span>
+                            <button
+                              onClick={() => updateQuantity(cartItem.product.id, cartItem.quantity + 1, cartItem.variantId, cartItem.selectedOptions)}
+                              className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-accent-mint transition-colors"
+                            >
+                              <Plus size={14} />
+                            </button>
+                          </div>
+
+                          {/* Total & Remove */}
+                          <div className="text-right flex flex-col items-end gap-1">
+                            {hasPromotion ? (
+                              <>
+                                <p className="text-gray-500 line-through text-xs">{(basePrice * cartItem.quantity).toFixed(2)}€</p>
+                                <p className="font-bold text-red-400">{(discountedPrice * cartItem.quantity).toFixed(2)}€</p>
+                              </>
+                            ) : (
+                              <p className="font-bold text-white">{(basePrice * cartItem.quantity).toFixed(2)}€</p>
+                            )}
+                            <button
+                              onClick={() => removeFromCart(cartItem.product.id, cartItem.variantId, cartItem.selectedOptions)}
+                              className="text-gray-500 hover:text-red-400 transition-colors p-1"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
-              )}
 
-              {/* OFFRES SPÉCIALES SECTION (Single Products) */}
-              {promotedProducts.length > 0 && (
-                <div className="space-y-5 mb-12">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-1.5 h-10 bg-gradient-to-b from-red-500 to-red-500/30 rounded-full animate-pulse" />
-                      <div>
-                        <h2 className="text-2xl md:text-3xl font-koulen text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-amber-400 flex items-center gap-2">
-                          <Tag size={24} className="text-red-400" />
-                          PROMOTIONS PRODUITS
-                        </h2>
+                {/* Order summary */}
+                <div className="lg:col-span-2">
+                  <div className="bg-darker-bg rounded-2xl border border-gray-800 overflow-hidden sticky top-24">
+                    {/* Header */}
+                    <div className="p-5 border-b border-gray-800">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-accent-mint/10 rounded-xl flex items-center justify-center">
+                          <Package size={18} className="text-accent-mint" />
+                        </div>
+                        <h2 className="text-lg font-bold text-white">Récapitulatif</h2>
                       </div>
                     </div>
-                    <div className="flex-1 h-px bg-gradient-to-r from-red-500/50 to-transparent" />
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                    {promotedProducts.map(renderProductCard)}
-                  </div>
-                </div>
-              )}
 
-              {/* Grouped products by subcategory */}
-              {groupedProducts.map((group) => (
-                <div key={`${group.categoryName}-${group.name}`} className="space-y-5">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-1.5 h-10 bg-gradient-to-b from-accent-mint to-accent-mint/30 rounded-full" />
-                      <div>
-                        {group.categoryName && !selectedCategoryId && (
-                          <p className="text-xs text-accent-mint/70 uppercase tracking-wider font-medium">{group.categoryName}</p>
+                    <div className="p-5">
+                      {/* Items summary */}
+                      <div className="space-y-2 mb-5">
+                        {items.map((item) => {
+                          // Calculate base price
+                          let basePrice = item.product.price;
+                          if (item.selectedOptions && item.selectedOptions.length > 0) {
+                            const totalModifier = item.selectedOptions.reduce((acc, opt) => acc + (opt.priceModifier || 0), 0);
+                            basePrice += totalModifier;
+                          } else if (item.variantId && item.product.variants) {
+                            const variant = item.product.variants.find(v => v.id === item.variantId);
+                            if (variant) {
+                              basePrice += variant.priceModifier || 0;
+                            }
+                          }
+
+                          const promotion = productPromotions[parseInt(item.product.id)];
+                          const discountedPrice = promotion
+                            ? Math.round(basePrice * (1 - promotion.discountPercent / 100) * 100) / 100
+                            : basePrice;
+                          const hasPromotion = !!promotion;
+
+                          // Generate unique key
+                          let itemKey = item.product.id;
+                          if (item.selectedOptions && item.selectedOptions.length > 0) {
+                            itemKey += '-' + item.selectedOptions.map(o => `${o.categoryId}:${o.optionId}`).join('-');
+                          } else if (item.variantId) {
+                            itemKey += '-' + item.variantId;
+                          }
+
+                          return (
+                            <div key={itemKey} className="flex justify-between text-sm">
+                              <span className="text-gray-400 truncate max-w-[55%]">
+                                {item.quantity}x {item.product.name}
+                              </span>
+                              {hasPromotion ? (
+                                <span className="text-red-400 font-medium">{(discountedPrice * item.quantity).toFixed(2)}€</span>
+                              ) : (
+                                <span className="text-white font-medium">{(basePrice * item.quantity).toFixed(2)}€</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Discounts */}
+                      {(productPromotionsSavings > 0 || discountInfo?.eligible) && (
+                        <div className="space-y-2 mb-5 pt-4 border-t border-gray-800">
+                          {productPromotionsSavings > 0 && (
+                            <div className="flex items-center justify-between p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
+                              <div className="flex items-center gap-2">
+                                <Tag size={14} className="text-red-400" />
+                                <span className="text-sm text-red-400">Promos produits</span>
+                              </div>
+                              <span className="text-red-400 font-bold">-{productPromotionsSavings.toFixed(2)}€</span>
+                            </div>
+                          )}
+                          {discountInfo?.eligible && (
+                            <div className="flex items-center justify-between p-3 bg-accent-mint/10 border border-accent-mint/20 rounded-xl">
+                              <div className="flex items-center gap-2">
+                                <Gift size={14} className="text-accent-mint" />
+                                <span className="text-sm text-accent-mint">{discountInfo.promotionName}</span>
+                              </div>
+                              <span className="text-accent-mint font-bold">-{discountInfo.discountAmount.toFixed(2)}€</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Total */}
+                      <div className="flex justify-between items-center py-4 border-t border-gray-800">
+                        <span className="text-gray-400 font-medium">Total</span>
+                        <span className="text-2xl font-koulen text-accent-mint">{finalPrice.toFixed(2)}€</span>
+                      </div>
+
+                      {/* Free order notice */}
+                      {finalPrice === 0 && (
+                        <div className="mb-5 p-3 bg-green-500/10 border border-green-500/20 rounded-xl text-center">
+                          <p className="text-green-400 text-sm font-medium">Commande gratuite</p>
+                        </div>
+                      )}
+
+                      {/* Payment methods */}
+                      {finalPrice > 0 && (
+                        <>
+                          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Mode de paiement</label>
+                          <div className="grid grid-cols-2 gap-2 mb-5">
+                            {/* Solde ADIIL */}
+                            {user && (
+                              <button
+                                onClick={() => hasEnoughBalance && setSelectedPaymentMethod('BALANCE')}
+                                disabled={!hasEnoughBalance}
+                                className={`relative p-3 rounded-xl border-2 transition-all text-left ${
+                                  !hasEnoughBalance
+                                    ? 'opacity-40 cursor-not-allowed border-gray-800 bg-dark-bg'
+                                    : selectedPaymentMethod === 'BALANCE'
+                                      ? 'border-accent-mint bg-accent-mint/10'
+                                      : 'border-gray-800 bg-dark-bg hover:border-gray-700'
+                                }`}
+                              >
+                                {selectedPaymentMethod === 'BALANCE' && hasEnoughBalance && (
+                                  <div className="absolute top-2.5 right-2.5 w-4 h-4 bg-accent-mint rounded-full flex items-center justify-center">
+                                    <CheckCircle2 size={10} className="text-darker-bg" />
+                                  </div>
+                                )}
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${
+                                  selectedPaymentMethod === 'BALANCE' && hasEnoughBalance ? 'bg-accent-mint' : 'bg-gray-800'
+                                }`}>
+                                  <Wallet size={14} className={selectedPaymentMethod === 'BALANCE' && hasEnoughBalance ? 'text-darker-bg' : 'text-gray-400'} />
+                                </div>
+                                <p className="font-bold text-white text-xs">Solde ADIIL</p>
+                                <p className={`text-[10px] ${hasEnoughBalance ? 'text-green-400' : 'text-red-400'}`}>
+                                  {balance.toFixed(2)}€
+                                </p>
+                              </button>
+                            )}
+
+                            {/* HelloAsso */}
+                            <button
+                              onClick={() => finalPrice >= 0.50 && setSelectedPaymentMethod('HELLOASSO')}
+                              disabled={finalPrice < 0.50}
+                              className={`relative p-3 rounded-xl border-2 transition-all text-left ${
+                                finalPrice < 0.50
+                                  ? 'opacity-40 cursor-not-allowed border-gray-800 bg-dark-bg'
+                                  : selectedPaymentMethod === 'HELLOASSO'
+                                    ? 'border-blue-500 bg-blue-500/10'
+                                    : 'border-gray-800 bg-dark-bg hover:border-gray-700'
+                              }`}
+                            >
+                              {selectedPaymentMethod === 'HELLOASSO' && finalPrice >= 0.50 && (
+                                <div className="absolute top-2.5 right-2.5 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
+                                  <CheckCircle2 size={10} className="text-white" />
+                                </div>
+                              )}
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${
+                                selectedPaymentMethod === 'HELLOASSO' && finalPrice >= 0.50 ? 'bg-blue-500' : 'bg-gray-800'
+                              }`}>
+                                <Heart size={14} className={selectedPaymentMethod === 'HELLOASSO' && finalPrice >= 0.50 ? 'text-white' : 'text-gray-400'} />
+                              </div>
+                              <p className="font-bold text-white text-xs">HelloAsso</p>
+                              <p className="text-[10px] text-blue-400">Recommandé</p>
+                            </button>
+
+                            {/* PayPal */}
+                            <button
+                              onClick={() => setSelectedPaymentMethod('PAYPAL')}
+                              className={`relative p-3 rounded-xl border-2 transition-all text-left ${
+                                selectedPaymentMethod === 'PAYPAL'
+                                  ? 'border-indigo-500 bg-indigo-500/10'
+                                  : 'border-gray-800 bg-dark-bg hover:border-gray-700'
+                              }`}
+                            >
+                              {selectedPaymentMethod === 'PAYPAL' && (
+                                <div className="absolute top-2.5 right-2.5 w-4 h-4 bg-indigo-500 rounded-full flex items-center justify-center">
+                                  <CheckCircle2 size={10} className="text-white" />
+                                </div>
+                              )}
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${
+                                selectedPaymentMethod === 'PAYPAL' ? 'bg-indigo-500' : 'bg-gray-800'
+                              }`}>
+                                <CreditCard size={14} className={selectedPaymentMethod === 'PAYPAL' ? 'text-white' : 'text-gray-400'} />
+                              </div>
+                              <p className="font-bold text-white text-xs">PayPal</p>
+                              <p className="text-[10px] text-gray-500">Carte ou compte</p>
+                            </button>
+
+                            {/* Sur place */}
+                            <button
+                              onClick={() => setSelectedPaymentMethod('CASH_CB')}
+                              className={`relative p-3 rounded-xl border-2 transition-all text-left ${
+                                selectedPaymentMethod === 'CASH_CB'
+                                  ? 'border-green-500 bg-green-500/10'
+                                  : 'border-gray-800 bg-dark-bg hover:border-gray-700'
+                              }`}
+                            >
+                              {selectedPaymentMethod === 'CASH_CB' && (
+                                <div className="absolute top-2.5 right-2.5 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                                  <CheckCircle2 size={10} className="text-white" />
+                                </div>
+                              )}
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${
+                                selectedPaymentMethod === 'CASH_CB' ? 'bg-green-500' : 'bg-gray-800'
+                              }`}>
+                                <Banknote size={14} className={selectedPaymentMethod === 'CASH_CB' ? 'text-white' : 'text-gray-400'} />
+                              </div>
+                              <p className="font-bold text-white text-xs">Sur place</p>
+                              <p className="text-[10px] text-gray-500">Espèces / CB</p>
+                            </button>
+                          </div>
+
+                          {/* Recharge invite if balance too low */}
+                          {user && !hasEnoughBalance && (
+                            <div className="mb-5 p-3 bg-accent-mint/5 border border-accent-mint/20 rounded-xl">
+                              <div className="flex items-center justify-between">
+                                <p className="text-xs text-gray-400">Solde insuffisant</p>
+                                <button
+                                  onClick={() => navigate('/balance')}
+                                  className="text-xs text-darker-bg font-bold py-1.5 px-3 rounded-lg transition-all flex items-center gap-1 bg-accent-mint hover:bg-white"
+                                >
+                                  Recharger
+                                  {maxBonusPercent && (
+                                    <>
+                                      <span className="opacity-50">|</span>
+                                      <Gift size={10} />
+                                      +{maxBonusPercent}%
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
+
+                      {/* Legal acceptance */}
+                      <LegalAcceptance
+                        accepted={legalAccepted}
+                        onChange={setLegalAccepted}
+                        className="mb-4"
+                      />
+
+                      {/* Checkout button */}
+                      <button
+                        onClick={handleCheckout}
+                        disabled={isProcessingOrder || items.length === 0 || (finalPrice > 0 && !selectedPaymentMethod) || !legalAccepted}
+                        className="w-full py-4 bg-accent-mint text-darker-bg font-bold rounded-xl hover:bg-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group shadow-lg shadow-accent-mint/20 disabled:shadow-none"
+                      >
+                        {isProcessingOrder ? (
+                          <div className="w-5 h-5 border-2 border-darker-bg border-t-transparent rounded-full animate-spin"></div>
+                        ) : finalPrice === 0 ? (
+                          <>
+                            Confirmer la commande
+                            <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                          </>
+                        ) : (
+                          <>
+                            Payer {finalPrice.toFixed(2)}€
+                            <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                          </>
                         )}
-                        <h2 className="text-2xl font-koulen text-white">{group.name}</h2>
-                      </div>
-                    </div>
-                    <div className="flex-1 h-px bg-gradient-to-r from-gray-800 to-transparent" />
-                    <span className="text-xs text-gray-500 bg-darker-bg px-3 py-1.5 rounded-lg border border-gray-800">
-                      {group.products.length} article{group.products.length > 1 ? 's' : ''}
-                    </span>
-                  </div>
+                      </button>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                    {group.products.map(renderProductCard)}
+                      {!user && (
+                        <p className="text-xs text-center mt-4 text-gray-500">
+                          <Link to="/login" className="text-accent-mint hover:underline">Connectez-vous</Link> pour passer commande
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
-              ))}
+              </div>
             </div>
           )}
         </div>
       </section>
-
-      {/* Floating cart button (mobile) */}
-      {user && cartItemsCount > 0 && (
-        <Link to="/cart" className="fixed bottom-6 right-6 md:hidden flex items-center gap-2 px-5 py-3 bg-accent-mint text-darker-bg font-bold rounded-full shadow-lg hover:bg-white transition-colors z-50">
-          <ShoppingCart size={20} />
-          <span>{cartItemsCount}</span>
-        </Link>
-      )}
     </div>
   );
 };
 
-export default ShopPage;
+export default CartPage;
