@@ -140,10 +140,7 @@ function getMonthRange(offset = 0) {
 }
 
 
-function isMonthPast(mois: number, annee: number): boolean {
-  const now = new Date();
-  return annee < now.getFullYear() || (annee === now.getFullYear() && mois < now.getMonth() + 1);
-}
+
 
 function shortDate(iso: string) {
   return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
