@@ -139,9 +139,6 @@ function getMonthRange(offset = 0) {
   };
 }
 
-
-
-
 function shortDate(iso: string) {
   return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
 }
@@ -223,10 +220,12 @@ function makeUid() {
 }
 
 function AchatModal({ initial, defaultDate, products, achatCategories, fournisseurCategories, onClose, onSave }: AchatModalProps) {
+  const isEdit = !!initial;
+
   const [date, setDate] = useState(initial ? initial.date.split('T')[0] : defaultDate);
   const [categorie, setCategorie] = useState<string>(initial?.categorie ?? '');
   const [fournisseurCategorie, setFournisseurCategorie] = useState<string>(initial?.fournisseurCategorie ?? '');
-  const [items, setItems] = useState<FormItem[]>(() => {
+  const [itemsState, setItems] = useState<FormItem[]>(() => {
     if (initial && initial.items.length > 0) {
       return initial.items.map((i) => ({
         uid: makeUid(),
@@ -244,25 +243,29 @@ function AchatModal({ initial, defaultDate, products, achatCategories, fournisse
   const [error, setError] = useState('');
 
   const inputCls =
-    'w-full bg-dark-bg border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500/60 transition-colors';
+    'w-full bg-dark-bg border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
 
   function updateItem(uid: string, patch: Partial<FormItem>) {
+    if (isEdit) return; // articles verrouillés en édition
     setItems((arr) => arr.map((it) => (it.uid === uid ? { ...it, ...patch } : it)));
   }
 
   function addItem() {
+    if (isEdit) return;
     setItems((arr) => [...arr, { uid: makeUid(), productId: null, productName: '', quantite: '', nbParPaquet: '', prixPaquet: '', showSuggestions: false }]);
   }
 
   function removeItem(uid: string) {
+    if (isEdit) return;
     setItems((arr) => (arr.length > 1 ? arr.filter((it) => it.uid !== uid) : arr));
   }
 
   function selectProduct(uid: string, product: ProductOption) {
+    if (isEdit) return;
     updateItem(uid, { productId: product.id, productName: product.name, showSuggestions: false });
   }
 
-  const total = items.reduce((s, it) => {
+  const total = itemsState.reduce((s, it) => {
     const q = parseFloat(it.quantite) || 0;
     const n = parseFloat(it.nbParPaquet) || 1;
     const pp = parseFloat(it.prixPaquet) || 0;
@@ -272,29 +275,41 @@ function AchatModal({ initial, defaultDate, products, achatCategories, fournisse
 
   async function handleSubmit() {
     if (!date) { setError('Date obligatoire.'); return; }
-    if (items.length === 0) { setError('Ajoute au moins un article.'); return; }
-    for (const it of items) {
-      if (!it.productId) { setError('Sélectionne un produit pour chaque ligne.'); return; }
-      const q = parseFloat(it.quantite);
-      const n = parseFloat(it.nbParPaquet);
-      const pp = parseFloat(it.prixPaquet);
-      if (isNaN(q) || q <= 0) { setError('Quantité invalide sur une ligne.'); return; }
-      if (isNaN(n) || n <= 0) { setError('Nb par paquet invalide sur une ligne.'); return; }
-      if (isNaN(pp) || pp < 0) { setError('Prix paquet invalide sur une ligne.'); return; }
-    }
+
     setSaving(true);
     try {
-      await onSave({
-        date,
-        fournisseur: '',
-        categorie,
-        fournisseurCategorie: fournisseurCategorie || null,
-        items: items.map((it) => ({
-          productId: it.productId as number,
-          quantite: parseFloat(it.quantite),
-          prixUnitaire: parseFloat(it.prixPaquet) / (parseFloat(it.nbParPaquet) || 1),
-        })),
-      });
+      if (isEdit) {
+        // En édition, seuls date/catégories changent — les articles ne sont
+        // pas renvoyés (le backend n'accepte plus "items" sur updateAchat).
+        await onSave({
+          date,
+          fournisseur: '',
+          categorie,
+          fournisseurCategorie: fournisseurCategorie || null,
+          items: [],
+        });
+      } else {
+        for (const it of itemsState) {
+          if (!it.productId) { setError('Sélectionne un produit pour chaque ligne.'); setSaving(false); return; }
+          const q = parseFloat(it.quantite);
+          const n = parseFloat(it.nbParPaquet);
+          const pp = parseFloat(it.prixPaquet);
+          if (isNaN(q) || q <= 0) { setError('Quantité invalide sur une ligne.'); setSaving(false); return; }
+          if (isNaN(n) || n <= 0) { setError('Nb par paquet invalide sur une ligne.'); setSaving(false); return; }
+          if (isNaN(pp) || pp < 0) { setError('Prix paquet invalide sur une ligne.'); setSaving(false); return; }
+        }
+        await onSave({
+          date,
+          fournisseur: '',
+          categorie,
+          fournisseurCategorie: fournisseurCategorie || null,
+          items: itemsState.map((it) => ({
+            productId: it.productId as number,
+            quantite: parseFloat(it.quantite),
+            prixUnitaire: parseFloat(it.prixPaquet) / (parseFloat(it.nbParPaquet) || 1),
+          })),
+        });
+      }
       onClose();
     } catch (e: any) {
       setError(e.message ?? 'Erreur lors de la sauvegarde.');
@@ -346,8 +361,16 @@ function AchatModal({ initial, defaultDate, products, achatCategories, fournisse
 
           <div className="space-y-2">
             <label className="text-xs text-gray-500 block">Articles</label>
-            {items.map((it) => {
-              const suggestions = it.productName.trim().length > 0
+
+            {isEdit && (
+              <p className="text-xs text-amber-400/80 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+                Les articles ne sont plus modifiables une fois l'achat enregistré (impact sur le stock
+                et le prix moyen). Pour changer les quantités/prix, supprime cet achat et recrée-le.
+              </p>
+            )}
+
+            {itemsState.map((it) => {
+              const suggestions = !isEdit && it.productName.trim().length > 0
                 ? products.filter((p) =>
                     p.active && p.name.toLowerCase().includes(it.productName.toLowerCase())
                   ).slice(0, 6)
@@ -359,6 +382,7 @@ function AchatModal({ initial, defaultDate, products, achatCategories, fournisse
                       type="text"
                       placeholder="Rechercher un produit…"
                       value={it.productName}
+                      disabled={isEdit}
                       onChange={(e) => updateItem(it.uid, { productName: e.target.value, productId: null, showSuggestions: true })}
                       onFocus={() => updateItem(it.uid, { showSuggestions: true })}
                       onBlur={() => setTimeout(() => updateItem(it.uid, { showSuggestions: false }), 150)}
@@ -382,39 +406,46 @@ function AchatModal({ initial, defaultDate, products, achatCategories, fournisse
                   <input
                     type="number" min="1" step="1" placeholder="Qté"
                     value={it.quantite}
+                    disabled={isEdit}
                     onChange={(e) => updateItem(it.uid, { quantite: e.target.value })}
                     className={`${inputCls} w-20`}
                   />
                   <input
                     type="number" min="1" step="1" placeholder="/ paquet"
                     value={it.nbParPaquet}
+                    disabled={isEdit}
                     onChange={(e) => updateItem(it.uid, { nbParPaquet: e.target.value })}
                     className={`${inputCls} w-20`}
                   />
                   <input
                     type="number" min="0" step="0.01" placeholder="Prix paquet"
                     value={it.prixPaquet}
+                    disabled={isEdit}
                     onChange={(e) => updateItem(it.uid, { prixPaquet: e.target.value })}
                     className={`${inputCls} w-28`}
                   />
-                  <button
-                    type="button"
-                    onClick={() => removeItem(it.uid)}
-                    disabled={items.length === 1}
-                    className="p-2 text-gray-600 hover:text-red-400 transition-colors rounded-lg hover:bg-red-500/10 disabled:opacity-30"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  {!isEdit && (
+                    <button
+                      type="button"
+                      onClick={() => removeItem(it.uid)}
+                      disabled={itemsState.length === 1}
+                      className="p-2 text-gray-600 hover:text-red-400 transition-colors rounded-lg hover:bg-red-500/10 disabled:opacity-30"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </div>
               );
             })}
-            <button
-              type="button"
-              onClick={addItem}
-              className="flex items-center gap-1 text-emerald-400 text-xs hover:underline mt-1"
-            >
-              <Plus size={12} /> Ajouter un article
-            </button>
+            {!isEdit && (
+              <button
+                type="button"
+                onClick={addItem}
+                className="flex items-center gap-1 text-emerald-400 text-xs hover:underline mt-1"
+              >
+                <Plus size={12} /> Ajouter un article
+              </button>
+            )}
           </div>
 
           <div className="flex justify-between items-center pt-2 border-t border-gray-800">
@@ -1017,369 +1048,369 @@ function stockBadge(stock: number) {
 
 // ─── Stock tab ────────────────────────────────────────────────────────────────
 
-interface StockTabProps {
-  data: StockData | null;
-  mois: number;
-  annee: number;
-  onReload: () => Promise<void>;
-}
-
-function StockTab({ data, mois, annee, onReload }: StockTabProps) {
-  const [search, setSearch] = useState('');
-  const [savingId, setSavingId] = useState<number | null>(null);
-  const [editingInventaireId, setEditingInventaireId] = useState<number | null>(null);
-  const [editInventaireValue, setEditInventaireValue] = useState('');
-
-  // Écart détecté en attente de confirmation admin avant sauvegarde
-  const [pendingEcart, setPendingEcart] = useState<{
-    productId: number;
-    productName: string;
-    stockPresume: number;
-    inventaireSaisi: number;
-  } | null>(null);
-
-  // Régularisation en cours après confirmation de l'écart
-  const [regularizing, setRegularizing] = useState(false);
-  const [regularizeError, setRegularizeError] = useState('');
-
-  // Le mois est-il passé (terminé) ?
-  const stockDebutLabel = 'Stock présumé début de mois';
-
-  // Sauvegarde directe de l'inventaire, sans régularisation (les valeurs collent déjà)
-  async function saveInventaire(productId: number, quantite: number) {
-    setSavingId(productId);
-    try {
-      await fetchJson(`/admin/stock/${productId}/inventaire`, {
-        method: 'PUT',
-        body: JSON.stringify({ mois, annee, quantite }),
-      });
-      await onReload();
-    } finally {
-      setSavingId(null);
-      setEditingInventaireId(null);
-    }
-  }
-
-  async function commitInventaire(productId: number) {
-    const quantite = parseInt(editInventaireValue);
-    if (isNaN(quantite) || quantite < 0) { setEditingInventaireId(null); return; }
-
-    const item = (data?.items ?? []).find((i) => i.productId === productId);
-    const stockDebut = item?.stockDebut ?? 0;
-
-    if (quantite !== stockDebut) {
-      // Écart entre inventaire saisi et stock présumé : on demande confirmation
-      // avant d'enregistrer quoi que ce soit.
-      setPendingEcart({
-        productId,
-        productName: item?.name ?? '',
-        stockPresume: stockDebut,
-        inventaireSaisi: quantite,
-      });
-      return;
+    interface StockTabProps {
+      data: StockData | null;
+      mois: number;
+      annee: number;
+      onReload: () => Promise<void>;
     }
 
-    await saveInventaire(productId, quantite);
-  }
+    function StockTab({ data, mois, annee, onReload }: StockTabProps) {
+      const [search, setSearch] = useState('');
+      const [savingId, setSavingId] = useState<number | null>(null);
+      const [editingInventaireId, setEditingInventaireId] = useState<number | null>(null);
+      const [editInventaireValue, setEditInventaireValue] = useState('');
 
-  // L'admin confirme que l'inventaire saisi est correct malgré l'écart :
-  // on enregistre l'inventaire tel quel (sans toucher au stock présumé).
-  async function confirmEcartSansRegularisation() {
-    if (!pendingEcart) return;
-    await saveInventaire(pendingEcart.productId, pendingEcart.inventaireSaisi);
-    setPendingEcart(null);
-  }
+      // Écart détecté en attente de confirmation admin avant sauvegarde
+      const [pendingEcart, setPendingEcart] = useState<{
+        productId: number;
+        productName: string;
+        stockPresume: number;
+        inventaireSaisi: number;
+      } | null>(null);
 
-  // L'admin demande la régularisation : une commande d'achat (qty = écart,
-  // peut être négative) est passée par le user système dédié pour que le
-  // stock présumé revienne s'aligner sur l'inventaire réel.
-  async function regulariser() {
-    if (!pendingEcart) return;
-    setRegularizing(true);
-    setRegularizeError('');
-    try {
-      await fetchJson(`/admin/stock/${pendingEcart.productId}/regulariser`, {
-        method: 'POST',
-        body: JSON.stringify({
-          mois,
-          annee,
-          inventaire: pendingEcart.inventaireSaisi,
-        }),
-      });
-      await onReload();
-      setPendingEcart(null);
-    } catch (e: any) {
-      setRegularizeError(e.message ?? 'Erreur lors de la régularisation.');
-    } finally {
-      setRegularizing(false);
-    }
-  }
+      // Régularisation en cours après confirmation de l'écart
+      const [regularizing, setRegularizing] = useState(false);
+      const [regularizeError, setRegularizeError] = useState('');
 
-  function cancelEcart() {
-    setPendingEcart(null);
-    setRegularizeError('');
-    setEditingInventaireId(null);
-  }
+      // Le mois est-il passé (terminé) ?
+      const stockDebutLabel = 'Stock présumé début de mois';
 
-  const filtered = (data?.items ?? []).filter((i) =>
-    i.name.toLowerCase().includes(search.toLowerCase()) ||
-    (i.categorie ?? '').toLowerCase().includes(search.toLowerCase())
-  );
+      // Sauvegarde directe de l'inventaire, sans régularisation (les valeurs collent déjà)
+      async function saveInventaire(productId: number, quantite: number) {
+        setSavingId(productId);
+        try {
+          await fetchJson(`/admin/stock/${productId}/inventaire`, {
+            method: 'PUT',
+            body: JSON.stringify({ mois, annee, quantite }),
+          });
+          await onReload();
+        } finally {
+          setSavingId(null);
+          setEditingInventaireId(null);
+        }
+      }
 
-  const kpis = data?.kpis;
+      async function commitInventaire(productId: number) {
+        const quantite = parseInt(editInventaireValue);
+        if (isNaN(quantite) || quantite < 0) { setEditingInventaireId(null); return; }
 
-  return (
-    <div className="space-y-4">
+        const item = (data?.items ?? []).find((i) => i.productId === productId);
+        const stockDebut = item?.stockDebut ?? 0;
 
-      {kpis && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-4 flex flex-col gap-2">
-            <span className="text-xs text-gray-500 uppercase tracking-wider">Valeur stock</span>
-            <p className="text-2xl font-bold text-white">{eur(kpis.valeurTotale)}</p>
-          </div>
-          <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-4 flex flex-col gap-2">
-            <span className="text-xs text-gray-500 uppercase tracking-wider">Produits actifs</span>
-            <p className="text-2xl font-bold text-white">{kpis.nbProduits}</p>
-          </div>
-          <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-4 flex flex-col gap-2">
-            <span className="text-xs text-gray-500 uppercase tracking-wider">Stock faible</span>
-            <p className="text-2xl font-bold text-amber-400">{kpis.nbFaible}</p>
-          </div>
-          <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-4 flex flex-col gap-2">
-            <span className="text-xs text-gray-500 uppercase tracking-wider">Rupture</span>
-            <p className="text-2xl font-bold text-red-400">{kpis.nbRupture}</p>
-          </div>
-        </div>
-      )}
+        if (quantite !== stockDebut) {
+          // Écart entre inventaire saisi et stock présumé : on demande confirmation
+          // avant d'enregistrer quoi que ce soit.
+          setPendingEcart({
+            productId,
+            productName: item?.name ?? '',
+            stockPresume: stockDebut,
+            inventaireSaisi: quantite,
+          });
+          return;
+        }
 
-      <input
-        type="text"
-        placeholder="Rechercher un produit ou une catégorie…"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="w-full max-w-sm bg-dark-bg/60 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500/60 transition-colors"
-      />
+        await saveInventaire(productId, quantite);
+      }
 
-      {!data ? (
-        <div className="flex items-center justify-center py-24">
-          <Loader2 size={28} className="animate-spin text-emerald-400" />
-        </div>
-      ) : (
-        <div className="bg-dark-bg/60 border border-gray-800 rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
-                <th className="text-left px-4 py-3 font-medium">Produit</th>
-                <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">Catégorie</th>
-                <th className="text-center px-4 py-3 font-medium hidden md:table-cell">Ventes</th>
-                <th className="text-center px-4 py-3 font-medium hidden md:table-cell">Achats</th>
-                <th className="text-center px-4 py-3 font-medium">{stockDebutLabel}</th>
-                <th className="text-center px-4 py-3 font-medium">
-                Inventaire
-                <span className="block text-[10px] normal-case font-normal text-gray-600">compté le 1er du mois</span>
-                </th>
-                <th className="text-right px-4 py-3 font-medium hidden lg:table-cell">Prix achat</th>
-                <th className="text-right px-4 py-3 font-medium">Valeur</th>
-                <th className="text-center px-4 py-3 font-medium hidden sm:table-cell">État</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="px-4 py-16 text-center text-gray-600">
-                    Aucun produit trouvé.
-                  </td>
-                </tr>
-              ) : filtered.map((item, i) => {
-                const badge = stockBadge(item.stockPresume);
-                const isSaving = savingId === item.productId;
-                // Tant que l'inventaire n'a pas été saisi pour ce mois, il affiche
-                // par défaut la valeur du stock présumé.
-                const inventaireAffiche = item.inventaire ?? item.stockDebut;
-                const inventaireSaisiCeMois = item.inventaire !== null && item.inventaire !== undefined;
-                const ecartNonRegularise = inventaireSaisiCeMois && item.inventaire !== item.stockDebut;
-                const inventaireConfirme = inventaireSaisiCeMois && item.inventaire === item.stockDebut;
+      // L'admin confirme que l'inventaire saisi est correct malgré l'écart :
+      // on enregistre l'inventaire tel quel (sans toucher au stock présumé).
+      async function confirmEcartSansRegularisation() {
+        if (!pendingEcart) return;
+        await saveInventaire(pendingEcart.productId, pendingEcart.inventaireSaisi);
+        setPendingEcart(null);
+      }
 
-                return (
-                  <tr
-                    key={item.productId}
-                    className={`border-b border-gray-800/50 hover:bg-white/[0.02] transition-colors ${
-                      i === filtered.length - 1 ? 'border-b-0' : ''
-                    }`}
-                  >
-                    <td className="px-4 py-3 text-white font-medium">{item.name}</td>
-                    <td className="px-4 py-3 text-gray-400 hidden sm:table-cell">
-                      {item.categorie ?? '—'}
-                    </td>
+      // L'admin demande la régularisation : une commande d'achat (qty = écart,
+      // peut être négative) est passée par le user système dédié pour que le
+      // stock présumé revienne s'aligner sur l'inventaire réel.
+      async function regulariser() {
+        if (!pendingEcart) return;
+        setRegularizing(true);
+        setRegularizeError('');
+        try {
+          await fetchJson(`/admin/stock/${pendingEcart.productId}/regulariser`, {
+            method: 'POST',
+            body: JSON.stringify({
+              mois,
+              annee,
+              inventaire: pendingEcart.inventaireSaisi,
+            }),
+          });
+          await onReload();
+          setPendingEcart(null);
+        } catch (e: any) {
+          setRegularizeError(e.message ?? 'Erreur lors de la régularisation.');
+        } finally {
+          setRegularizing(false);
+        }
+      }
 
-                    <td className="px-4 py-3 text-center text-red-400 hidden md:table-cell">
-                      {item.ventes > 0 ? `−${item.ventes}` : '—'}
-                    </td>
+      function cancelEcart() {
+        setPendingEcart(null);
+        setRegularizeError('');
+        setEditingInventaireId(null);
+      }
 
-                    <td className="px-4 py-3 text-center text-emerald-400 hidden md:table-cell">
-                      {item.achats > 0 ? `+${item.achats}` : '—'}
-                    </td>
+      const filtered = (data?.items ?? []).filter((i) =>
+        i.name.toLowerCase().includes(search.toLowerCase()) ||
+        (i.categorie ?? '').toLowerCase().includes(search.toLowerCase())
+      );
 
-                    <td className="px-4 py-3 text-center">
-                    <span className="font-semibold text-gray-300">
-                    {item.stockDebut}
-                    </span>
-                    </td>
+      const kpis = data?.kpis;
 
-                    <td className="px-4 py-3 text-center">
-                      {isSaving ? (
-                        <Loader2 size={14} className="animate-spin text-emerald-400 mx-auto" />
-                      ) : (
-                        <div className="flex items-center justify-center gap-1.5">
-                          <input
-                            type="number"
-                            min="0"
-                            value={editingInventaireId === item.productId ? editInventaireValue : inventaireAffiche}
-                            onChange={(e) => { setEditingInventaireId(item.productId); setEditInventaireValue(e.target.value); }}
-                            onBlur={() => editingInventaireId === item.productId && commitInventaire(item.productId)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') commitInventaire(item.productId);
-                              if (e.key === 'Escape') setEditingInventaireId(null);
-                            }}
-                            className={`w-16 h-7 bg-transparent border rounded text-center text-sm font-semibold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                              ecartNonRegularise
-                                ? 'border-amber-500/60 text-amber-300 focus:border-amber-400'
-                                : inventaireConfirme
-                                  ? 'border-emerald-500/60 text-emerald-300 focus:border-emerald-400'
-                                  : 'border-gray-700 text-white focus:border-emerald-500/60'
-                            }`}
-                          />
-                          {ecartNonRegularise && (
-                            <AlertCircle size={13} className="text-amber-400 shrink-0" />
-                          )}
-                          {inventaireConfirme && (
-                            <CheckCircle size={13} className="text-emerald-400 shrink-0" />
-                          )}
-                        </div>
-                      )}
-                    </td>
+      return (
+        <div className="space-y-4">
 
-                    <td className="px-4 py-3 text-right text-gray-400 hidden lg:table-cell">
-                      {item.costPrice > 0 ? eur(item.costPrice) : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-right text-white font-semibold">
-                      {item.valeur > 0 ? eur(item.valeur) : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-center hidden sm:table-cell">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium border ${badge.bg} ${badge.color}`}>
-                        {badge.label}
-                      </span>
-                    </td>
+          {kpis && (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-4 flex flex-col gap-2">
+                <span className="text-xs text-gray-500 uppercase tracking-wider">Valeur stock</span>
+                <p className="text-2xl font-bold text-white">{eur(kpis.valeurTotale)}</p>
+              </div>
+              <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-4 flex flex-col gap-2">
+                <span className="text-xs text-gray-500 uppercase tracking-wider">Produits actifs</span>
+                <p className="text-2xl font-bold text-white">{kpis.nbProduits}</p>
+              </div>
+              <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-4 flex flex-col gap-2">
+                <span className="text-xs text-gray-500 uppercase tracking-wider">Stock faible</span>
+                <p className="text-2xl font-bold text-amber-400">{kpis.nbFaible}</p>
+              </div>
+              <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-4 flex flex-col gap-2">
+                <span className="text-xs text-gray-500 uppercase tracking-wider">Rupture</span>
+                <p className="text-2xl font-bold text-red-400">{kpis.nbRupture}</p>
+              </div>
+            </div>
+          )}
+
+          <input
+            type="text"
+            placeholder="Rechercher un produit ou une catégorie…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full max-w-sm bg-dark-bg/60 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500/60 transition-colors"
+          />
+
+          {!data ? (
+            <div className="flex items-center justify-center py-24">
+              <Loader2 size={28} className="animate-spin text-emerald-400" />
+            </div>
+          ) : (
+            <div className="bg-dark-bg/60 border border-gray-800 rounded-xl overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
+                    <th className="text-left px-4 py-3 font-medium">Produit</th>
+                    <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">Catégorie</th>
+                    <th className="text-center px-4 py-3 font-medium hidden md:table-cell">Ventes</th>
+                    <th className="text-center px-4 py-3 font-medium hidden md:table-cell">Achats</th>
+                    <th className="text-center px-4 py-3 font-medium">{stockDebutLabel}</th>
+                    <th className="text-center px-4 py-3 font-medium">
+                    Inventaire
+                    <span className="block text-[10px] normal-case font-normal text-gray-600">compté le 1er du mois</span>
+                    </th>
+                    <th className="text-right px-4 py-3 font-medium hidden lg:table-cell">Prix achat</th>
+                    <th className="text-right px-4 py-3 font-medium">Valeur</th>
+                    <th className="text-center px-4 py-3 font-medium hidden sm:table-cell">État</th>
                   </tr>
-                );
-              })}
-            </tbody>
-            {data && (
-              <tfoot>
-                <tr className="border-t border-gray-800 bg-dark-bg/40">
-                  <td colSpan={8} className="px-4 py-3 text-xs text-gray-500 uppercase tracking-wider">
-                    Valeur totale
-                  </td>
-                  <td className="px-4 py-3 text-right text-white font-bold">
-                    {eur(data.kpis.valeurTotale)}
-                  </td>
-                  <td />
-                </tr>
-              </tfoot>
-            )}
-          </table>
+                </thead>
+                <tbody>
+                  {filtered.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="px-4 py-16 text-center text-gray-600">
+                        Aucun produit trouvé.
+                      </td>
+                    </tr>
+                  ) : filtered.map((item, i) => {
+                    const badge = stockBadge(item.stockPresume);
+                    const isSaving = savingId === item.productId;
+                    // Tant que l'inventaire n'a pas été saisi pour ce mois, il affiche
+                    // par défaut la valeur du stock présumé.
+                    const inventaireAffiche = item.inventaire ?? item.stockDebut;
+                    const inventaireSaisiCeMois = item.inventaire !== null && item.inventaire !== undefined;
+                    const ecartNonRegularise = inventaireSaisiCeMois && item.inventaire !== item.stockDebut;
+                    const inventaireConfirme = inventaireSaisiCeMois && item.inventaire === item.stockDebut;
+
+                    return (
+                      <tr
+                        key={item.productId}
+                        className={`border-b border-gray-800/50 hover:bg-white/[0.02] transition-colors ${
+                          i === filtered.length - 1 ? 'border-b-0' : ''
+                        }`}
+                      >
+                        <td className="px-4 py-3 text-white font-medium">{item.name}</td>
+                        <td className="px-4 py-3 text-gray-400 hidden sm:table-cell">
+                          {item.categorie ?? '—'}
+                        </td>
+
+                        <td className="px-4 py-3 text-center text-red-400 hidden md:table-cell">
+                          {item.ventes > 0 ? `−${item.ventes}` : '—'}
+                        </td>
+
+                        <td className="px-4 py-3 text-center text-emerald-400 hidden md:table-cell">
+                          {item.achats > 0 ? `+${item.achats}` : '—'}
+                        </td>
+
+                        <td className="px-4 py-3 text-center">
+                        <span className="font-semibold text-gray-300">
+                        {item.stockDebut}
+                        </span>
+                        </td>
+
+                        <td className="px-4 py-3 text-center">
+                          {isSaving ? (
+                            <Loader2 size={14} className="animate-spin text-emerald-400 mx-auto" />
+                          ) : (
+                            <div className="flex items-center justify-center gap-1.5">
+                              <input
+                                type="number"
+                                min="0"
+                                value={editingInventaireId === item.productId ? editInventaireValue : inventaireAffiche}
+                                onChange={(e) => { setEditingInventaireId(item.productId); setEditInventaireValue(e.target.value); }}
+                                onBlur={() => editingInventaireId === item.productId && commitInventaire(item.productId)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') commitInventaire(item.productId);
+                                  if (e.key === 'Escape') setEditingInventaireId(null);
+                                }}
+                                className={`w-16 h-7 bg-transparent border rounded text-center text-sm font-semibold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                                  ecartNonRegularise
+                                    ? 'border-amber-500/60 text-amber-300 focus:border-amber-400'
+                                    : inventaireConfirme
+                                      ? 'border-emerald-500/60 text-emerald-300 focus:border-emerald-400'
+                                      : 'border-gray-700 text-white focus:border-emerald-500/60'
+                                }`}
+                              />
+                              {ecartNonRegularise && (
+                                <AlertCircle size={13} className="text-amber-400 shrink-0" />
+                              )}
+                              {inventaireConfirme && (
+                                <CheckCircle size={13} className="text-emerald-400 shrink-0" />
+                              )}
+                            </div>
+                          )}
+                        </td>
+
+                        <td className="px-4 py-3 text-right text-gray-400 hidden lg:table-cell">
+                          {item.costPrice > 0 ? eur(item.costPrice) : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-right text-white font-semibold">
+                          {item.valeur > 0 ? eur(item.valeur) : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-center hidden sm:table-cell">
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium border ${badge.bg} ${badge.color}`}>
+                            {badge.label}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                {data && (
+                  <tfoot>
+                    <tr className="border-t border-gray-800 bg-dark-bg/40">
+                      <td colSpan={8} className="px-4 py-3 text-xs text-gray-500 uppercase tracking-wider">
+                        Valeur totale
+                      </td>
+                      <td className="px-4 py-3 text-right text-white font-bold">
+                        {eur(data.kpis.valeurTotale)}
+                      </td>
+                      <td />
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            </div>
+          )}
+
+          {pendingEcart && (
+            <EcartInventaireModal
+              ecart={pendingEcart}
+              loading={regularizing}
+              error={regularizeError}
+              onConfirmSansRegularisation={confirmEcartSansRegularisation}
+              onRegulariser={regulariser}
+              onCancel={cancelEcart}
+            />
+          )}
         </div>
-      )}
+      );
+    }
 
-      {pendingEcart && (
-        <EcartInventaireModal
-          ecart={pendingEcart}
-          loading={regularizing}
-          error={regularizeError}
-          onConfirmSansRegularisation={confirmEcartSansRegularisation}
-          onRegulariser={regulariser}
-          onCancel={cancelEcart}
-        />
-      )}
-    </div>
-  );
-}
+    function EcartInventaireModal({
+      ecart,
+      loading,
+      error,
+      onConfirmSansRegularisation,
+      onRegulariser,
+      onCancel,
+    }: {
+      ecart: { productName: string; stockPresume: number; inventaireSaisi: number };
+      loading: boolean;
+      error: string;
+      onConfirmSansRegularisation: () => void;
+      onRegulariser: () => void;
+      onCancel: () => void;
+    }) {
+      const diff = ecart.inventaireSaisi - ecart.stockPresume;
+      const diffLabel = diff > 0 ? `+${diff}` : `${diff}`;
 
-function EcartInventaireModal({
-  ecart,
-  loading,
-  error,
-  onConfirmSansRegularisation,
-  onRegulariser,
-  onCancel,
-}: {
-  ecart: { productName: string; stockPresume: number; inventaireSaisi: number };
-  loading: boolean;
-  error: string;
-  onConfirmSansRegularisation: () => void;
-  onRegulariser: () => void;
-  onCancel: () => void;
-}) {
-  const diff = ecart.inventaireSaisi - ecart.stockPresume;
-  const diffLabel = diff > 0 ? `+${diff}` : `${diff}`;
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="bg-dark-bg border border-gray-800 rounded-xl p-6 max-w-md w-full space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="shrink-0 mt-0.5">
+                <AlertCircle size={20} className="text-amber-400" />
+              </div>
+              <div>
+                <p className="text-white font-medium">Écart détecté</p>
+                <p className="text-sm text-gray-400 mt-1">
+                  Pour <span className="text-white">{ecart.productName}</span>, l'inventaire saisi
+                  ({ecart.inventaireSaisi}) ne correspond pas au stock présumé ({ecart.stockPresume}),
+                  soit un écart de <span className={diff > 0 ? 'text-emerald-400' : 'text-red-400'}>{diffLabel}</span>.
+                </p>
+              </div>
+            </div>
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-      <div className="bg-dark-bg border border-gray-800 rounded-xl p-6 max-w-md w-full space-y-4">
-        <div className="flex items-start gap-3">
-          <div className="shrink-0 mt-0.5">
-            <AlertCircle size={20} className="text-amber-400" />
-          </div>
-          <div>
-            <p className="text-white font-medium">Écart détecté</p>
-            <p className="text-sm text-gray-400 mt-1">
-              Pour <span className="text-white">{ecart.productName}</span>, l'inventaire saisi
-              ({ecart.inventaireSaisi}) ne correspond pas au stock présumé ({ecart.stockPresume}),
-              soit un écart de <span className={diff > 0 ? 'text-emerald-400' : 'text-red-400'}>{diffLabel}</span>.
+            <p className="text-xs text-gray-500">
+              Vérifiez d'abord que le compte d'inventaire est correct. Si vous êtes certain du chiffre saisi,
+              vous pouvez régulariser le stock présumé : une commande d'ajustement sera passée automatiquement
+              pour faire correspondre les deux valeurs.
             </p>
+
+            {error && (
+              <p className="text-red-400 text-xs flex items-center gap-1">
+                <AlertCircle size={12} /> {error}
+              </p>
+            )}
+
+            <div className="flex flex-col sm:flex-row gap-2 pt-1">
+              <button
+                onClick={onCancel}
+                disabled={loading}
+                className="flex-1 px-4 py-2 border border-gray-700 text-gray-300 rounded-lg text-sm font-medium hover:bg-white/[0.03] transition-colors disabled:opacity-50"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={onConfirmSansRegularisation}
+                disabled={loading}
+                className="flex-1 px-4 py-2 border border-gray-700 text-gray-300 rounded-lg text-sm font-medium hover:bg-white/[0.03] transition-colors disabled:opacity-50"
+              >
+                Enregistrer quand même
+              </button>
+              <button
+                onClick={onRegulariser}
+                disabled={loading}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-lg text-sm font-medium hover:bg-emerald-500/30 transition-colors disabled:opacity-50"
+              >
+                {loading ? <Loader2 size={14} className="animate-spin" /> : null}
+                Régulariser
+              </button>
+            </div>
           </div>
         </div>
-
-        <p className="text-xs text-gray-500">
-          Vérifiez d'abord que le compte d'inventaire est correct. Si vous êtes certain du chiffre saisi,
-          vous pouvez régulariser le stock présumé : une commande d'ajustement sera passée automatiquement
-          pour faire correspondre les deux valeurs.
-        </p>
-
-        {error && (
-          <p className="text-red-400 text-xs flex items-center gap-1">
-            <AlertCircle size={12} /> {error}
-          </p>
-        )}
-
-        <div className="flex flex-col sm:flex-row gap-2 pt-1">
-          <button
-            onClick={onCancel}
-            disabled={loading}
-            className="flex-1 px-4 py-2 border border-gray-700 text-gray-300 rounded-lg text-sm font-medium hover:bg-white/[0.03] transition-colors disabled:opacity-50"
-          >
-            Annuler
-          </button>
-          <button
-            onClick={onConfirmSansRegularisation}
-            disabled={loading}
-            className="flex-1 px-4 py-2 border border-gray-700 text-gray-300 rounded-lg text-sm font-medium hover:bg-white/[0.03] transition-colors disabled:opacity-50"
-          >
-            Enregistrer quand même
-          </button>
-          <button
-            onClick={onRegulariser}
-            disabled={loading}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-lg text-sm font-medium hover:bg-emerald-500/30 transition-colors disabled:opacity-50"
-          >
-            {loading ? <Loader2 size={14} className="animate-spin" /> : null}
-            Régulariser
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+      );
+    }
 // ─── Trésorerie panel ─────────────────────────────────────────────────────────
 
 function TresoreriePanel({ mois, annee }: { mois: number; annee: number }) {
