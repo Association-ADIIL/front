@@ -12,7 +12,7 @@ import NumberInput from '../components/NumberInput';
 import { deleteImage } from '../api/upload';
 import { useNotification } from '../context/NotificationContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
-import { useConfirmNavigation } from '../hooks/useConfirmNavigation.ts';
+import { useConfirmNavigation } from '../hooks/useConfirmNavigation';
 
 const ITEMS_PER_PAGE = 50;
 
@@ -80,6 +80,13 @@ const ProductManagementPage: React.FC = () => {
   }, []);
 
   const initialFormDataRef = useRef<ProductFormData | null>(null);
+
+  // isDirty et useConfirmNavigation doivent être appelés avant tout `return`
+  // conditionnel (ex: `if (loading) return ...` plus bas) pour respecter les
+  // Rules of Hooks et éviter "Rendered more hooks than during the previous render".
+  const isDirty = initialFormDataRef.current !== null &&
+    JSON.stringify(formData) !== JSON.stringify(initialFormDataRef.current);
+  useConfirmNavigation(isModalOpen && isDirty);
 
   const handleOpenCreate = () => {
       setCurrentProduct(null);
@@ -486,9 +493,6 @@ const ProductManagementPage: React.FC = () => {
     currentPage * ITEMS_PER_PAGE
   );
 
-  const isDirty = initialFormDataRef.current !== null &&
-      JSON.stringify(formData) !== JSON.stringify(initialFormDataRef.current);
- useConfirmNavigation(isModalOpen && isDirty);
   return (
     <div>
       {/* Header */}
