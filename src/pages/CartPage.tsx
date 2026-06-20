@@ -112,7 +112,15 @@ const CartPage: React.FC = () => {
     if (user && totalWithProductPromotions > 0) {
       const checkDiscount = async () => {
         try {
-          const discount = await checkCartDiscount(totalWithProductPromotions);
+          const discount = await checkCartDiscount(
+                      totalWithProductPromotions,
+                     items.map(item => ({
+                        productId: parseInt(item.product.id),
+                        quantity: item.quantity,
+                       variantId: item.variantId,
+                        selectedOptions: item.selectedOptions,
+                      }))
+                    );
           setDiscountInfo(discount);
         } catch (error) {
           logger.error('Error checking discount', error);
@@ -123,7 +131,7 @@ const CartPage: React.FC = () => {
     } else {
       setDiscountInfo(null);
     }
-  }, [user, totalWithProductPromotions]);
+  }, [user, totalWithProductPromotions, items]);
 
   const handleCheckout = async () => {
     if (!user) {
