@@ -36,6 +36,7 @@ import ImageUpload from '../components/ImageUpload';
 import { deleteImage } from '../api/upload';
 import { useNotification } from '../context/NotificationContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { useConfirmNavigation } from '../hooks/useConfirmNavigation';
 
 const PROMOTION_TYPES: { value: PromotionType; label: string; description: string }[] = [
   { value: 'BALANCE_RECHARGE_BONUS', label: 'Bonus recharge', description: 'Bonus sur les recharges de solde' },
@@ -109,6 +110,14 @@ const PromotionManagementPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentPromotion, setCurrentPromotion] = useState<Promotion | null>(null);
   const [formData, setFormData] = useState<PromotionFormData>(defaultFormData);
+  const initialFormDataRef = useRef<PromotionFormData | null>(null);
+
+  // isDirty et useConfirmNavigation doivent être appelés avant tout `return`
+  // conditionnel (ex: `if (loading) return ...` plus bas) pour respecter les
+  // Rules of Hooks et éviter "Rendered more hooks than during the previous render".
+  const isDirty = initialFormDataRef.current !== null &&
+    JSON.stringify(formData) !== JSON.stringify(initialFormDataRef.current);
+  useConfirmNavigation(isModalOpen && isDirty);
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [promotionToDelete, setPromotionToDelete] = useState<Promotion | null>(null);
@@ -176,6 +185,7 @@ const PromotionManagementPage: React.FC = () => {
     uploadedImagesRef.current = [];
     setCurrentPromotion(null);
     setFormData(defaultFormData);
+    initialFormDataRef.current = defaultFormData;
     setProductSearch('');
     setIsModalOpen(true);
   };
@@ -196,7 +206,7 @@ const PromotionManagementPage: React.FC = () => {
       }
     }
 
-    setFormData({
+    const editFormData: PromotionFormData = {
       name: promotion.name,
       description: promotion.description || '',
       type: promotion.type,
@@ -222,7 +232,10 @@ const PromotionManagementPage: React.FC = () => {
       })) || [{ label: 'Groupe 1', productIds: [], subcategoryId: '', quantity: 1 }],
       bundleDiscountType: rules?.discountType || 'fixed',
       bundleDiscountValue: rules?.discountValue?.toString() || '0.50',
-    });
+    };
+
+    setFormData(editFormData);
+    initialFormDataRef.current = editFormData;
     setProductSearch('');
     setIsModalOpen(true);
   };

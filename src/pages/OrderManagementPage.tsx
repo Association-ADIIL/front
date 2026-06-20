@@ -11,6 +11,7 @@ import MultiSelect from '../components/MultiSelect';
 import NumberInput from '../components/NumberInput';
 import { useNotification } from '../context/NotificationContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { useConfirmNavigation } from '../hooks/useConfirmNavigation';
 
 const ITEMS_PER_PAGE = 50;
 
@@ -83,6 +84,8 @@ const OrderManagementPage: React.FC = () => {
     itemsToRefund: [],
     refundAmount: 0,
   });
+    const isRefundSelectionDirty = isModalOpen && !!currentOrder && Object.keys(refundSelection).length > 0;
+      useConfirmNavigation(isRefundSelectionDirty);
 
   const fetchOrders = async () => {
     try {
@@ -913,6 +916,7 @@ const OrderManagementPage: React.FC = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        isDirty={isRefundSelectionDirty}
         title={
           currentOrder
             ? `Détails de la Commande #${currentOrder.id.toString().padStart(6, '0')}`

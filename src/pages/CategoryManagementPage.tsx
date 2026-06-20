@@ -19,6 +19,7 @@ import { Edit2, Trash2, Plus, ChevronDown, ChevronRight, Folder, FolderOpen, Gri
 import Modal from '../components/Modal';
 import { useNotification } from '../context/NotificationContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { useConfirmNavigation } from '../hooks/useConfirmNavigation';
 import {
   DndContext,
   closestCenter,
@@ -251,6 +252,19 @@ const SortableCategoryItem: React.FC<SortableCategoryItemProps> = ({
   );
 };
 
+const EMPTY_CATEGORY_FORM: CategoryFormData = {
+  name: '',
+  description: '',
+  order: 0,
+};
+
+const EMPTY_SUBCATEGORY_FORM: SubcategoryFormData = {
+  name: '',
+  description: '',
+  order: 0,
+  categoryId: 0,
+};
+
 const CategoryManagementPage: React.FC = () => {
   useDocumentTitle('Admin - Categories');
   const { addNotification } = useNotification();
@@ -261,25 +275,21 @@ const CategoryManagementPage: React.FC = () => {
   // Category modal state
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
-  const [categoryFormData, setCategoryFormData] = useState<CategoryFormData>({
-    name: '',
-    description: '',
-    order: 0,
-  });
+  const [categoryFormData, setCategoryFormData] = useState<CategoryFormData>(EMPTY_CATEGORY_FORM);
 
   // Subcategory modal state
   const [isSubcategoryModalOpen, setIsSubcategoryModalOpen] = useState(false);
   const [currentSubcategory, setCurrentSubcategory] = useState<Subcategory | null>(null);
-  const [subcategoryFormData, setSubcategoryFormData] = useState<SubcategoryFormData>({
-    name: '',
-    description: '',
-    order: 0,
-    categoryId: 0,
-  });
+  const [subcategoryFormData, setSubcategoryFormData] = useState<SubcategoryFormData>(EMPTY_SUBCATEGORY_FORM);
 
   // Delete modal state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ type: 'category' | 'subcategory'; item: Category | Subcategory } | null>(null);
+
+  // Dirty-leave detection: un champ texte rempli dans l'une ou l'autre modal suffit a armer la confirmation
+  const isCategoryFormDirty = isCategoryModalOpen && !!(categoryFormData.name || categoryFormData.description);
+  const isSubcategoryFormDirty = isSubcategoryModalOpen && !!(subcategoryFormData.name || subcategoryFormData.description);
+  useConfirmNavigation(isCategoryFormDirty || isSubcategoryFormDirty);
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -338,6 +348,11 @@ const CategoryManagementPage: React.FC = () => {
     setIsCategoryModalOpen(true);
   };
 
+  const handleCloseCategoryModal = () => {
+    setIsCategoryModalOpen(false);
+    setCategoryFormData(EMPTY_CATEGORY_FORM);
+  };
+
   const handleCategorySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -348,6 +363,7 @@ const CategoryManagementPage: React.FC = () => {
         await createCategory(categoryFormData);
         addNotification('success', 'Categorie creee avec succes !');
       }
+      setCategoryFormData(EMPTY_CATEGORY_FORM);
       setIsCategoryModalOpen(false);
       fetchCategories();
     } catch (error) {
@@ -380,6 +396,11 @@ const CategoryManagementPage: React.FC = () => {
     setIsSubcategoryModalOpen(true);
   };
 
+  const handleCloseSubcategoryModal = () => {
+    setIsSubcategoryModalOpen(false);
+    setSubcategoryFormData(EMPTY_SUBCATEGORY_FORM);
+  };
+
   const handleSubcategorySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -390,6 +411,7 @@ const CategoryManagementPage: React.FC = () => {
         await createSubcategory(subcategoryFormData);
         addNotification('success', 'Sous-categorie creee avec succes !');
       }
+      setSubcategoryFormData(EMPTY_SUBCATEGORY_FORM);
       setIsSubcategoryModalOpen(false);
       fetchCategories();
     } catch (error) {
@@ -540,8 +562,9 @@ const CategoryManagementPage: React.FC = () => {
       {/* Category Modal */}
       <Modal
         isOpen={isCategoryModalOpen}
-        onClose={() => setIsCategoryModalOpen(false)}
+        onClose={handleCloseCategoryModal}
         title={currentCategory ? 'Modifier la categorie' : 'Ajouter une categorie'}
+        isDirty={isCategoryFormDirty}
       >
         <form onSubmit={handleCategorySubmit} className="space-y-4">
           <div>
@@ -569,7 +592,7 @@ const CategoryManagementPage: React.FC = () => {
           <div className="flex justify-end pt-4">
             <button
               type="button"
-              onClick={() => setIsCategoryModalOpen(false)}
+              onClick={handleCloseCategoryModal}
               className="mr-4 px-4 py-2 text-gray-300 hover:text-white"
             >
               Annuler
@@ -587,8 +610,9 @@ const CategoryManagementPage: React.FC = () => {
       {/* Subcategory Modal */}
       <Modal
         isOpen={isSubcategoryModalOpen}
-        onClose={() => setIsSubcategoryModalOpen(false)}
+        onClose={handleCloseSubcategoryModal}
         title={currentSubcategory ? 'Modifier la sous-categorie' : 'Ajouter une sous-categorie'}
+        isDirty={isSubcategoryFormDirty}
       >
         <form onSubmit={handleSubcategorySubmit} className="space-y-4">
           <div>
@@ -635,7 +659,7 @@ const CategoryManagementPage: React.FC = () => {
           <div className="flex justify-end pt-4">
             <button
               type="button"
-              onClick={() => setIsSubcategoryModalOpen(false)}
+              onClick={handleCloseSubcategoryModal}
               className="mr-4 px-4 py-2 text-gray-300 hover:text-white"
             >
               Annuler
