@@ -9,7 +9,7 @@ import NumberInput from '../components/NumberInput';
 import { deleteImage } from '../api/upload';
 import { useNotification } from '../context/NotificationContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
-import { useConfirmNavigation } from '../hooks/useConfirmNavigation';
+import { useConfirmNavigation } from '../hooks/useConfirmNavigation.ts';
 
 const EventManagementPage: React.FC = () => {
   useDocumentTitle('Admin - Events');
