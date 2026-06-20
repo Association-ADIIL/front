@@ -115,7 +115,7 @@ export const logger = {
   /**
    * Log authentication events
    */
-  auth: (event: 'login' | 'logout' | 'register' | 'refresh', success: boolean): void => {
+  auth: (event: 'login' | 'logout' | 'register' | 'refresh' | 'login_google', success: boolean): void => {
     if (isDevelopment) {
       logger.info(`Auth event: ${event}`, { success });
     }

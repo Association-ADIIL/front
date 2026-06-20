@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GraduationCap, Users, ChevronRight } from 'lucide-react';
+import { GraduationCap, ChevronRight } from 'lucide-react';
 import { useNotification } from '../context/NotificationContext';
 import { updateProfile } from '../api/auth'; // adapte le chemin/nom selon ton fichier api existant
 import { logger } from '../utils/logger';
@@ -10,11 +10,11 @@ type Filiere = 'INFO' | 'MMI' | 'TC' | 'BIO' | 'AUTRES';
 
 
 const FILIERE_OPTIONS: { value: Filiere; label: string }[] = [
-  { value: 'INFO', label: 'Informatique' },
+  { value: 'INFO', label: 'INFO' },
   { value: 'MMI', label: 'MMI' },
   { value: 'TC', label: 'TC' },
-  { value: 'BIO', label: 'Bio' },
-  { value: 'AUTRES', label: 'Autres' },
+  { value: 'BIO', label: 'BIO' },
+  { value: 'AUTRES', label: 'Autre' },
 ];
 
 
