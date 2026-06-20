@@ -58,7 +58,6 @@ interface AchatFournisseur {
 interface ProductOption {
   id: number;
   name: string;
-  active: boolean;
 }
 
 interface CategorieOption {
@@ -372,7 +371,7 @@ function AchatModal({ initial, defaultDate, products, achatCategories, fournisse
             {itemsState.map((it) => {
               const suggestions = !isEdit && it.productName.trim().length > 0
                 ? products.filter((p) =>
-                    p.active && p.name.toLowerCase().includes(it.productName.toLowerCase())
+                    p.name.toLowerCase().includes(it.productName.toLowerCase())
                   ).slice(0, 6)
                 : [];
               return (
