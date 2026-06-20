@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Mail, Lock, LogIn, ArrowRight } from 'lucide-react';
 import SEO from '../components/SEO';
+import { GoogleLogin } from '@react-oauth/google';
 
 const LoginPage: React.FC = () => {
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -21,6 +22,14 @@ const LoginPage: React.FC = () => {
       setError(err.message || 'Echec de la connexion. Verifiez vos identifiants.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSuccess = async (response: any) => {
+    try {
+      await loginWithGoogle(response.credential);
+    } catch (err: any) {
+      setError(err.message || 'Echec de la connexion Google.');
     }
   };
 
@@ -109,6 +118,24 @@ const LoginPage: React.FC = () => {
               )}
             </button>
           </form>
+
+          {/* Séparateur */}
+          <div className="flex items-center gap-4 my-6">
+            <div className="flex-1 h-px bg-gray-800" />
+            <span className="text-gray-600 text-sm font-montserrat">ou</span>
+            <div className="flex-1 h-px bg-gray-800" />
+          </div>
+
+          {/* Bouton Google */}
+          <div className="flex justify-center">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => setError('Echec de la connexion Google.')}
+              theme="filled_black"
+              shape="rectangular"
+              width="100%"
+            />
+          </div>
 
           <div className="mt-6 pt-6 border-t border-gray-800">
             <p className="text-center text-gray-500 font-montserrat">

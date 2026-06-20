@@ -18,6 +18,7 @@ export interface AuthResponse {
   message: string;
   token: string;
   user: User;
+  isNewUser?: boolean;
 }
 
 export interface LoginCredentials {
@@ -58,6 +59,13 @@ export const getMe = async (): Promise<{ user: User }> => {
 export const deleteAccount = async (): Promise<{ message: string }> => {
   return fetchJson('/auth/me', {
     method: 'DELETE',
+  });
+};
+
+export const loginWithGoogle = async (googleToken: string): Promise<AuthResponse> => {
+  return fetchJson('/auth/google', {
+    method: 'POST',
+    body: JSON.stringify({ token: googleToken }),
   });
 };
 

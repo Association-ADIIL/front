@@ -26,6 +26,7 @@ import BattlePassClaimPage from './pages/BattlePassClaimPage';
 import ShareFilePage from './pages/ShareFilePage';
 import NotFoundPage from './pages/NotFoundPage';
 import AdminLayout from './components/AdminLayout';
+import CompleteProfilePage from './pages/CompleteProfilePage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider, useNotification } from './context/NotificationContext';
 import { BannerProvider } from './context/BannerContext';
@@ -33,6 +34,7 @@ import { CartProvider } from './context/CartContext';
 import { ToastContainer } from './components/Toast';
 import { setUnauthorizedCallback, setErrorCallback } from './api/client';
 import { useBanner } from './context/BannerContext';
+
 
 
 // Lazy load admin pages for code splitting
@@ -91,7 +93,7 @@ const PublicLayout = () => {
             <Route path="/order-pickup/:id" element={<OrderPickupPage />} />
             <Route path="/battle-pass-claim/:battlePassId/:userId/:level/:tier" element={<BattlePassClaimPage />} />
             <Route path="/share/:token" element={<ShareFilePage />} />
-
+            <Route path="/complete-profile" element={<CompleteProfilePage />} />
 
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
