@@ -592,45 +592,60 @@ const ShopPage: React.FC = () => {
 
                   {/* Bannières promos générales (bundle, livraison, BOGO, %) */}
                   {pagePromotions.length > 0 && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
                       {pagePromotions.map((promo) => {
                         const visual = PROMO_VISUALS[promo.type];
                         const Icon = visual.icon;
                         return (
                           <div
                             key={promo.id}
-                            className="bg-darker-bg border border-gray-800 rounded-2xl p-4 flex items-start gap-4 relative overflow-hidden group hover:border-accent-mint/25 transition-colors duration-300"
+                            className="bg-darker-bg border border-gray-800 rounded-2xl overflow-hidden relative group hover:border-accent-mint/30 transition-colors duration-300 flex flex-col"
                           >
-                            {/* Ligne accent en haut de la carte */}
-                            <div className="absolute top-0 left-0 right-0 h-[2px] bg-accent-mint/50 rounded-t-2xl" />
+                            {/* Ligne accent en haut */}
+                            <div className="absolute top-0 left-0 right-0 h-[2px] bg-accent-mint/60 z-10" />
 
-                            {/* Icône */}
-                            <div className="w-9 h-9 rounded-xl bg-accent-mint/10 border border-accent-mint/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                              <Icon size={17} className="text-accent-mint" />
+                            {/* Image hero pleine largeur */}
+                            {promo.imageUrl ? (
+                              <div className="relative w-full overflow-hidden" style={{ aspectRatio: '16/7' }}>
+                                <img
+                                  src={promo.imageUrl}
+                                  alt={promo.displayTitle}
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                />
+                                {/* Gradient overlay pour lisibilité */}
+                                <div className="absolute inset-0 bg-gradient-to-t from-darker-bg via-darker-bg/40 to-transparent" />
+                                {/* Badge type positionné sur l'image */}
+                                <span className="absolute top-3 left-3 inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-accent-mint bg-darker-bg/80 backdrop-blur-sm border border-accent-mint/30 px-2 py-1 rounded-lg">
+                                  <Icon size={9} />
+                                  {visual.label}
+                                </span>
+                              </div>
+                            ) : null}
+
+                            {/* Contenu textuel */}
+                            <div className="p-5 flex items-start gap-3 flex-1">
+                              {/* Icône — uniquement si pas d'image hero */}
+                              {!promo.imageUrl && (
+                                <div className="w-10 h-10 rounded-xl bg-accent-mint/10 border border-accent-mint/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                  <Icon size={18} className="text-accent-mint" />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                {/* Badge type — uniquement si pas d'image (sinon déjà affiché dessus) */}
+                                {!promo.imageUrl && (
+                                  <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-accent-mint bg-accent-mint/10 border border-accent-mint/20 px-2 py-0.5 rounded mb-2 mr-auto">
+                                    <Icon size={9} />
+                                    {visual.label}
+                                  </span>
+                                )}
+                                <p className="text-base font-bold text-white leading-snug mb-1">
+                                  {promo.displayTitle}
+                                </p>
+                                <p className="text-sm text-gray-400 leading-relaxed">
+                                  {promo.displayMessage}
+                                </p>
+                              </div>
                             </div>
-
-                            {/* Contenu */}
-                            <div className="flex-1 min-w-0">
-                              <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-accent-mint bg-accent-mint/10 border border-accent-mint/20 px-2 py-0.5 rounded mb-1.5">
-                                <Icon size={9} />
-                                {visual.label}
-                              </span>
-                              <p className="text-sm font-semibold text-white leading-snug mb-0.5">
-                                {promo.displayTitle}
-                              </p>
-                              <p className="text-xs text-gray-500 leading-relaxed">
-                                {promo.displayMessage}
-                              </p>
-                            </div>
-
-                            {/* Image optionnelle */}
-                            {promo.imageUrl && (
-                              <img
-                                src={promo.imageUrl}
-                                alt={promo.displayTitle}
-                                className="w-14 h-14 object-cover rounded-xl flex-shrink-0 border border-gray-800"
-                              />
-                            )}
                           </div>
                         );
                       })}
