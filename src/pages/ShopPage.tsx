@@ -37,7 +37,7 @@ import SEO from '../components/SEO';
 
 // Visuel (icône, couleurs, label) associé à chaque type de promotion.
 // Ajouter un nouveau type backend ne nécessite qu'une entrée ici.
-const PROMO_VISUALS: Record<
+const PROMO_VISUALS: Record
   PromotionType,
   { icon: React.ElementType; label: string }
 > = {
@@ -82,10 +82,28 @@ const COLS_BY_BREAKPOINT = {
   xl: 6,       // ≥ xl  → 6
 };
 
-// On bascule en carrousel dès qu'il y a plus de produits qu'une ligne peut en afficher
-// au breakpoint courant. On utilise la valeur xl comme seuil statique côté SSR/hydratation,
-// la logique JS fine est gérée dans le composant via ResizeObserver.
-const CAROUSEL_THRESHOLD = COLS_BY_BREAKPOINT.xl; // 6
+// Hook qui retourne le nombre de colonnes actuellement affichées selon la largeur d'écran.
+// Permet de faire basculer en carrousel dès qu'il y a plus de produits qu'une ligne
+// ne peut en afficher AU BREAKPOINT COURANT (et pas juste au seuil xl fixe).
+const useResponsiveCols = () => {
+  const [cols, setCols] = React.useState(COLS_BY_BREAKPOINT.xl);
+
+  React.useEffect(() => {
+    const compute = () => {
+      const w = window.innerWidth;
+      if (w < 640) setCols(COLS_BY_BREAKPOINT.default);
+      else if (w < 768) setCols(COLS_BY_BREAKPOINT.sm);
+      else if (w < 1024) setCols(COLS_BY_BREAKPOINT.md);
+      else if (w < 1280) setCols(COLS_BY_BREAKPOINT.lg);
+      else setCols(COLS_BY_BREAKPOINT.xl);
+    };
+    compute();
+    window.addEventListener('resize', compute);
+    return () => window.removeEventListener('resize', compute);
+  }, []);
+
+  return cols;
+};
 
 interface ProductCarouselProps {
   products: Product[];
@@ -206,6 +224,8 @@ const ShopPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<number | null>(null);
+
+  const carouselThreshold = useResponsiveCols();
 
   const { addToCart, items: cartItems } = useCart();
   const { addNotification } = useNotification();
@@ -788,7 +808,7 @@ const ShopPage: React.FC = () => {
 
                   {/* Grille / carrousel produits en promo */}
                   {promotedProducts.length > 0 && (
-                    promotedProducts.length > CAROUSEL_THRESHOLD ? (
+                    promotedProducts.length > carouselThreshold ? (
                       <ProductCarousel products={promotedProducts} renderCard={renderProductCard} />
                     ) : (
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
@@ -819,7 +839,7 @@ const ShopPage: React.FC = () => {
                       </span>
                     </div>
 
-                    {group.products.length > CAROUSEL_THRESHOLD ? (
+                    {group.products.length > carouselThreshold ? (
                       <ProductCarousel products={group.products} renderCard={renderProductCard} />
                     ) : (
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
