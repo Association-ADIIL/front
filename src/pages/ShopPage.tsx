@@ -24,6 +24,8 @@ import {
   Truck,
   Repeat,
   Percent,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useNotification } from '../context/NotificationContext';
@@ -69,6 +71,126 @@ const PROMO_VISUALS: Record<
     icon: Sparkles,
     label: 'Bonus recharge',
   },
+};
+
+// Nombre de colonnes visibles selon breakpoint (doit correspondre aux classes Tailwind de la grille)
+const COLS_BY_BREAKPOINT = {
+  default: 2,  // < sm  → 2 colonnes
+  sm: 3,       // ≥ sm  → 3
+  md: 4,       // ≥ md  → 4
+  lg: 5,       // ≥ lg  → 5
+  xl: 6,       // ≥ xl  → 6
+};
+
+// On bascule en carrousel dès qu'il y a plus de produits qu'une ligne peut en afficher
+// au breakpoint courant. On utilise la valeur xl comme seuil statique côté SSR/hydratation,
+// la logique JS fine est gérée dans le composant via ResizeObserver.
+const CAROUSEL_THRESHOLD = COLS_BY_BREAKPOINT.xl; // 6
+
+interface ProductCarouselProps {
+  products: Product[];
+  renderCard: (product: Product) => React.ReactNode;
+}
+
+const ProductCarousel: React.FC<ProductCarouselProps> = ({ products, renderCard }) => {
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+  const wrapperRef = React.useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = React.useState(false);
+  const [canScrollRight, setCanScrollRight] = React.useState(true);
+  // Largeur d'une card calculée dynamiquement selon le conteneur
+  const [cardWidth, setCardWidth] = React.useState(160);
+
+  // Recalcule la largeur des cards en fonction de la largeur du conteneur,
+  // en ciblant le même nombre de colonnes visibles que la grille Tailwind.
+  React.useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+
+    const compute = () => {
+      const w = el.clientWidth;
+      let cols: number;
+      if (w < 640) cols = COLS_BY_BREAKPOINT.default;        // < sm
+      else if (w < 768) cols = COLS_BY_BREAKPOINT.sm;        // sm
+      else if (w < 1024) cols = COLS_BY_BREAKPOINT.md;       // md
+      else if (w < 1280) cols = COLS_BY_BREAKPOINT.lg;       // lg
+      else cols = COLS_BY_BREAKPOINT.xl;                      // xl
+
+      const gap = 16; // gap-4 = 1rem = 16px
+      // On affiche cols cards entières + ~0.3 card pour suggérer le scroll
+      const visibleCols = cols + 0.3;
+      setCardWidth(Math.floor((w - gap * (Math.ceil(visibleCols) - 1)) / visibleCols));
+    };
+
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const updateScrollState = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 8);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 8);
+  };
+
+  // Scroll d'exactement une "page" (nb de colonnes visibles × largeur card)
+  const scroll = (dir: 'left' | 'right') => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const w = wrapperRef.current?.clientWidth ?? 0;
+    const gap = 16;
+    const pageWidth = w - gap; // approx une page complète
+    el.scrollBy({ left: dir === 'left' ? -pageWidth : pageWidth, behavior: 'smooth' });
+  };
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      {/* Bouton gauche — masqué sur mobile (touch suffit), visible à partir de md */}
+      <button
+        onClick={() => scroll('left')}
+        className={`hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-9 h-9 rounded-full bg-darker-bg border border-gray-700 items-center justify-center text-accent-mint shadow-lg transition-all duration-200 hover:border-accent-mint/50 hover:bg-dark-bg
+          ${canScrollLeft ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        aria-label="Défiler à gauche"
+      >
+        <ChevronLeft size={18} />
+      </button>
+
+      {/* Scroll container */}
+      <div
+        ref={scrollRef}
+        onScroll={updateScrollState}
+        className="flex gap-4 overflow-x-auto scroll-smooth pb-2"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        {products.map((product) => (
+          <div key={product.id} className="flex-none" style={{ width: cardWidth }}>
+            {renderCard(product)}
+          </div>
+        ))}
+        {/* Espace final pour que la dernière card ne soit pas collée au fade */}
+        <div className="flex-none w-2" aria-hidden="true" />
+      </div>
+
+      {/* Dégradés latéraux */}
+      {canScrollRight && (
+        <div className="absolute right-0 top-0 bottom-2 w-12 bg-gradient-to-l from-dark-bg to-transparent pointer-events-none" />
+      )}
+      {canScrollLeft && (
+        <div className="absolute left-0 top-0 bottom-2 w-12 bg-gradient-to-r from-dark-bg to-transparent pointer-events-none" />
+      )}
+
+      {/* Bouton droit — masqué sur mobile */}
+      <button
+        onClick={() => scroll('right')}
+        className={`hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-9 h-9 rounded-full bg-darker-bg border border-gray-700 items-center justify-center text-accent-mint shadow-lg transition-all duration-200 hover:border-accent-mint/50 hover:bg-dark-bg
+          ${canScrollRight ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        aria-label="Défiler à droite"
+      >
+        <ChevronRight size={18} />
+      </button>
+    </div>
+  );
 };
 
 const ShopPage: React.FC = () => {
@@ -664,39 +786,49 @@ const ShopPage: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Grille produits en promo */}
+                  {/* Grille / carrousel produits en promo */}
                   {promotedProducts.length > 0 && (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                      {promotedProducts.map(renderProductCard)}
-                    </div>
+                    promotedProducts.length > CAROUSEL_THRESHOLD ? (
+                      <ProductCarousel products={promotedProducts} renderCard={renderProductCard} />
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                        {promotedProducts.map(renderProductCard)}
+                      </div>
+                    )
                   )}
                 </div>
               )}
 
               {/* ── PRODUITS PAR SOUS-CATÉGORIE ───────────────────────────────── */}
-              {groupedProducts.map((group) => (
-                <div key={`${group.categoryName}-${group.name}`} className="space-y-5">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-1.5 h-10 bg-gradient-to-b from-accent-mint to-accent-mint/30 rounded-full" />
-                      <div>
-                        {group.categoryName && !selectedCategoryId && (
-                          <p className="text-xs text-accent-mint/70 uppercase tracking-wider font-medium">{group.categoryName}</p>
-                        )}
-                        <h2 className="text-2xl font-koulen text-white">{group.name}</h2>
+              {groupedProducts.map((group) => {
+                return (
+                  <div key={`${group.categoryName}-${group.name}`} className="space-y-5">
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-1.5 h-10 bg-gradient-to-b from-accent-mint to-accent-mint/30 rounded-full" />
+                        <div>
+                          {group.categoryName && !selectedCategoryId && (
+                            <p className="text-xs text-accent-mint/70 uppercase tracking-wider font-medium">{group.categoryName}</p>
+                          )}
+                          <h2 className="text-2xl font-koulen text-white">{group.name}</h2>
+                        </div>
                       </div>
+                      <div className="flex-1 h-px bg-gradient-to-r from-gray-800 to-transparent" />
+                      <span className="text-xs text-gray-500 bg-darker-bg px-3 py-1.5 rounded-lg border border-gray-800">
+                        {group.products.length} article{group.products.length > 1 ? 's' : ''}
+                      </span>
                     </div>
-                    <div className="flex-1 h-px bg-gradient-to-r from-gray-800 to-transparent" />
-                    <span className="text-xs text-gray-500 bg-darker-bg px-3 py-1.5 rounded-lg border border-gray-800">
-                      {group.products.length} article{group.products.length > 1 ? 's' : ''}
-                    </span>
-                  </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                    {group.products.map(renderProductCard)}
+                    {group.products.length > CAROUSEL_THRESHOLD ? (
+                      <ProductCarousel products={group.products} renderCard={renderProductCard} />
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                        {group.products.map(renderProductCard)}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
             </div>
           )}
