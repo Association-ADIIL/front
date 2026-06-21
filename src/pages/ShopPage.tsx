@@ -37,7 +37,7 @@ import SEO from '../components/SEO';
 
 // Visuel (icône, couleurs, label) associé à chaque type de promotion.
 // Ajouter un nouveau type backend ne nécessite qu'une entrée ici.
-const PROMO_VISUALS: Record
+const PROMO_VISUALS: Record<
   PromotionType,
   { icon: React.ElementType; label: string }
 > = {
