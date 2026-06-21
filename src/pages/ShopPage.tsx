@@ -714,3 +714,4 @@ const ShopPage: React.FC = () => {
     </div>
   );
 };
+export default ShopPage;
