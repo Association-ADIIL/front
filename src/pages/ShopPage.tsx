@@ -37,57 +37,36 @@ import SEO from '../components/SEO';
 // Ajouter un nouveau type backend ne nécessite qu'une entrée ici.
 const PROMO_VISUALS: Record<
   PromotionType,
-  { icon: React.ElementType; gradient: string; border: string; glow: string; label: string }
+  { icon: React.ElementType; label: string }
 > = {
   BUNDLE_DISCOUNT: {
     icon: Gift,
-    gradient: 'from-purple-500/10 to-pink-500/10',
-    border: 'border-purple-500/30 hover:border-purple-400/50',
-    glow: 'bg-purple-500/20',
     label: 'Combo Gagnant',
   },
   PERCENTAGE_DISCOUNT: {
     icon: Percent,
-    gradient: 'from-amber-500/10 to-orange-500/10',
-    border: 'border-amber-500/30 hover:border-amber-400/50',
-    glow: 'bg-amber-500/20',
     label: 'Réduction %',
   },
   FIXED_DISCOUNT: {
     icon: Tag,
-    gradient: 'from-emerald-500/10 to-teal-500/10',
-    border: 'border-emerald-500/30 hover:border-emerald-400/50',
-    glow: 'bg-emerald-500/20',
     label: 'Remise fixe',
   },
   FREE_SHIPPING: {
     icon: Truck,
-    gradient: 'from-sky-500/10 to-blue-500/10',
-    border: 'border-sky-500/30 hover:border-sky-400/50',
-    glow: 'bg-sky-500/20',
     label: 'Livraison offerte',
   },
   BUY_X_GET_Y: {
     icon: Repeat,
-    gradient: 'from-rose-500/10 to-red-500/10',
-    border: 'border-rose-500/30 hover:border-rose-400/50',
-    glow: 'bg-rose-500/20',
     label: 'Offre cumulée',
   },
   PRODUCT_DISCOUNT: {
     icon: Tag,
-    gradient: 'from-red-500/10 to-amber-500/10',
-    border: 'border-red-500/30 hover:border-red-400/50',
-    glow: 'bg-red-500/20',
     label: 'Promo produit',
   },
   // Non utilisé sur la boutique (concerne la recharge de solde) mais présent
   // pour satisfaire l'exhaustivité du Record<PromotionType, ...>
   BALANCE_RECHARGE_BONUS: {
     icon: Sparkles,
-    gradient: 'from-gray-500/10 to-gray-500/10',
-    border: 'border-gray-500/30',
-    glow: 'bg-gray-500/20',
     label: 'Bonus recharge',
   },
 };
@@ -589,93 +568,97 @@ const ShopPage: React.FC = () => {
           ) : (
             <div className="space-y-12">
 
-              {/* PROMOTIONS EN COURS - tous types confondus (bundle, %, fixe, livraison, BOGO...) */}
-              {pagePromotions.length > 0 && (
-                <div className="space-y-5 mb-12">
-                  <div className="flex items-center gap-4">
+              {/* ── OFFRES EN COURS ─────────────────────────────────────────────
+                  Section fusionnée : bannières promos générales + produits en promo
+              ─────────────────────────────────────────────────────────────────── */}
+              {(pagePromotions.length > 0 || promotedProducts.length > 0) && (
+                <div className="mb-12">
+
+                  {/* Header */}
+                  <div className="flex items-center gap-4 mb-6">
                     <div className="flex items-center gap-3">
                       <div className="w-1.5 h-10 bg-accent-mint rounded-full" />
                       <div>
                         <span className="text-accent-mint/80 text-xs font-bold uppercase tracking-[0.2em]">
                           Offre promotionnelle
                         </span>
-                        <h2 className="text-2xl md:text-3xl font-koulen text-white flex items-center gap-2">
-
-                          PROMOTIONS EN COURS
+                        <h2 className="text-2xl md:text-3xl font-koulen text-white">
+                          OFFRES EN COURS
                         </h2>
                       </div>
                     </div>
                     <div className="flex-1 h-px bg-gradient-to-r from-accent-mint/50 to-transparent" />
                   </div>
 
+                  {/* Bannières promos générales (bundle, livraison, BOGO, %) */}
+                  {pagePromotions.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
+                      {pagePromotions.map((promo) => {
+                        const visual = PROMO_VISUALS[promo.type];
+                        const Icon = visual.icon;
+                        return (
+                          <div
+                            key={promo.id}
+                            className="bg-darker-bg border border-gray-800 rounded-2xl p-4 flex items-start gap-4 relative overflow-hidden group hover:border-accent-mint/25 transition-colors duration-300"
+                          >
+                            {/* Ligne accent en haut de la carte */}
+                            <div className="absolute top-0 left-0 right-0 h-[2px] bg-accent-mint/50 rounded-t-2xl" />
 
+                            {/* Icône */}
+                            <div className="w-9 h-9 rounded-xl bg-accent-mint/10 border border-accent-mint/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <Icon size={17} className="text-accent-mint" />
+                            </div>
 
+                            {/* Contenu */}
+                            <div className="flex-1 min-w-0">
+                              <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-accent-mint bg-accent-mint/10 border border-accent-mint/20 px-2 py-0.5 rounded mb-1.5">
+                                <Icon size={9} />
+                                {visual.label}
+                              </span>
+                              <p className="text-sm font-semibold text-white leading-snug mb-0.5">
+                                {promo.displayTitle}
+                              </p>
+                              <p className="text-xs text-gray-500 leading-relaxed">
+                                {promo.displayMessage}
+                              </p>
+                            </div>
+
+                            {/* Image optionnelle */}
+                            {promo.imageUrl && (
+                              <img
+                                src={promo.imageUrl}
+                                alt={promo.displayTitle}
+                                className="w-14 h-14 object-cover rounded-xl flex-shrink-0 border border-gray-800"
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Séparateur "Produits en réduction" — affiché uniquement si les deux types coexistent */}
+                  {pagePromotions.length > 0 && promotedProducts.length > 0 && (
+                    <div className="flex items-center gap-3 my-5">
+                      <div className="flex-1 h-px bg-accent-mint/15" />
+                      <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.15em] text-accent-mint/50 whitespace-nowrap">
+                        <Tag size={11} />
+                        Produits en réduction
+                      </span>
+                      <div className="flex-1 h-px bg-accent-mint/15" />
+                    </div>
+                  )}
+
+                  {/* Grille produits en promo */}
+                  {promotedProducts.length > 0 && (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                     {pagePromotions.map((promo) => {
-                       const visual = PROMO_VISUALS[promo.type];
-                       const Icon = visual.icon;
-                       const promoImageUrl = promo.imageUrl;
-                       return (
-                         <div
-                           key={promo.id}
-                           className={`bg-gradient-to-br ${visual.gradient} border ${visual.border} rounded-2xl overflow-hidden relative group transition-all shadow-lg`}
-                         >
-                           {promoImageUrl && (
-                             <div
-                               className="w-full overflow-hidden relative shrink-0"
-                               style={{ aspectRatio: '1 / 1' }}
-                             >
-                               <img
-                                 src={promoImageUrl}
-                                 alt={promo.displayTitle}
-                                 className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                               />
-                               <div className="absolute inset-0 bg-gradient-to-t from-darker-bg/80 via-transparent to-transparent" />
-                             </div>
-                           )}
-                           <div className={`absolute -right-10 -top-10 w-32 h-32 ${visual.glow} rounded-full blur-2xl group-hover:opacity-80 transition-opacity`} />
-                           <div className="relative z-10 p-5">
-                             <div className="flex items-center gap-2 mb-3">
-                               <span className="px-2.5 py-1 bg-white/10 text-white text-xs font-bold rounded-lg uppercase tracking-wide flex items-center gap-1">
-                                 <Icon size={12} />
-                                 {visual.label}
-                               </span>
-                             </div>
-                             <h3 className="text-xl font-bold text-white mb-2">{promo.displayTitle}</h3>
-                             <p className="text-gray-300 text-sm leading-relaxed">{promo.displayMessage}</p>
-                           </div>
-                         </div>
-                       );
-                     })}
-                  </div>
-                </div>
-              )}
-
-              {/* OFFRES SPÉCIALES SECTION (Single Products) */}
-              {promotedProducts.length > 0 && (
-                <div className="space-y-5 mb-12">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-1.5 h-10 bg-accent-mint rounded-full" />
-                      <div>
-                        <span className="text-accent-mint/80 text-xs font-bold uppercase tracking-[0.2em]">
-                          Offre promotionnelle
-                        </span>
-                        <h2 className="text-2xl md:text-3xl font-koulen text-white flex items-center gap-2">
-
-                          PROMOTIONS PRODUITS
-                        </h2>
-                      </div>
+                      {promotedProducts.map(renderProductCard)}
                     </div>
-                    <div className="flex-1 h-px bg-gradient-to-r from-accent-mint/50 to-transparent" />
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                    {promotedProducts.map(renderProductCard)}
-                  </div>
+                  )}
                 </div>
               )}
 
-              {/* Grouped products by subcategory */}
+              {/* ── PRODUITS PAR SOUS-CATÉGORIE ───────────────────────────────── */}
               {groupedProducts.map((group) => (
                 <div key={`${group.categoryName}-${group.name}`} className="space-y-5">
                   <div className="flex items-center gap-4">
@@ -699,6 +682,7 @@ const ShopPage: React.FC = () => {
                   </div>
                 </div>
               ))}
+
             </div>
           )}
         </div>
@@ -714,4 +698,5 @@ const ShopPage: React.FC = () => {
     </div>
   );
 };
+
 export default ShopPage;
