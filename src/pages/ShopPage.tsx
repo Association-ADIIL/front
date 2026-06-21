@@ -457,7 +457,7 @@ const ShopPage: React.FC = () => {
         </Link>
 
         <div className="p-3 flex flex-col flex-1 border-t border-gray-800/50">
-          <Link to={`/shop/${product.id}`} className="font-bold text-white text-sm leading-tight mb-1 line-clamp-2 group-hover:text-accent-mint transition-colors block hover:underline">
+          <Link to={`/shop/${product.id}`} className="font-bold text-white text-sm leading-tight mb-1 line-clamp-2 min-h-[2.5rem] group-hover:text-accent-mint transition-colors block hover:underline">
             {product.name}
           </Link>
           {product.description && (
