@@ -442,7 +442,7 @@ const AdminCaissePage: React.FC = () => {
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             />
                           </div>
-                          <div className="p-2 pb-1">
+                          <div className="p-2">
                             <p className="text-xs font-medium text-white truncate leading-tight">{product.name}</p>
                             <div className="mt-1">
                               {hasDiscount ? (
@@ -456,14 +456,14 @@ const AdminCaissePage: React.FC = () => {
                             </div>
                           </div>
                           <div
-                            className="px-2 pb-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute bottom-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
                             onClick={e => e.stopPropagation()}
                           >
                             <input
                               type="number"
                               min="1"
-                              placeholder="1"
-                              className="w-full bg-slate-700/40 border border-slate-600/30 rounded-lg px-2 py-1 text-[11px] text-slate-300 placeholder-slate-600 focus:outline-none focus:border-accent-mint/40 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              placeholder="qté"
+                              className="w-12 bg-slate-900/80 border border-accent-mint/30 rounded-md px-1 py-0.5 text-[10px] text-accent-mint placeholder-slate-600 focus:outline-none focus:border-accent-mint/70 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none backdrop-blur-sm"
                               onKeyDown={e => {
                                 if (e.key === 'Enter') {
                                   const val = parseInt((e.target as HTMLInputElement).value);

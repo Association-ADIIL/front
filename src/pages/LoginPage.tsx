@@ -11,13 +11,14 @@ const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
     try {
-      await login({ email, password });
+      await login({ email, password, rememberMe });
     } catch (err: any) {
       setError(err.message || 'Echec de la connexion. Verifiez vos identifiants.');
     } finally {
@@ -95,7 +96,27 @@ const LoginPage: React.FC = () => {
                 </Link>
               </div>
             </div>
-
+            <div className="flex items-center gap-3">
+                <button
+                type="button"
+                onClick={() => setRememberMe(r => !r)}
+                className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all flex-shrink-0 ${
+                  rememberMe
+                    ? 'bg-accent-mint border-accent-mint'
+                    : 'border-gray-600 hover:border-gray-500'
+                }`}>
+                {rememberMe && (
+                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                    <path d="M1 4L3.5 6.5L9 1" stroke="#0f1318" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    )}
+                </button>
+                <span
+                  className="text-sm text-gray-400 cursor-pointer select-none"
+                  onClick={() => setRememberMe(r => !r)}>
+                  Se souvenir de moi
+              </span>
+            </div>
             {error && (
               <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
                 <p className="text-red-400 text-sm text-center font-montserrat">{error}</p>

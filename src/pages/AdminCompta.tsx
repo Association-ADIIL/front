@@ -586,7 +586,7 @@ export default function ComptabilitePage() {
   return (
     <div className="space-y-6">
 
-
+    <div className="fixed top-0 left-0 right-0 z-30 bg-dark-bg/95 backdrop-blur-sm border-b border-gray-800 px-4 py-3 space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Comptabilité</h1>
@@ -619,36 +619,37 @@ export default function ComptabilitePage() {
           </button>
         </div>
       </div>
+      <div className="flex gap-1 bg-dark-bg/60 border border-gray-800 rounded-xl p-1 w-fit">
+              {([
+                ['dashboard', 'Vue d\'ensemble'],
+                ['achats', 'Achats'],
+                ['stock', 'Stock'],
+                ['tresorerie', 'Trésorerie liquide'],
+                ['parametres', 'Paramètres'],
+              ] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => setTab(key)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
+                    tab === key
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : 'text-gray-500 hover:text-white'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>{/* fin fixed header */}
 
+          {/* Spacer pour compenser le header fixed */}
+          <div className="h-32" />
 
       {error && (
         <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-400 text-sm">
           <AlertCircle size={16} /> {error}
         </div>
       )}
-
-
-      <div className="flex gap-1 bg-dark-bg/60 border border-gray-800 rounded-xl p-1 w-fit">
-        {([
-          ['dashboard', 'Vue d\'ensemble'],
-          ['achats', 'Achats'],
-          ['stock', 'Stock'],
-          ['tresorerie', 'Trésorerie liquide'],
-          ['parametres', 'Paramètres'],
-        ] as const).map(([key, label]) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
-              tab === key
-                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                : 'text-gray-500 hover:text-white'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
 
       {loading && !dashboard ? (
         <div className="flex items-center justify-center py-24">
@@ -1260,7 +1261,7 @@ function stockBadge(stock: number) {
                           {isSaving ? (
                             <Loader2 size={14} className="animate-spin text-emerald-400 mx-auto" />
                           ) : (
-                            <div className="flex items-center justify-center gap-1.5">
+                            <div className="relative flex items-center justify-center w-full">
                               <input
                                 type="number"
                                 min="0"
@@ -1280,10 +1281,10 @@ function stockBadge(stock: number) {
                                 }`}
                               />
                               {ecartNonRegularise && (
-                                <AlertCircle size={13} className="text-amber-400 shrink-0" />
+                                 <AlertCircle size={13} className="text-amber-400 absolute left-[calc(50%+2.25rem+4px)]" />
                               )}
                               {inventaireConfirme && (
-                                <CheckCircle size={13} className="text-emerald-400 shrink-0" />
+                                  <CheckCircle size={13} className="text-emerald-400 absolute left-[calc(50%+2.25rem+4px)]" />
                               )}
                             </div>
                           )}
