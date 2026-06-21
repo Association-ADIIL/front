@@ -586,7 +586,7 @@ export default function ComptabilitePage() {
   return (
     <div className="space-y-6">
 
-    <div className="fixed top-0 left-0 right-0 z-30 bg-dark-bg/95 backdrop-blur-sm border-b border-gray-800 px-4 py-3 space-y-3">
+    <div className="fixed top-0 left-[300px] right-0 z-30 bg-dark-bg/95 backdrop-blur-sm border-b border-gray-800 px-4 py-3 space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Comptabilité</h1>
