@@ -285,51 +285,39 @@ const ShopPage: React.FC = () => {
   }, [filteredProducts, categories]);
 
   const renderPagePromoCard = (promo: Promotion) => {
-    const visual = PROMO_VISUALS[promo.type];
-    const Icon = visual.icon;
+      const visual = PROMO_VISUALS[promo.type];
+      const Icon = visual.icon;
+      const promoImageUrl = promo.imageUrl;
 
-    return (
-      <div
-        key={`page-promo-${promo.id}`}
-        className={`bg-darker-bg rounded-2xl border ${visual.border} overflow-hidden relative group transition-all duration-300 flex flex-col hover:-translate-y-1 hover:shadow-[0_10px_40px_rgba(0,0,0,0.3)]`}
-      >
-        {/* Image ou placeholder gradient */}
-        <div className="aspect-square relative overflow-hidden shrink-0">
-          {promo.imageUrl ? (
-            <img
-              src={promo.imageUrl}
-              alt={promo.displayTitle}
-              className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-            />
-          ) : (
-            <div className={`absolute inset-0 bg-gradient-to-br ${visual.gradient} flex items-center justify-center`}>
-              <Icon size={48} className="text-white/20" />
+      return (
+        <div
+          key={`page-promo-${promo.id}`}
+          className={`bg-gradient-to-br ${visual.gradient} border ${visual.border} rounded-2xl overflow-hidden relative group transition-all shadow-lg flex flex-col`}
+        >
+          {promoImageUrl && (
+            <div className="aspect-square bg-gray-900 relative overflow-hidden shrink-0">
+              <img
+                src={promoImageUrl}
+                alt={promo.displayTitle}
+                className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-darker-bg/80 via-transparent to-transparent" />
             </div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-darker-bg/80 via-transparent to-transparent" />
-
-          {/* Badge type */}
-          <div className="absolute top-2 left-2">
-            <span className={`inline-flex items-center gap-1 px-2.5 py-1 ${visual.glow} backdrop-blur-sm text-white text-[10px] font-bold rounded-lg uppercase tracking-wide border border-white/10`}>
-              <Icon size={10} />
-              {visual.label}
-            </span>
+          <div className={`absolute -right-10 -top-10 w-32 h-32 ${visual.glow} rounded-full blur-2xl group-hover:opacity-80 transition-opacity`} />
+          <div className="relative z-10 p-3 flex flex-col flex-1">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="px-2 py-1 bg-white/10 text-white text-[10px] font-bold rounded-lg uppercase tracking-wide flex items-center gap-1">
+                <Icon size={11} />
+                {visual.label}
+              </span>
+            </div>
+            <h3 className="text-sm font-bold text-white mb-1 line-clamp-2">{promo.displayTitle}</h3>
+            <p className="text-gray-300 text-xs leading-relaxed line-clamp-3">{promo.displayMessage}</p>
           </div>
-
-          {/* Glow */}
-          <div className={`absolute -right-8 -top-8 w-24 h-24 ${visual.glow} rounded-full blur-2xl opacity-60`} />
         </div>
-
-        {/* Contenu */}
-        <div className="p-3 flex flex-col flex-1 border-t border-gray-800/50">
-          <p className="font-bold text-white text-sm leading-tight mb-1 line-clamp-2">
-            {promo.displayTitle}
-          </p>
-          <p className="text-gray-500 text-xs line-clamp-2">{promo.displayMessage}</p>
-        </div>
-      </div>
-    );
-  };
+      );
+    };
 
   const renderProductCard = (product: Product) => {
     const quantity = quantities[product.id] || 1;
