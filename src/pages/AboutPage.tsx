@@ -59,7 +59,7 @@ const teamMembers = [
     description: "Participe activement aux projets et missions de l'association."
   },
   {
-    name: "Yannis Chevalier",
+    name: "Yannis Chevallier",
     role: "Membre Actif",
     image: null,
     description: "Participe activement aux projets et missions de l'association."

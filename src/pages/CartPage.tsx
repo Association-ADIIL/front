@@ -19,7 +19,7 @@ const CartPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'PAYPAL' | 'HELLOASSO' | 'CASH_CB' | 'BALANCE' | null>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'HELLOASSO' | 'CASH' | 'CB' | 'BALANCE' | null>(null);
   const [isProcessingOrder, setIsProcessingOrder] = useState(false);
   const [balance, setBalance] = useState<number>(0);
   const [maxBonusPercent, setMaxBonusPercent] = useState<number | null>(null);
@@ -611,53 +611,53 @@ const CartPage: React.FC = () => {
                                 <Heart size={14} className={selectedPaymentMethod === 'HELLOASSO' && finalPrice >= 0.50 ? 'text-white' : 'text-gray-400'} />
                               </div>
                               <p className="font-bold text-white text-xs">HelloAsso</p>
-                              <p className="text-[10px] text-blue-400">Recommandé</p>
+                              <p className="text-[10px] text-gray-500"></p>
                             </button>
 
-                            {/* PayPal */}
+                            {/* CASH */}
                             <button
-                              onClick={() => setSelectedPaymentMethod('PAYPAL')}
+                              onClick={() => setSelectedPaymentMethod('CASH')}
                               className={`relative p-3 rounded-xl border-2 transition-all text-left ${
-                                selectedPaymentMethod === 'PAYPAL'
+                                selectedPaymentMethod === 'CASH'
                                   ? 'border-indigo-500 bg-indigo-500/10'
                                   : 'border-gray-800 bg-dark-bg hover:border-gray-700'
                               }`}
                             >
-                              {selectedPaymentMethod === 'PAYPAL' && (
+                              {selectedPaymentMethod === 'CASH' && (
                                 <div className="absolute top-2.5 right-2.5 w-4 h-4 bg-indigo-500 rounded-full flex items-center justify-center">
                                   <CheckCircle2 size={10} className="text-white" />
                                 </div>
                               )}
                               <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${
-                                selectedPaymentMethod === 'PAYPAL' ? 'bg-indigo-500' : 'bg-gray-800'
+                                selectedPaymentMethod === 'CASH' ? 'bg-indigo-500' : 'bg-gray-800'
                               }`}>
-                                <CreditCard size={14} className={selectedPaymentMethod === 'PAYPAL' ? 'text-white' : 'text-gray-400'} />
+                                <CreditCard size={14} className={selectedPaymentMethod === 'CASH' ? 'text-white' : 'text-gray-400'} />
                               </div>
-                              <p className="font-bold text-white text-xs">PayPal</p>
-                              <p className="text-[10px] text-gray-500">Carte ou compte</p>
+                              <p className="font-bold text-white text-xs">Sur place</p>
+                              <p className="text-[10px] text-gray-500">Espèces</p>
                             </button>
 
                             {/* Sur place */}
                             <button
-                              onClick={() => setSelectedPaymentMethod('CASH_CB')}
+                              onClick={() => setSelectedPaymentMethod('CB')}
                               className={`relative p-3 rounded-xl border-2 transition-all text-left ${
-                                selectedPaymentMethod === 'CASH_CB'
+                                selectedPaymentMethod === 'CB'
                                   ? 'border-green-500 bg-green-500/10'
                                   : 'border-gray-800 bg-dark-bg hover:border-gray-700'
                               }`}
                             >
-                              {selectedPaymentMethod === 'CASH_CB' && (
+                              {selectedPaymentMethod === 'CB' && (
                                 <div className="absolute top-2.5 right-2.5 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
                                   <CheckCircle2 size={10} className="text-white" />
                                 </div>
                               )}
                               <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${
-                                selectedPaymentMethod === 'CASH_CB' ? 'bg-green-500' : 'bg-gray-800'
+                                selectedPaymentMethod === 'CB' ? 'bg-green-500' : 'bg-gray-800'
                               }`}>
-                                <Banknote size={14} className={selectedPaymentMethod === 'CASH_CB' ? 'text-white' : 'text-gray-400'} />
+                                <Banknote size={14} className={selectedPaymentMethod === 'CB' ? 'text-white' : 'text-gray-400'} />
                               </div>
                               <p className="font-bold text-white text-xs">Sur place</p>
-                              <p className="text-[10px] text-gray-500">Espèces / CB</p>
+                              <p className="text-[10px] text-gray-500">CB</p>
                             </button>
                           </div>
 

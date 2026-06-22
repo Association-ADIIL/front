@@ -1,6 +1,6 @@
 import { fetchJson, API_BASE_URL } from './client';
 
-export type PaymentMethod = 'HELLOASSO' | 'PAYPAL' | 'CASH_CB' | 'FREE' | 'BALANCE';
+export type PaymentMethod = 'HELLOASSO' | 'CASH' | 'CB' | 'FREE' | 'BALANCE';
 
 export interface InscriptionOption {
   eventOptionId: number;
@@ -128,12 +128,12 @@ export const updateInscriptionPaymentStatus = async (id: number, paymentStatus: 
   });
 };
 
-export const confirmPayPalPayment = async (inscriptionId: number, orderId: string): Promise<any> => {
+/*export const confirmPayPalPayment = async (inscriptionId: number, orderId: string): Promise<any> => {
   return fetchJson(`/inscriptions/${inscriptionId}/payment/paypal/confirm`, {
     method: 'POST',
     body: JSON.stringify({ orderId }),
   });
-};
+};*/
 
 export const confirmHelloAssoPayment = async (inscriptionId: number, checkoutIntentId: string): Promise<any> => {
   return fetchJson(`/inscriptions/${inscriptionId}/payment/helloasso/confirm`, {

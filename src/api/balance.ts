@@ -31,7 +31,7 @@ export const createBalanceRecharge = async (data: {
   });
 };
 
-export const confirmPayPalBalanceRecharge = async (
+/*export const confirmPayPalBalanceRecharge = async (
   rechargeId: number,
   orderId: string
 ): Promise<any> => {
@@ -39,7 +39,7 @@ export const confirmPayPalBalanceRecharge = async (
     method: 'POST',
     body: JSON.stringify({ orderId }),
   });
-};
+};*/
 
 export const confirmHelloAssoBalanceRecharge = async (
   rechargeId: number,

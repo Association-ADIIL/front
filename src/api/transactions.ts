@@ -2,7 +2,7 @@ import { fetchJson } from './client';
 
 export type TransactionType = 'ORDER' | 'BALANCE_RECHARGE' | 'INSCRIPTION';
 export type PaymentStatus = 'PENDING' | 'PAID' | 'REFUNDED';
-export type PaymentMethod = 'HELLOASSO' | 'PAYPAL' | 'CASH_CB' | 'FREE' | 'BALANCE';
+export type PaymentMethod = 'HELLOASSO' | 'PAYPAL' | 'CASH' | 'CB' | 'FREE' | 'BALANCE';
 
 export interface Transaction {
   id: string;

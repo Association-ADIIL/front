@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { confirmPayPalPayment, confirmHelloAssoPayment } from '../api/inscriptions';
-import { confirmPayPalOrderPayment, confirmHelloAssoOrderPayment } from '../api/orders';
-import { confirmPayPalBalanceRecharge, confirmHelloAssoBalanceRecharge } from '../api/balance';
+import { confirmHelloAssoPayment } from '../api/inscriptions';
+import { confirmHelloAssoOrderPayment } from '../api/orders';
+import {confirmHelloAssoBalanceRecharge } from '../api/balance';
 import { logger } from '../utils/logger';
 import { getErrorMessage, isCapacityExceededError } from '../types/errors';
 
@@ -69,7 +69,7 @@ const clearPaymentStorage = (storageKey: string): void => {
 /**
  * Process PayPal payment confirmation
  */
-const confirmPayPal = async (
+/*const confirmPayPal = async (
   type: PaymentType,
   id: number,
   paypalToken: string
@@ -85,7 +85,7 @@ const confirmPayPal = async (
       await confirmPayPalPayment(id, paypalToken);
       break;
   }
-};
+};*/
 
 /**
  * Process HelloAsso payment confirmation

@@ -456,7 +456,7 @@ const AdminCaissePage: React.FC = () => {
                             </div>
                           </div>
                           <div
-                            className="absolute bottom-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute bottom-1.5 right-1.5"
                             onClick={e => e.stopPropagation()}
                           >
                             <input

@@ -30,7 +30,7 @@ export interface Order {
     type: string;
   } | null;
   hasDiscount?: boolean;
-  paymentMethod: 'HELLOASSO' | 'PAYPAL' | 'CASH_CB' | 'FREE';
+  paymentMethod: 'HELLOASSO' | 'CASH' | 'CB' | 'FREE';
   paymentStatus: 'PENDING' | 'PAID' | 'REFUNDED';
   orderStatus: 'PENDING' | 'PAID' | 'COLLECTED' | 'CANCELLED';
   paymentTransactionId?: string;
@@ -72,7 +72,7 @@ export interface Order {
 
 export interface CreateOrderPayload {
   items: OrderItem[];
-  paymentMethod: 'HELLOASSO' | 'PAYPAL' | 'CASH_CB' | 'FREE';
+  paymentMethod: 'HELLOASSO' | 'CASH' | 'CB' | 'FREE';
   returnUrl?: string;
   cancelUrl?: string;
   promotionId?: number; // Optional: specify which promotion to apply
@@ -81,7 +81,7 @@ export interface CreateOrderPayload {
 export interface CreateOrderResponse {
   order: Order;
   payment?: {
-    method: 'PAYPAL' | 'HELLOASSO';
+    method:  'HELLOASSO';
     orderId?: string; // For PayPal
     approvalUrl?: string; // For PayPal
     checkoutId?: string; // For HelloAsso
@@ -98,12 +98,12 @@ export const createOrder = async (data: CreateOrderPayload): Promise<CreateOrder
   });
 };
 
-export const confirmPayPalOrderPayment = async (orderId: number, paypalOrderId: string): Promise<Order> => {
+/*export const confirmPayPalOrderPayment = async (orderId: number, paypalOrderId: string): Promise<Order> => {
   return fetchJson(`/orders/${orderId}/payment/paypal/confirm`, {
     method: 'POST',
     body: JSON.stringify({ orderId: paypalOrderId }),
   });
-};
+};*/
 
 export const confirmHelloAssoOrderPayment = async (orderId: number, checkoutIntentId?: string, paymentId?: string): Promise<Order> => {
   return fetchJson(`/orders/${orderId}/payment/helloasso/confirm`, {
@@ -152,7 +152,7 @@ export const refundOrderItems = async (
 export interface OrderPickupInfo {
   id: number;
   customerName: string;
-  paymentMethod: 'HELLOASSO' | 'PAYPAL' | 'CASH_CB' | 'FREE' | 'BALANCE';
+  paymentMethod: 'HELLOASSO' | 'CASH' | 'CB' | 'FREE' | 'BALANCE';
   paymentStatus: 'PENDING' | 'PAID' | 'REFUNDED';
   orderStatus: 'PENDING' | 'PAID' | 'COLLECTED' | 'CANCELLED';
   totalPrice: number;
