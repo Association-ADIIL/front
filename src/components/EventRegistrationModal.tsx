@@ -100,9 +100,7 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
 
   // Auto-switch away from HelloAsso if total is below 0.50
   useEffect(() => {
-    if (paymentMethod === 'HELLOASSO' && totalPrice > 0 && totalPrice < 0.50) {
-      setPaymentMethod('PAYPAL');
-    }
+
     // Auto-switch away from BALANCE if not enough balance
     if (paymentMethod === 'BALANCE' && !hasEnoughBalance) {
       setPaymentMethod('HELLOASSO');
@@ -160,19 +158,12 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
 
       // Handle payment redirect (only for external payment methods)
       if (response.paymentUrl) {
-        sessionStorage.setItem('helloasso_inscription_id', response.inscription.id.toString());
-        window.location.href = response.paymentUrl;
-      } else if (response.payment?.approvalUrl) {
-        sessionStorage.setItem('paypal_inscription_id', response.inscription.id.toString());
-        if (response.payment.orderId) {
-          sessionStorage.setItem('paypal_order_id', response.payment.orderId);
-        }
-        window.location.href = response.payment.approvalUrl;
-      } else {
-        // For BALANCE and CASH_CB, just close the modal and refresh
-        onClose();
-        window.location.reload();
-      }
+              sessionStorage.setItem('helloasso_inscription_id', response.inscription.id.toString());
+              window.location.href = response.paymentUrl;
+            } else {
+              onClose();
+              window.location.reload();
+            }
 
     } catch (error) {
       logger.error('Registration failed', error);
@@ -455,52 +446,52 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
                       )}
                     </button>
 
-                    {/* PayPal */}
+                    {/* CASH */}
                     <button
                       type="button"
-                      onClick={() => setPaymentMethod('PAYPAL')}
+                      onClick={() => setPaymentMethod('CASH')}
                       className={`relative p-3 rounded-xl border-2 transition-all text-left ${
-                        paymentMethod === 'PAYPAL'
+                        paymentMethod === 'CASH'
                           ? 'border-indigo-500 bg-indigo-500/10'
                           : 'border-gray-800 bg-dark-bg hover:border-gray-700'
                       }`}
                     >
-                      {paymentMethod === 'PAYPAL' && (
+                      {paymentMethod === 'CASH' && (
                         <div className="absolute top-2 right-2 w-4 h-4 bg-indigo-500 rounded-full flex items-center justify-center">
                           <CheckCircle2 size={10} className="text-white" />
                         </div>
                       )}
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${
-                        paymentMethod === 'PAYPAL' ? 'bg-indigo-500' : 'bg-gray-800'
+                        paymentMethod === 'CASH' ? 'bg-indigo-500' : 'bg-gray-800'
                       }`}>
-                        <CreditCard size={14} className={paymentMethod === 'PAYPAL' ? 'text-white' : 'text-gray-400'} />
+                        <CreditCard size={14} className={paymentMethod === 'CASH' ? 'text-white' : 'text-gray-400'} />
                       </div>
-                      <p className="font-bold text-white text-xs">PayPal</p>
-                      <p className="text-[10px] text-gray-500">Carte ou compte</p>
+                      <p className="font-bold text-white text-xs">Sur place</p>
+                      <p className="text-[10px] text-gray-500">Espèces</p>
                     </button>
 
-                    {/* Cash/CB */}
+                    {/*CB */}
                     <button
                       type="button"
-                      onClick={() => setPaymentMethod('CASH_CB')}
+                      onClick={() => setPaymentMethod('CB')}
                       className={`relative p-3 rounded-xl border-2 transition-all text-left ${
-                        paymentMethod === 'CASH_CB'
+                        paymentMethod === 'CB'
                           ? 'border-green-500 bg-green-500/10'
                           : 'border-gray-800 bg-dark-bg hover:border-gray-700'
                       }`}
                     >
-                      {paymentMethod === 'CASH_CB' && (
+                      {paymentMethod === 'CB' && (
                         <div className="absolute top-2 right-2 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
                           <CheckCircle2 size={10} className="text-white" />
                         </div>
                       )}
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${
-                        paymentMethod === 'CASH_CB' ? 'bg-green-500' : 'bg-gray-800'
+                        paymentMethod === 'CB' ? 'bg-green-500' : 'bg-gray-800'
                       }`}>
-                        <Banknote size={14} className={paymentMethod === 'CASH_CB' ? 'text-white' : 'text-gray-400'} />
+                        <Banknote size={14} className={paymentMethod === 'CB' ? 'text-white' : 'text-gray-400'} />
                       </div>
                       <p className="font-bold text-white text-xs">Sur place</p>
-                      <p className="text-[10px] text-gray-500">Especes / CB</p>
+                      <p className="text-[10px] text-gray-500">CB</p>
                     </button>
                   </div>
                 </div>

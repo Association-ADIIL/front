@@ -78,6 +78,7 @@ export interface CreateOrderPayload {
   promotionId?: number; // Optional: specify which promotion to apply
 }
 
+
 export interface CreateOrderResponse {
   order: Order;
   payment?: {

@@ -706,8 +706,8 @@ const MyAccountPage: React.FC = () => {
                                   <span className="flex items-center gap-1.5">
                                     <CreditCard size={12} className="text-gray-500" />
                                     {inscription.paymentMethod === 'HELLOASSO' ? 'HelloAsso' :
-                                     inscription.paymentMethod === 'PAYPAL' ? 'PayPal' :
-                                     inscription.paymentMethod === 'CASH_CB' ? 'Sur place' :
+                                     inscription.paymentMethod === 'CASH' ? 'Sur place' :
+                                     inscription.paymentMethod === 'CB' ? 'Sur place' :
                                      inscription.paymentMethod === 'BALANCE' ? 'Solde ADIIL' : 'Gratuit'}
                                   </span>
                                 </div>

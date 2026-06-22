@@ -82,7 +82,7 @@ const AdminDashboardPage: React.FC = () => {
           o.orderStatus !== 'COLLECTED' &&
           o.orderStatus !== 'CANCELLED' &&
           o.paymentStatus !== 'REFUNDED' &&
-          (o.paymentStatus === 'PAID' || (o.paymentMethod === 'CASH_CB' && o.paymentStatus === 'PENDING'))
+          (o.paymentStatus === 'PAID' || ((o.paymentMethod === 'CASH' || o.paymentMethod === 'CB') && o.paymentStatus === 'PENDING'))
         ).length;
         const totalRevenue = orders
           .filter(o => o.paymentStatus === 'PAID')
@@ -105,7 +105,7 @@ const AdminDashboardPage: React.FC = () => {
           o.orderStatus !== 'COLLECTED' && 
           o.orderStatus !== 'CANCELLED' && 
           o.paymentStatus !== 'REFUNDED' &&
-          (o.paymentStatus === 'PAID' || (o.paymentMethod === 'CASH_CB' && o.paymentStatus === 'PENDING'))
+          (o.paymentStatus === 'PAID' || ((o.paymentMethod === 'CASH' || o.paymentMethod === 'CB') && o.paymentStatus === 'PENDING'))
         ));
 
         // Recent inscriptions
@@ -480,7 +480,7 @@ const AdminDashboardPage: React.FC = () => {
                       <div className="flex flex-wrap items-center gap-2 mb-1">
                         <span className="font-mono text-xs bg-darker-bg px-2 py-0.5 rounded text-gray-400">#{order.id.toString().padStart(6, '0')}</span>
                         <span className="text-white font-medium">{order.user ? `${order.user.firstName} ${order.user.lastName}` : 'Client Inconnu'}</span>
-                        {order.paymentMethod === 'CASH_CB' && (
+                        {order.paymentMethod === 'CASH' || order.paymentMethod === 'CB' && (
                           <span className="px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 text-[10px] font-bold">
                             Paiement sur place
                           </span>

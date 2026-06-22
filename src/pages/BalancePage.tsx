@@ -28,11 +28,7 @@ const BalancePage: React.FC = () => {
   const [legalAccepted, setLegalAccepted] = useState(false);
 
   // Auto-switch to PayPal if HelloAsso is selected and amount is below 0.50
-  useEffect(() => {
-    if (paymentMethod === 'HELLOASSO' && parseFloat(amount || '0') < 0.50) {
-      setPaymentMethod('PAYPAL');
-    }
-  }, [amount, paymentMethod]);
+
 
   // Check for bonus when amount changes
   const checkBonus = useCallback(async (amountValue: number) => {
@@ -107,9 +103,7 @@ const BalancePage: React.FC = () => {
 
       // Store recharge ID for callback handling
       if (response.recharge?.id) {
-        if (paymentMethod === 'PAYPAL') {
-          sessionStorage.setItem('paypal_recharge_id', response.recharge.id.toString());
-        } else if (paymentMethod === 'HELLOASSO') {
+        if (paymentMethod === 'HELLOASSO') {
           sessionStorage.setItem('helloasso_recharge_id', response.recharge.id.toString());
         }
       }
@@ -153,7 +147,7 @@ const BalancePage: React.FC = () => {
   const getPaymentMethodLabel = (method: string) => {
     switch (method) {
       case 'HELLOASSO': return 'HelloAsso';
-      case 'PAYPAL': return 'PayPal';
+
       default: return method;
     }
   };
@@ -443,27 +437,27 @@ const BalancePage: React.FC = () => {
 
                         {/* PayPal */}
                         <button
-                          onClick={() => setPaymentMethod('PAYPAL')}
+                          onClick={() => setPaymentMethod('CASH')}
                           className={`relative p-4 rounded-xl border-2 transition-all text-left ${
-                            paymentMethod === 'PAYPAL'
+                            paymentMethod === 'CASH'
                               ? 'border-indigo-500 bg-indigo-500/10'
                               : 'border-gray-800 bg-dark-bg hover:border-gray-700'
                           }`}
                         >
-                          {paymentMethod === 'PAYPAL' && (
+                          {paymentMethod === 'CASH' && (
                             <div className="absolute top-2 right-2 w-5 h-5 bg-indigo-500 rounded-full flex items-center justify-center">
                               <CheckCircle2 size={12} className="text-white" />
                             </div>
                           )}
                           <div className="flex items-center gap-3">
                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                              paymentMethod === 'PAYPAL' ? 'bg-indigo-500' : 'bg-gray-800'
+                              paymentMethod === 'CASH' ? 'bg-indigo-500' : 'bg-gray-800'
                             }`}>
-                              <CreditCard size={18} className={paymentMethod === 'PAYPAL' ? 'text-white' : 'text-gray-400'} />
+                              <CreditCard size={18} className={paymentMethod === 'CASH' ? 'text-white' : 'text-gray-400'} />
                             </div>
                             <div>
-                              <p className="font-bold text-white">PayPal</p>
-                              <p className="text-xs text-gray-500">Carte ou compte</p>
+                              <p className="font-bold text-white">Sur place</p>
+                              <p className="text-xs text-gray-500">Espèces</p>
                             </div>
                           </div>
                         </button>

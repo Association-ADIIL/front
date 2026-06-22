@@ -51,7 +51,7 @@ const CGVPage: React.FC = () => {
       <section className="mb-8">
         <h2 className="text-2xl font-bold text-accent-mint mb-4">3. Modalités de Paiement</h2>
         <p className="text-gray-300">
-          Le règlement s'effectue par : Solde ADIIL, HelloAsso, PayPal ou sur place (espèces/CB).
+          Le règlement s'effectue par : Solde ADIIL, HelloAsso, ou sur place (espèces/CB).
         </p>
       </section>
 

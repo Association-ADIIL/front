@@ -189,17 +189,18 @@ const AdminSalesStatisticsPage: React.FC = () => {
         });
 
         const methodLabels: { [key: string]: string } = {
-          PAYPAL: 'PayPal',
+
           HELLOASSO: 'HelloAsso',
-          CASH_CB: 'Espèces/CB',
+          CASH: 'Espèces',
+          CB: 'CB',
           FREE: 'Gratuit',
           BALANCE: 'Solde',
         };
 
         const methodColors: { [key: string]: string } = {
-          PAYPAL: '#0070ba',
+          CASH: '#0070ba',
           HELLOASSO: '#49D38A',
-          CASH_CB: '#F59E0B',
+          CB: '#F59E0B',
           FREE: '#8B5CF6',
           BALANCE: '#77F1BE',
         };

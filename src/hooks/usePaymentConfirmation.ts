@@ -7,7 +7,7 @@ import { logger } from '../utils/logger';
 import { getErrorMessage, isCapacityExceededError } from '../types/errors';
 
 type PaymentType = 'recharge' | 'order' | 'inscription';
-type PaymentProvider = 'paypal' | 'helloasso';
+type PaymentProvider =  'helloasso';
 
 interface PaymentResult {
   success: boolean;
@@ -41,7 +41,7 @@ const safeParseInt = (value: string | null): number | null => {
  * Centralizes access and cleanup of payment IDs
  */
 const getPaymentStorageData = (provider: PaymentProvider): PaymentStorageData | null => {
-  const prefix = provider === 'paypal' ? 'paypal' : 'helloasso';
+  const prefix = provider === 'helloasso';
 
   // Check in order of priority: recharge, order, inscription
   const types: PaymentType[] = ['recharge', 'order', 'inscription'];
@@ -112,7 +112,7 @@ const confirmHelloAsso = async (
  * Get success message based on payment type
  */
 const getSuccessMessage = (type: PaymentType, provider: PaymentProvider): string => {
-  const providerName = provider === 'paypal' ? 'PayPal' : 'HelloAsso';
+  const providerName = provider === 'HelloAsso';
 
   switch (type) {
     case 'recharge':
@@ -143,13 +143,13 @@ export function usePaymentConfirmation(clearCart: () => void) {
 
   const processPayment = useCallback(async (): Promise<PaymentResult> => {
     // PayPal returns ?token=xxx
-    const paypalToken = searchParams.get('token');
+    // const paypalToken = searchParams.get('token');
     // HelloAsso returns ?checkoutIntentId=xxx&code=succeeded
     const checkoutIntentId = searchParams.get('checkoutIntentId');
     const helloassoCode = searchParams.get('code');
 
     // Handle PayPal payment
-    if (paypalToken) {
+    /*if (paypalToken) {
       const paymentData = getPaymentStorageData('paypal');
 
       if (!paymentData) {
@@ -187,7 +187,7 @@ export function usePaymentConfirmation(clearCart: () => void) {
           redirectTo: '/my-account',
         };
       }
-    }
+    }*/
 
     // Handle HelloAsso payment
     if (checkoutIntentId) {

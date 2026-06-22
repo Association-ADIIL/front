@@ -32,8 +32,8 @@ const ORDER_STATUS_OPTIONS = [
 
 const PAYMENT_METHOD_OPTIONS = [
   { value: 'HELLOASSO', label: 'HelloAsso' },
-  { value: 'PAYPAL', label: 'PayPal' },
-  { value: 'CASH_CB', label: 'Espèces/CB' },
+  { value: 'CASH', label: 'Espèces' },
+  { value: 'CB', label: 'CB' },
   { value: 'FREE', label: 'Gratuit' },
   { value: 'BALANCE', label: 'Solde ADIIL' },
 ];
@@ -256,7 +256,7 @@ const OrderManagementPage: React.FC = () => {
   const handleRefundInscription = () => {
     if (!currentInscription) return;
 
-    const confirmMessage = `Êtes-vous sûr de vouloir rembourser cette inscription ?\n\nParticipant : ${currentInscription.user?.firstName} ${currentInscription.user?.lastName}\nMontant : ${currentInscription.totalPrice} €\nMéthode : ${currentInscription.paymentMethod}\n\nCette action va :\n- Rembourser le paiement via ${currentInscription.paymentMethod === 'PAYPAL' ? 'PayPal' : 'HelloAsso'}\n- Marquer l'inscription comme REMBOURSÉE\n- Libérer la place pour cet événement`;
+    const confirmMessage = `Êtes-vous sûr de vouloir rembourser cette inscription ?\n\nParticipant : ${currentInscription.user?.firstName} ${currentInscription.user?.lastName}\nMontant : ${currentInscription.totalPrice} €\nMéthode : ${currentInscription.paymentMethod}\n\nCette action va :\n- Rembourser le paiement via ${currentInscription.paymentMethod === 'HelloAsso'}\n- Marquer l'inscription comme REMBOURSÉE\n- Libérer la place pour cet événement`;
 
     setConfirmDialog({
       isOpen: true,
@@ -340,7 +340,7 @@ const OrderManagementPage: React.FC = () => {
       }
 
       const isHelloAsso = currentOrder.paymentMethod === 'HELLOASSO';
-      const isCashCB = currentOrder.paymentMethod === 'CASH_CB';
+      const isCashCB = currentOrder.paymentMethod === 'CASH' || currentOrder.paymentMethod === 'CB';
       const isFullRefundAttempt = currentOrder.items.every(item => {
           const totalRefundedForThisItem = (item.refundedQuantity || 0) + (refundSelection[item.id] || 0);
           return totalRefundedForThisItem >= item.quantity;
@@ -509,8 +509,8 @@ const OrderManagementPage: React.FC = () => {
           (order.cartDiscountAmount || 0).toFixed(2),
           order.totalPrice.toFixed(2),
           order.paymentMethod === 'HELLOASSO' ? 'HelloAsso' :
-            order.paymentMethod === 'PAYPAL' ? 'PayPal' :
-            order.paymentMethod === 'CASH_CB' ? 'Espèces/CB' :
+            order.paymentMethod === 'CASH' ? 'Espèces' :
+            order.paymentMethod === 'CB' ? 'CB' :
             order.paymentMethod === 'FREE' ? 'Gratuit' :
             order.paymentMethod === 'BALANCE' ? 'Solde ADIIL' : order.paymentMethod,
           order.paymentStatus === 'PENDING' ? 'En attente' :
@@ -748,8 +748,8 @@ const OrderManagementPage: React.FC = () => {
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-300 hidden lg:table-cell">
                       {order.paymentMethod === 'HELLOASSO' ? 'HelloAsso' :
-                       order.paymentMethod === 'PAYPAL' ? 'PayPal' :
-                       order.paymentMethod === 'CASH_CB' ? 'Espèces/CB' :
+                       order.paymentMethod === 'CASH' ? 'Espèces' :
+                       order.paymentMethod === 'CB' ? 'CB' :
                        order.paymentMethod === 'FREE' ? 'Gratuit' :
                        order.paymentMethod === 'BALANCE' ? 'Solde ADIIL' : order.paymentMethod}
                     </td>
@@ -887,8 +887,8 @@ const OrderManagementPage: React.FC = () => {
                   </td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-400 hidden lg:table-cell">
                     {inscription.paymentMethod === 'HELLOASSO' ? 'HelloAsso' :
-                     inscription.paymentMethod === 'PAYPAL' ? 'PayPal' :
-                     inscription.paymentMethod === 'CASH_CB' ? 'Espèces/CB' : 'Gratuit'}
+                     inscription.paymentMethod === 'CASH' ? 'Espèces' :
+                     inscription.paymentMethod === 'CB' ? 'CB' : 'Gratuit'}
                   </td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button onClick={() => handleOpenEditInscription(inscription)} className="text-green-400 hover:text-white">
@@ -1333,14 +1333,14 @@ const OrderManagementPage: React.FC = () => {
 
             {/* Refund Button - Only for PAID inscriptions with PAYPAL or HELLOASSO */}
             {currentInscription.paymentStatus === 'PAID' &&
-             (currentInscription.paymentMethod === 'PAYPAL' || currentInscription.paymentMethod === 'HELLOASSO') && (
+             (currentInscription.paymentMethod === 'HELLOASSO') && (
               <div className="pt-4 border-t border-gray-700">
                 <h3 className="text-lg font-bold mb-3 text-gray-300">Remboursement</h3>
                 <button
                   onClick={handleRefundInscription}
                   className="w-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-colors"
                 >
-                  Rembourser via {currentInscription.paymentMethod === 'PAYPAL' ? 'PayPal' : 'HelloAsso'}
+                  Rembourser via {currentInscription.paymentMethod === 'HelloAsso'}
                 </button>
                 <p className="text-xs text-gray-500 mt-2">
                   Le remboursement sera traité automatiquement et la place sera libérée.

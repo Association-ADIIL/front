@@ -56,7 +56,7 @@ const ConfidentialitePage: React.FC = () => {
               <li>Historique des commandes</li>
               <li>Historique des inscriptions aux événements</li>
               <li>Historique des recharges du Solde ADIIL</li>
-              <li>Identifiants de transaction (PayPal, HelloAsso)</li>
+              <li>Identifiants de transaction (HelloAsso)</li>
             </ul>
           </div>
           <div>
@@ -71,7 +71,7 @@ const ConfidentialitePage: React.FC = () => {
             <p className="text-accent-mint font-semibold mb-2">Important :</p>
             <p>
               Nous ne collectons <strong>aucune donnée bancaire</strong>. Les paiements sont
-              intégralement gérés par nos prestataires sécurisés (HelloAsso, PayPal) qui disposent
+              intégralement gérés par nos prestataires sécurisés (HelloAsso) qui disposent
               de leurs propres politiques de confidentialité.
             </p>
           </div>
@@ -136,10 +136,7 @@ const ConfidentialitePage: React.FC = () => {
               <strong>HelloAsso :</strong> prestataire de paiement
               (<a href="https://www.helloasso.com/confidentialite" target="_blank" rel="noopener noreferrer" className="text-accent-mint hover:underline">Politique de confidentialité</a>)
             </li>
-            <li>
-              <strong>PayPal :</strong> prestataire de paiement
-              (<a href="https://www.paypal.com/fr/legalhub/privacy-full" target="_blank" rel="noopener noreferrer" className="text-accent-mint hover:underline">Politique de confidentialité</a>)
-            </li>
+
             <li>
               <strong>Notre hébergeur (Contabo GmbH) :</strong> pour le stockage sécurisé des données
             </li>

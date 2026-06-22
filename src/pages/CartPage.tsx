@@ -261,10 +261,7 @@ const CartPage: React.FC = () => {
         promotionId: discountInfo?.eligible ? discountInfo.promotionId : undefined,
       });
 
-      if (orderData.payment?.approvalUrl) {
-        sessionStorage.setItem('paypal_order_id', orderData.order.id.toString());
-        window.location.href = orderData.payment.approvalUrl;
-      } else if (orderData.payment?.redirectUrl) {
+       if (orderData.payment?.redirectUrl) {
         sessionStorage.setItem('helloasso_order_id', orderData.order.id.toString());
         window.location.href = orderData.payment.redirectUrl;
       } else {

@@ -156,8 +156,8 @@ const OrderPickupPage: React.FC = () => {
 
   const getPaymentMethodLabel = (method: string) => {
     switch (method) {
-      case 'CASH_CB': return 'Paiement sur place';
-      case 'PAYPAL': return 'PayPal';
+      case 'CB': return 'Paiement sur place';
+      case 'CASH': return 'Paiement sur place';
       case 'HELLOASSO': return 'HelloAsso';
       case 'BALANCE': return 'Solde ADIIL';
       case 'FREE': return 'Gratuit';
@@ -285,7 +285,7 @@ const OrderPickupPage: React.FC = () => {
       <section className="py-8">
         <div className="container mx-auto px-4 max-w-2xl">
           {/* Cash Payment Banner - only show if not yet collected */}
-          {orderInfo.paymentMethod === 'CASH_CB' && orderInfo.paymentStatus === 'PENDING' && orderInfo.orderStatus !== 'COLLECTED' && (
+          {(orderInfo.paymentMethod === 'CASH' || orderInfo.paymentMethod === 'CB') && orderInfo.paymentStatus === 'PENDING' && orderInfo.orderStatus !== 'COLLECTED' && (
             <div className="bg-orange-500/20 border-2 border-orange-500 rounded-2xl p-5 mb-6">
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 bg-orange-500 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -319,12 +319,12 @@ const OrderPickupPage: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className={`rounded-xl p-4 ${orderInfo.paymentMethod === 'CASH_CB' ? 'bg-orange-500/10 border border-orange-500/30' : 'bg-dark-bg'}`}>
+              <div className={`rounded-xl p-4 ${(orderInfo.paymentMethod === 'CASH' || orderInfo.paymentMethod === 'CB' ) ? 'bg-orange-500/10 border border-orange-500/30' : 'bg-dark-bg'}`}>
                 <div className="flex items-center gap-2 text-gray-400 text-sm mb-1">
                   <CreditCard size={14} />
                   Mode de paiement
                 </div>
-                <p className={`font-bold ${orderInfo.paymentMethod === 'CASH_CB' ? 'text-orange-400' : 'text-white'}`}>
+                <p className={`font-bold ${(orderInfo.paymentMethod === 'CASH' || orderInfo.paymentMethod === 'CB' ) ? 'text-orange-400' : 'text-white'}`}>
                   {getPaymentMethodLabel(orderInfo.paymentMethod)}
                 </p>
               </div>

@@ -423,8 +423,8 @@ const ProductManagementPage: React.FC = () => {
           effectivePrice.toFixed(2),
           (effectivePrice * item.quantity).toFixed(2),
           order.paymentMethod === 'HELLOASSO' ? 'HelloAsso' :
-            order.paymentMethod === 'PAYPAL' ? 'PayPal' :
-            order.paymentMethod === 'CASH_CB' ? 'Espèces/CB' :
+            order.paymentMethod === 'CASH' ? 'Espèces' :
+            order.paymentMethod === 'CB' ? 'CB' :
             order.paymentMethod === 'FREE' ? 'Gratuit' :
             order.paymentMethod === 'BALANCE' ? 'Solde ADIIL' : order.paymentMethod,
           order.paymentStatus === 'PENDING' ? 'En attente' :

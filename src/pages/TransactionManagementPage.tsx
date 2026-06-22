@@ -25,8 +25,8 @@ const STATUS_LABELS: Record<PaymentStatus, string> = {
 
 const METHOD_LABELS: Record<PaymentMethod, string> = {
   HELLOASSO: 'HelloAsso',
-  PAYPAL: 'PayPal',
-  CASH_CB: 'Espèces/CB',
+  CASH : 'Espèces'
+  CB: 'CB',
   FREE: 'Gratuit',
   BALANCE: 'Solde',
 };
@@ -219,10 +219,10 @@ const TransactionManagementPage: React.FC = () => {
 
   const getMethodIcon = (method: PaymentMethod) => {
     switch (method) {
-      case 'PAYPAL':
+      case 'CASH':
       case 'HELLOASSO':
         return CreditCard;
-      case 'CASH_CB':
+      case 'CB':
         return Banknote;
       case 'FREE':
         return Gift;
@@ -234,7 +234,7 @@ const TransactionManagementPage: React.FC = () => {
   const canRefresh = (tx: Transaction) => {
     return (
       tx.paymentStatus === 'PENDING' &&
-      (tx.paymentMethod === 'PAYPAL' || tx.paymentMethod === 'HELLOASSO') &&
+      (tx.paymentMethod === 'HELLOASSO') &&
       tx.paymentTransactionId
     );
   };
@@ -368,8 +368,8 @@ const TransactionManagementPage: React.FC = () => {
           >
             <option value="">Toutes méthodes</option>
             <option value="HELLOASSO">HelloAsso</option>
-            <option value="PAYPAL">PayPal</option>
-            <option value="CASH_CB">Espèces/CB</option>
+            <option value="CASH">Espèces</option>
+            <option value="CB">CB</option>
             <option value="FREE">Gratuit</option>
             <option value="BALANCE">Solde ADIIL</option>
           </select>

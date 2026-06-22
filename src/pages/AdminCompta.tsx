@@ -143,10 +143,11 @@ function shortDate(iso: string) {
 }
 
 const METHODE_LABELS: Record<string, string> = {
-  CASH_CB: 'Cash / CB',
+  CASH: 'Espèces',
+  CB: 'CB',
   BALANCE: 'Solde',
   HELLOASSO: 'HelloAsso',
-  PAYPAL: 'PayPal',
+
   FREE: 'Gratuit',
 };
 
