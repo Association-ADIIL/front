@@ -256,7 +256,7 @@ const OrderManagementPage: React.FC = () => {
   const handleRefundInscription = () => {
     if (!currentInscription) return;
 
-    const confirmMessage = `Êtes-vous sûr de vouloir rembourser cette inscription ?\n\nParticipant : ${currentInscription.user?.firstName} ${currentInscription.user?.lastName}\nMontant : ${currentInscription.totalPrice} €\nMéthode : ${currentInscription.paymentMethod}\n\nCette action va :\n- Rembourser le paiement via ${currentInscription.paymentMethod === 'HelloAsso'}\n- Marquer l'inscription comme REMBOURSÉE\n- Libérer la place pour cet événement`;
+    const confirmMessage = `Êtes-vous sûr de vouloir rembourser cette inscription ?\n\nParticipant : ${currentInscription.user?.firstName} ${currentInscription.user?.lastName}\nMontant : ${currentInscription.totalPrice} €\nMéthode : ${currentInscription.paymentMethod}\n\nCette action va :\n- Rembourser le paiement via ${currentInscription.paymentMethod === 'HELLOASSO' ? 'HelloAsso' : currentInscription.paymentMethod}\n- Marquer l'inscription comme REMBOURSÉE\n- Libérer la place pour cet événement`;
 
     setConfirmDialog({
       isOpen: true,
