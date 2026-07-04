@@ -25,7 +25,7 @@ const STATUS_LABELS: Record<PaymentStatus, string> = {
 
 const METHOD_LABELS: Record<PaymentMethod, string> = {
   HELLOASSO: 'HelloAsso',
-  CASH : 'Espèces',rr
+  CASH : 'Espèces',
   CB: 'CB',
   FREE: 'Gratuit',
   BALANCE: 'Solde',
