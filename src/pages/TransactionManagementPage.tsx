@@ -25,7 +25,7 @@ const STATUS_LABELS: Record<PaymentStatus, string> = {
 
 const METHOD_LABELS: Record<PaymentMethod, string> = {
   HELLOASSO: 'HelloAsso',
-  CASH : 'Espèces',
+  CASH : 'Espèces',rr
   CB: 'CB',
   FREE: 'Gratuit',
   BALANCE: 'Solde',
@@ -131,7 +131,7 @@ const TransactionManagementPage: React.FC = () => {
       return;
     }
 
-    if (tx.paymentMethod === 'CASH_CB' || tx.paymentMethod === 'FREE' || tx.paymentMethod === 'BALANCE') {
+    if (tx.paymentMethod === 'CASH' || tx.paymentMethod === 'CB' || tx.paymentMethod === 'FREE' || tx.paymentMethod === 'BALANCE') {
       addNotification('info', 'Cette méthode de paiement ne supporte pas le rafraîchissement automatique');
       return;
     }

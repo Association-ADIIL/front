@@ -112,7 +112,7 @@ const confirmHelloAsso = async (
  * Get success message based on payment type
  */
 const getSuccessMessage = (type: PaymentType, provider: PaymentProvider): string => {
-  const providerName = provider === 'HelloAsso';
+  const providerName = provider === 'helloasso';
 
   switch (type) {
     case 'recharge':

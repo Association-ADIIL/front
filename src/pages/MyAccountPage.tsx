@@ -612,7 +612,7 @@ const MyAccountPage: React.FC = () => {
                                order.orderStatus !== 'COLLECTED' &&
                                order.paymentStatus !== 'REFUNDED' &&
                                (order.paymentStatus === 'PAID' ||
-                                (order.paymentStatus === 'PENDING' && order.paymentMethod === 'CASH_CB')) && (
+                                (order.paymentStatus === 'PENDING' && order.paymentMethod === 'CASH' || order.paymentMethod === 'CB')) && (
                                 <button
                                   onClick={() => setQrCodeOrder(order)}
                                   className="mt-4 w-full flex items-center justify-center gap-2 py-3 bg-accent-mint/10 border border-accent-mint/30 text-accent-mint text-sm font-bold rounded-xl hover:bg-accent-mint/20 hover:border-accent-mint/50 transition-all"

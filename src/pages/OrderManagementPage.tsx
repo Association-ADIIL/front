@@ -1340,7 +1340,7 @@ const OrderManagementPage: React.FC = () => {
                   onClick={handleRefundInscription}
                   className="w-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-colors"
                 >
-                  Rembourser via {currentInscription.paymentMethod === 'HelloAsso'}
+                  Rembourser via {currentInscription.paymentMethod === 'HELLOASSO'}
                 </button>
                 <p className="text-xs text-gray-500 mt-2">
                   Le remboursement sera traité automatiquement et la place sera libérée.

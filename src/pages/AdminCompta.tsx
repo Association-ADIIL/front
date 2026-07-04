@@ -1462,7 +1462,10 @@ function TresoreriePanel({ mois, annee }: { mois: number; annee: number }) {
   }
 
   useEffect(() => {
-    const dateRef = new Date(annee, mois - 2, 1);
+    fetchJson('/admin/tresorerie/cloturer', {
+      method: 'POST',
+      body: JSON.stringify({ mois: mois - 1 === 0 ? 12 : mois - 1, annee: mois - 1 === 0 ? annee - 1 : annee }),
+    }).catch(() => {});
     fetchData();
   }, [mois, annee]);
 
