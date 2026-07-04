@@ -58,6 +58,8 @@ interface AchatFournisseur {
 interface ProductOption {
   id: number;
   name: string;
+  categorie?: string | null;
+  suiviStock: boolean;
 }
 
 interface CategorieOption {
@@ -1935,7 +1937,47 @@ function CategorieListEditor({
   );
 }
 
-function ParametresTab({ achatCategories, fournisseurCategories, onReload }: ParametresTabProps) {
+function ParametresTab({ achatCategories, fournisseurCategories, onReload, onStockReload }: ParametresTabProps) {
+  const [products, setProducts] = useState<ProductOption[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [togglingId, setTogglingId] = useState<number | null>(null);
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    setLoadingProducts(true);
+    fetchJson<ProductOption[]>('/products')
+      .then((data) => {
+        // Normalise : si suiviStock absent de la réponse, on considère true par défaut
+        setProducts(data.map((p) => ({ ...p, suiviStock: p.suiviStock !== false })));
+      })
+      .catch(() => setProducts([]))
+      .finally(() => setLoadingProducts(false));
+  }, []);
+
+  async function toggleSuiviStock(product: ProductOption) {
+    const newValue = !product.suiviStock;
+    // Optimiste : mise à jour locale immédiate
+    setProducts((prev) =>
+      prev.map((p) => (p.id === product.id ? { ...p, suiviStock: newValue } : p))
+    );
+    setTogglingId(product.id);
+    try {
+      await fetchJson(`/products/${product.id}/suivi-stock`, {
+        method: 'PATCH',
+        body: JSON.stringify({ suiviStock: newValue }),
+      });
+      await onStockReload();
+    } catch {
+      // Rollback en cas d'erreur
+      setProducts((prev) =>
+        prev.map((p) => (p.id === product.id ? { ...p, suiviStock: product.suiviStock } : p))
+      );
+    } finally {
+      setTogglingId(null);
+    }
+  }
+
+  // Fonctions catégories — implémentations réelles
   async function addAchat(label: string) {
     await fetchJson('/admin/comptabilite/categories/achat', {
       method: 'POST',
@@ -1966,12 +2008,19 @@ function ParametresTab({ achatCategories, fournisseurCategories, onReload }: Par
     await onReload();
   }
 
+  const filtered = products.filter(
+    (p) =>
+      p.name.toLowerCase().includes(search.toLowerCase()) ||
+      (p.categorie ?? '').toLowerCase().includes(search.toLowerCase())
+  );
+
+  const exclus = filtered.filter((p) => !p.suiviStock);
+  const actifs = filtered.filter((p) => p.suiviStock);
+
   return (
     <div className="space-y-4">
 
-
-
-
+      {/* ── Catégories en premier ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <CategorieListEditor
           title="Catégories d'achat"
@@ -1986,6 +2035,122 @@ function ParametresTab({ achatCategories, fournisseurCategories, onReload }: Par
           onRemove={removeFournisseur}
         />
       </div>
+
+      {/* ── Suivi de stock ── */}
+      <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-5 space-y-4">
+        <div>
+          <p className="text-sm font-medium text-white">Produits suivis en stock</p>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Les produits exclus n'apparaissent plus dans l'onglet Stock.
+          </p>
+        </div>
+
+        <input
+          type="text"
+          placeholder="Rechercher un produit…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full max-w-sm bg-dark-bg border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500/60 transition-colors"
+        />
+
+        {loadingProducts ? (
+          <div className="flex justify-center py-8">
+            <Loader2 size={22} className="animate-spin text-emerald-400" />
+          </div>
+        ) : (
+          <div className="space-y-4">
+
+            {exclus.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs text-amber-400/80 uppercase tracking-wider font-medium">
+                  Exclus du suivi ({exclus.length})
+                </p>
+                {exclus.map((p) => (
+                  <ProductSuiviRow
+                    key={p.id}
+                    product={p}
+                    toggling={togglingId === p.id}
+                    onToggle={toggleSuiviStock}
+                  />
+                ))}
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              {exclus.length > 0 && (
+                <p className="text-xs text-emerald-400/80 uppercase tracking-wider font-medium">
+                  Suivis ({actifs.length})
+                </p>
+              )}
+              {actifs.length === 0 ? (
+                <p className="text-gray-600 text-sm">Aucun produit dans le suivi.</p>
+              ) : (
+                actifs.map((p) => (
+                  <ProductSuiviRow
+                    key={p.id}
+                    product={p}
+                    toggling={togglingId === p.id}
+                    onToggle={toggleSuiviStock}
+                  />
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ProductSuiviRow({
+  product,
+  toggling,
+  onToggle,
+}: {
+  product: ProductOption;
+  toggling: boolean;
+  onToggle: (p: ProductOption) => void;
+}) {
+  return (
+    <div
+      className={`flex items-center justify-between rounded-lg px-3 py-2 border transition-colors ${
+        product.suiviStock
+          ? 'bg-dark-bg/40 border-gray-800/60'
+          : 'bg-amber-500/5 border-amber-500/20'
+      }`}
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        <span
+          className={`text-sm truncate ${
+            product.suiviStock ? 'text-gray-200' : 'text-gray-500 line-through'
+          }`}
+        >
+          {product.name}
+        </span>
+        {product.categorie && (
+          <span className="text-xs text-gray-600 hidden sm:inline shrink-0">
+            {product.categorie}
+          </span>
+        )}
+      </div>
+      <button
+        onClick={() => onToggle(product)}
+        disabled={toggling}
+        title={product.suiviStock ? 'Exclure du suivi' : 'Réintégrer dans le suivi'}
+        className={`shrink-0 ml-3 flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors disabled:opacity-50 ${
+          product.suiviStock
+            ? 'text-gray-500 border-gray-700 hover:text-red-400 hover:border-red-500/30 hover:bg-red-500/10'
+            : 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20'
+        }`}
+      >
+        {toggling ? (
+          <Loader2 size={12} className="animate-spin" />
+        ) : product.suiviStock ? (
+          <><X size={12} /> Exclure</>
+        ) : (
+          <><Check size={12} /> Réintégrer</>
+        )}
+      </button>
     </div>
   );
 }
