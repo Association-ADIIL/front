@@ -228,6 +228,8 @@ const TransactionManagementPage: React.FC = () => {
         return Gift;
       case 'BALANCE':
         return Wallet;
+      default:
+        return CreditCard; // fallback pour valeurs inattendues
     }
   };
 
