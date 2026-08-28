@@ -15,7 +15,7 @@ import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   Lock, CheckCircle, Crown, Trophy, Clock, Euro,
-  Coffee, Package, Zap, Star, Gift, QrCode, X,
+  Coffee, Package, Zap, Star, Gift, QrCode, X, AlertTriangle, Info,
 } from 'lucide-react';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -609,13 +609,46 @@ const BattlePassPage: React.FC = () => {
               </div>
             )}
 
-            {/* ── Info banner ─────────────────────────────────────────────────── */}
-            <div className="mt-6 p-4 rounded-2xl bg-slate-900/50 border border-slate-800/40 text-xs text-slate-600 space-y-1.5">
-              <p>• <h2><strong className="text-slate-500">TOUT ACHAT NE PASSANT PAS PAR LE SITE NE POURRA PAS FAIRE AVANCER TA PROGRESSION SUR LE BATTLE PASS</strong></h2></p>
-              <p>• <strong className="text-slate-500">Dépenses comptabilisées</strong> : commandes boutique payées pendant la saison (toute méthode, sauf gratuités). Les rechargements de solde et les inscriptions événements ne comptent pas.</p>
-              <p>• Chaque pass est <strong className="text-slate-500">indépendant</strong> — payer le Premium d'un pass ne donne pas accès aux suivants.</p>
-              <p>• Les récompenses doivent être réclamées <strong className="text-slate-500">avant l'expiration</strong> du pass.</p>
-              <p>• Les récompenses <strong className="text-slate-500">Produit</strong> (boissons, snacks…) sont à récupérer au BDE.</p>
+
+           {/* ── Info banner ─────────────────────────────────────────────────── */}
+            <div className="mt-6 rounded-2xl border border-amber-700/30 overflow-hidden"
+                style={{ background: 'linear-gradient(135deg, rgba(120,53,15,0.12) 0%, rgba(15,20,32,0.6) 100%)' }}>
+
+                {/* Header */}
+                <div className="flex items-center gap-2 px-4 sm:px-5 pt-4">
+                    <Info size={16} className="text-amber-500" />
+                    <h3 className="text-sm font-black text-amber-400 uppercase tracking-wider">Conditions de validité</h3>
+                </div>
+
+                <div className="px-4 sm:px-5 pb-4 pt-3 space-y-2.5">
+                    {/* Règle critique, mise en avant */}
+                    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-red-500/10 border border-red-500/30">
+                        <AlertTriangle size={16} className="text-red-400 flex-shrink-0 mt-0.5" />
+                        <p className="text-xs sm:text-sm font-bold text-red-300 leading-snug">
+                            Tout achat ne passant pas par le site ne pourra pas faire avancer ta progression sur le Battle Pass.
+                        </p>
+                    </div>
+
+                    {/* Autres règles */}
+                    <ul className="text-xs text-slate-400 space-y-1.5 pt-1">
+                        <li className="flex gap-2">
+                            <span className="text-amber-600">•</span>
+                            <span><strong className="text-slate-300">Dépenses comptabilisées</strong> : commandes boutique payées pendant la saison (toute méthode, sauf gratuités). Les rechargements de solde et les inscriptions événements ne comptent pas.</span>
+                        </li>
+                        <li className="flex gap-2">
+                            <span className="text-amber-600">•</span>
+                            <span>Chaque pass est <strong className="text-slate-300">indépendant</strong> — payer le Premium d'un pass ne donne pas accès aux suivants.</span>
+                        </li>
+                        <li className="flex gap-2">
+                            <span className="text-amber-600">•</span>
+                            <span>Les récompenses doivent être réclamées <strong className="text-slate-300">avant l'expiration</strong> du pass.</span>
+                        </li>
+                        <li className="flex gap-2">
+                            <span className="text-amber-600">•</span>
+                            <span>Les récompenses <strong className="text-slate-300">Produit</strong> (boissons, snacks…) sont à récupérer au BDE.</span>
+                        </li>
+                    </ul>
+                </div>
             </div>
           </>
         )}
