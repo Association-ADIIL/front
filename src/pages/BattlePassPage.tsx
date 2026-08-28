@@ -22,6 +22,10 @@ import {
 
 const fmt = (n: number) => n.toFixed(2).replace('.', ',');
 
+const XP_RATIO = 5; // 1€ dépensé = 5 XP
+const toXp = (euros: number) => Math.round(euros * XP_RATIO);
+const fmtXp = (euros: number) => toXp(euros).toLocaleString('fr-FR');
+
 const formatDate = (d: string) =>
   new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 
@@ -182,7 +186,7 @@ const LevelNode: React.FC<{
         {isCurrent ? <span className="text-emerald-400">NV. {lvl.level}</span> : `NV. ${lvl.level}`}
       </div>
       <div className={`text-[10px] ${isUnlocked ? 'text-emerald-500' : 'text-slate-600'} flex items-center justify-center gap-0.5`}>
-        <Euro size={8} />{fmt(lvl.requiredSpend)}
+        <Zap size={8} />{fmtXp(lvl.requiredSpend)} XP
       </div>
     </div>
   </div>
@@ -367,6 +371,9 @@ const BattlePassPage: React.FC = () => {
                       Terminé
                     </span>
                   )}
+                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-700/40 text-slate-400 border border-slate-600/30">
+                    <Zap size={10} className="text-emerald-500" />1€ = {XP_RATIO} XP
+                  </span>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-slate-500">
                   <span className="hidden sm:flex items-center gap-1.5">
@@ -400,15 +407,15 @@ const BattlePassPage: React.FC = () => {
                         </div>
                         <div className="w-px h-10 sm:h-12 bg-slate-800" />
                         <div>
-                          <div className="text-[10px] uppercase tracking-widest text-slate-600 mb-1">Dépensé</div>
-                          <div className="text-2xl sm:text-3xl font-black text-emerald-400 leading-none tabular-nums">{fmt(currentSpend)}€</div>
+                          <div className="text-[10px] uppercase tracking-widest text-slate-600 mb-1">XP</div>
+                          <div className="text-2xl sm:text-3xl font-black text-emerald-400 leading-none tabular-nums">{fmtXp(currentSpend)} XP</div>
                         </div>
                         {nextLevel && (
                           <>
                             <div className="w-px h-10 sm:h-12 bg-slate-800" />
                             <div>
                               <div className="text-[10px] uppercase tracking-widest text-slate-600 mb-1">Prochain niveau à</div>
-                              <div className="text-xl sm:text-2xl font-black text-slate-300 leading-none">{fmt(nextLevel.requiredSpend)}€</div>
+                              <div className="text-xl sm:text-2xl font-black text-slate-300 leading-none">{fmtXp(nextLevel.requiredSpend)} XP</div>
                             </div>
                           </>
                         )}
@@ -432,7 +439,7 @@ const BattlePassPage: React.FC = () => {
                         </div>
                         {nextLevel && (
                           <div className="text-[10px] text-slate-600 mt-1 text-right">
-                            encore {fmt(Math.max(0, nextLevel.requiredSpend - currentSpend))}€ d'achats
+                            encore {fmtXp(Math.max(0, nextLevel.requiredSpend - currentSpend))} XP
                           </div>
                         )}
                       </div>
@@ -604,6 +611,7 @@ const BattlePassPage: React.FC = () => {
 
             {/* ── Info banner ─────────────────────────────────────────────────── */}
             <div className="mt-6 p-4 rounded-2xl bg-slate-900/50 border border-slate-800/40 text-xs text-slate-600 space-y-1.5">
+              <p>• <h2><strong className="text-slate-500">TOUT ACHAT NE PASSANT PAS PAR LE SITE NE POURRA PAS FAIRE AVANCER TA PROGRESSION SUR LE BATTLE PASS</strong></h2></p>
               <p>• <strong className="text-slate-500">Dépenses comptabilisées</strong> : commandes boutique payées pendant la saison (toute méthode, sauf gratuités). Les rechargements de solde et les inscriptions événements ne comptent pas.</p>
               <p>• Chaque pass est <strong className="text-slate-500">indépendant</strong> — payer le Premium d'un pass ne donne pas accès aux suivants.</p>
               <p>• Les récompenses doivent être réclamées <strong className="text-slate-500">avant l'expiration</strong> du pass.</p>
