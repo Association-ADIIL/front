@@ -131,15 +131,12 @@ const RewardCell: React.FC<RewardCellProps> = ({
                 </div>
               )}
             </div>
-            <div className={`text-center text-xs font-bold leading-tight px-1 line-clamp-1 transition-colors
-              ${claimed ? textClaimed : accessible ? textActive : 'text-slate-500'}`}>
-              {rewardLabel ?? rewardType}
-              {rewardType === 'BALANCE' && rewardValue != null && (
-                <div className={`text-sm font-black mt-0.5 ${isPremium ? 'text-amber-400' : 'text-emerald-400'}`}>
-                  +{fmt(rewardValue)}€
-                </div>
-              )}
+            {rewardType === 'BALANCE' && rewardValue != null && (
+            <div className={`text-center text-sm font-black transition-colors
+                ${claimed ? textClaimed : accessible ? textActive : 'text-slate-500'}`}>
+                +{fmt(rewardValue)}€
             </div>
+            )}
 
             {/* Overlay détails au survol */}
             {(rewardDetails || rewardLabel) && (

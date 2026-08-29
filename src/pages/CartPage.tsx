@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useNotification } from '../context/NotificationContext';
-import { Minus, Plus, Trash2, ShoppingBag, CreditCard, Heart, ArrowLeft, ChevronRight, Gift, Tag, Wallet, CheckCircle2, Banknote, Package } from 'lucide-react';
+import { Minus, Plus, Trash2, ShoppingBag, CreditCard, Heart, ArrowLeft, ChevronRight, Gift, Tag, Wallet, CheckCircle2, Banknote, Package, Receipt, Clock, QrCode, X } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../context/AuthContext';
-import { createOrder, type OrderItem as ApiOrderItem } from '../api/orders';
+import { createOrder, getMyOrders, deleteOrder, type OrderItem as ApiOrderItem, type Order } from '../api/orders';
 import { getMyBalance, purchaseWithBalance } from '../api/balance';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { checkBalanceRechargeBonus, checkCartDiscount, getActiveProductPromotions, type CartDiscountCheck, type ProductPromotionsMap } from '../api/promotions';
@@ -26,6 +27,56 @@ const CartPage: React.FC = () => {
   const [discountInfo, setDiscountInfo] = useState<CartDiscountCheck | null>(null);
   const [productPromotions, setProductPromotions] = useState<ProductPromotionsMap>({});
   const [legalAccepted, setLegalAccepted] = useState(false);
+
+  const [showOrders, setShowOrders] = useState(false);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [qrOrder, setQrOrder] = useState<Order | null>(null);
+  const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
+  const [deletingOrder, setDeletingOrder] = useState(false);
+
+  const handleDeleteOrder = async () => {
+    if (!orderToDelete) return;
+    setDeletingOrder(true);
+    try {
+      await deleteOrder(orderToDelete.id);
+      setOrders((prev) => prev.filter((o) => o.id !== orderToDelete.id));
+      addNotification('success', 'Commande supprimée.');
+      setOrderToDelete(null);
+    } catch (error) {
+      addNotification('error', getErrorMessage(error));
+    } finally {
+      setDeletingOrder(false);
+    }
+  };
+
+    const pendingOrders = orders.filter(
+      (o) => o.orderStatus === 'PENDING' || o.orderStatus === 'PAID'
+    );
+
+    const handleToggleOrders = async () => {
+      if (!user) {
+        navigate('/login');
+        return;
+      }
+      if (showOrders) {
+        setShowOrders(false);
+        return;
+      }
+      setShowOrders(true);
+      if (orders.length === 0) {
+        setLoadingOrders(true);
+        try {
+          const data = await getMyOrders();
+          setOrders(data);
+        } catch (error) {
+          logger.error('Error fetching orders', error);
+          addNotification('error', 'Impossible de charger vos commandes.');
+        } finally {
+          setLoadingOrders(false);
+        }
+      }
+    };
 
   // Calculate total with product promotions
   const totalWithProductPromotions = items.reduce((sum, item) => {
@@ -318,21 +369,92 @@ const CartPage: React.FC = () => {
       {/* Content */}
       <section className="py-8">
         <div className="container mx-auto px-4">
-          {items.length === 0 ? (
-            <div className="text-center py-16 bg-darker-bg rounded-2xl border border-gray-800 max-w-md mx-auto">
-              <div className="w-16 h-16 bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <ShoppingBag size={28} className="text-gray-600" />
-              </div>
-              <p className="text-gray-400 text-lg mb-6">Votre panier est vide</p>
-              <Link
-                to="/shop"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-accent-mint text-darker-bg font-bold rounded-xl hover:bg-white transition-colors shadow-lg shadow-accent-mint/20"
-              >
-                Découvrir la boutique
-                <ChevronRight size={18} />
-              </Link>
-            </div>
-          ) : (
+                    {items.length === 0 ? (
+                      <div className="text-center py-16 bg-darker-bg rounded-2xl border border-gray-800 max-w-lg mx-4 sm:mx-auto">
+                        <div className="w-16 h-16 bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                          <ShoppingBag size={28} className="text-gray-600" />
+                        </div>
+                        <p className="text-gray-400 text-lg mb-6">Votre panier est vide</p>
+                        <div className="flex flex-col items-center gap-3">
+                          <Link
+                            to="/shop"
+                            className="inline-flex items-center gap-2 px-6 py-3 bg-accent-mint text-darker-bg font-bold rounded-xl hover:bg-white transition-colors shadow-lg shadow-accent-mint/20"
+                          >
+                            Découvrir la boutique
+                            <ChevronRight size={18} />
+                          </Link>
+                          <button
+                            onClick={handleToggleOrders}
+                            className="inline-flex items-center gap-2 px-6 py-3 bg-transparent border border-gray-700 text-gray-300 font-semibold rounded-xl hover:border-accent-mint/50 hover:text-accent-mint transition-colors"
+                          >
+
+                            {showOrders ? 'Masquer mes commandes'  : 'Afficher mes commandes en cours'}
+                            <ChevronRight size={18}/>
+                          </button>
+                        </div>
+
+                        {showOrders && (
+                          <div className="mt-8 text-left">
+                  {loadingOrders ? (
+                    <div className="flex justify-center py-8">
+                      <div className="w-8 h-8 border-2 border-accent-mint border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : pendingOrders.length === 0 ? (
+                    <p className="text-center text-gray-500 text-sm py-4">Aucune commande en cours.</p>
+                  ) : (
+                    <div className="space-y-2.5 px-2">
+                      {pendingOrders.map((order) => {
+                        const isPaid = order.orderStatus === 'PAID';
+                        return (
+                                                    <button
+                                                      key={order.id}
+                                                      onClick={() => setQrOrder(order)}
+                                                      className="w-full group flex items-center gap-4 p-5 bg-dark-bg rounded-2xl border border-gray-800 hover:border-accent-mint/40 transition-all text-left"
+                                                    >
+                                                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
+                                                        isPaid ? 'bg-accent-mint/10' : 'bg-amber-500/10'
+                                                      }`}>
+                                                        <Package size={18} className={isPaid ? 'text-accent-mint' : 'text-amber-400'} />
+                                                      </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="text-white font-bold text-sm">Commande #{order.id}</p>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                  isPaid ? 'bg-green-500/10 text-green-400' : 'bg-amber-500/10 text-amber-400'
+                                }`}>
+                                  {isPaid ? 'Payée' : 'En attente'}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
+                                <span>{order.items.length} article{order.items.length > 1 ? 's' : ''}</span>
+                                <span className="flex items-center gap-1">
+                                  <Clock size={11} />
+                                  {new Date(order.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 flex-shrink-0">
+                              <p className="text-accent-mint font-bold text-sm">{order.totalPrice.toFixed(2)}€</p>
+                              <div className="w-8 h-8 rounded-lg bg-gray-800 group-hover:bg-accent-mint/10 flex items-center justify-center transition-colors">
+                                <QrCode size={14} className="text-gray-500 group-hover:text-accent-mint transition-colors" />
+                              </div>
+                              <div
+                                role="button"
+                                onClick={(e) => { e.stopPropagation(); setOrderToDelete(order); }}
+                                className="w-8 h-8 rounded-lg bg-gray-800 hover:bg-red-500/10 flex items-center justify-center transition-colors"
+                              >
+                                <Trash2 size={14} className="text-gray-500 hover:text-red-400 transition-colors" />
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
             <div className="max-w-5xl mx-auto">
               <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
@@ -722,7 +844,92 @@ const CartPage: React.FC = () => {
             </div>
           )}
         </div>
-      </section>
+    </section>
+
+      {/* QR Code Modal — récupération commande */}
+      {qrOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm px-4">
+          <div className="w-full max-w-sm rounded-3xl border border-accent-mint/20 overflow-hidden shadow-2xl bg-darker-bg">
+            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-accent-mint/10 border border-accent-mint/20 flex items-center justify-center">
+                  <QrCode size={20} className="text-accent-mint" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">QR Code commande</h3>
+                  <p className="text-xs text-gray-500">Commande #{qrOrder.id}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setQrOrder(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="px-6 py-5">
+              <div className="bg-white rounded-2xl p-4 mb-4">
+                <QRCodeSVG
+                  value={`${window.location.origin}/order-pickup/${qrOrder.id}`}
+                  size={250}
+                  level="H"
+                  className="w-full h-auto"
+                />
+              </div>
+              <div className="text-center space-y-2">
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
+                  qrOrder.orderStatus === 'PAID' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'
+                }`}>
+                  {qrOrder.orderStatus === 'PAID' ? 'Payée' : 'En attente'}
+                </span>
+                <p className="text-white font-bold">{qrOrder.totalPrice.toFixed(2)}€</p>
+                <p className="text-gray-600 text-xs mt-2 bg-gray-900/50 rounded-xl px-3 py-2">
+                  Présente ce QR Code au BDE pour récupérer ta commande
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation suppression commande */}
+      {orderToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm px-4">
+          <div className="w-full max-w-sm rounded-3xl border border-red-500/20 overflow-hidden shadow-2xl bg-darker-bg">
+            <div className="px-6 pt-6 pb-4 border-b border-gray-800">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                  <Trash2 size={22} className="text-red-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-white">Supprimer la commande</h3>
+                  <p className="text-xs text-gray-500">Commande #{orderToDelete.id}</p>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-5">
+              <p className="text-sm text-gray-400 mb-6">
+                Cette action est irréversible. Es-tu sûr de vouloir supprimer cette commande ?
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setOrderToDelete(null)}
+                  className="flex-1 py-2.5 rounded-xl bg-gray-800 border border-gray-700/30 text-gray-300 text-sm font-semibold hover:bg-gray-700/50 transition-all"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleDeleteOrder}
+                  disabled={deletingOrder}
+                  className="flex-1 py-2.5 rounded-xl bg-red-500/90 text-white text-sm font-bold hover:bg-red-500 transition-all disabled:opacity-50"
+                >
+                  {deletingOrder ? 'Suppression…' : 'Supprimer'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -21,7 +21,8 @@ import {
   Database,
   Trophy,
   Megaphone,
-  Receipt
+  Receipt,
+  Sparkles
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -184,6 +185,15 @@ const navSections = [
     ]
   },
   {
+    title: 'New',
+    items: [
+      { path: '/admin/caisse', label: 'Caisse', icon: Receipt },
+      { path: '/admin/comptabilite', label: 'Comptabilité', icon: Receipt },
+      { path: '/admin/battle-pass', label: 'Battle Pass', icon: Trophy },
+      { path: '/admin/banner', label: 'Bandeau', icon: Megaphone },
+    ]
+  },
+  {
     title: 'Gestion',
     items: [
       { path: '/admin/events', label: 'Evenements', icon: Calendar },
@@ -191,23 +201,18 @@ const navSections = [
       { path: '/admin/categories', label: 'Categories', icon: Tags },
       { path: '/admin/orders', label: 'Commandes', icon: ClipboardList },
       { path: '/admin/promotions', label: 'Promotions', icon: Gift },
-      { path: '/admin/battle-pass', label: 'Battle Pass', icon: Trophy },
     ]
   },
   {
     title: 'Finances',
     items: [
-        { path: '/admin/comptabilite', label: 'Comptabilité', icon: Receipt },
       { path: '/admin/transactions', label: 'Transactions', icon: CreditCard },
       { path: '/admin/statistics', label: 'Statistiques', icon: BarChart3 },
-
     ]
   },
   {
     title: 'Systeme',
     items: [
-      { path: '/admin/caisse', label: 'Caisse', icon: Receipt },
-      { path: '/admin/banner', label: 'Bandeau', icon: Megaphone },
       { path: '/admin/files', label: 'Fichiers', icon: FolderOpen },
       { path: '/admin/users', label: 'Utilisateurs', icon: Users },
       { path: '/admin/logs', label: 'Logs', icon: ScrollText },
@@ -305,13 +310,22 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           </Link>
 
           {/* Navigation */}
-          <nav className="space-y-6">
-            {navSections.map((section) => (
-              <div key={section.title}>
-                <p className="px-3 mb-2 text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                  {section.title}
-                </p>
-                <ul className="space-y-1">
+                    <nav className="space-y-6">
+                      {navSections.map((section) => {
+                        const isNew = section.title === 'New';
+                        return (
+                        <div
+                          key={section.title}
+                          className={isNew ? 'p-2.5 rounded-2xl border border-emerald-500/20 bg-gradient-to-b from-emerald-500/[0.07] to-transparent' : undefined}
+                        >
+                          <p className={`px-3 mb-2 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 ${
+                            isNew ? 'text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via--300 to-cyan-300' : 'text-gray-500'
+                          }`}>
+
+                            {section.title}
+
+                          </p>
+                          <ul className="space-y-1">
                   {section.items.map((item) => {
                     // Check if active - also match /admin to /admin/dashboard
                     const isActive = location.pathname === item.path ||
@@ -331,19 +345,22 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                           }`}
                         >
                           <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                            isActive ? colors.iconBg : 'bg-dark-bg'
+                            isActive ? colors.iconBg : isNew ? 'bg-accent-mint/15' : 'bg-dark-bg'
                           }`}>
-                            <Icon size={16} className={`transition-colors ${isActive ? colors.text : ''}`} />
+                            <Icon size={16} className={`transition-colors ${
+                              isActive ? colors.text : isNew ? 'text-accent-mint' : ''
+                            }`} />
                           </div>
                           <span className="font-medium text-sm">{item.label}</span>
                         </Link>
                       </li>
                     );
                   })}
-                </ul>
-              </div>
-            ))}
-          </nav>
+                                </ul>
+                              </div>
+                              );
+                            })}
+                          </nav>
 
           {/* Footer info */}
           <div className="mt-8 p-3 bg-dark-bg/50 rounded-xl border border-gray-800">
