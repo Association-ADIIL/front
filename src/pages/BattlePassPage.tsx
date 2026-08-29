@@ -98,7 +98,7 @@ const RewardCell: React.FC<RewardCellProps> = ({
 
   return (
     <div
-      className={`flex-shrink-0 rounded-2xl border flex flex-col items-center justify-between p-3 transition-all duration-300 relative overflow-hidden
+      className={`flex-shrink-0 rounded-2xl border flex flex-col items-center justify-between p-3 transition-all duration-300 relative overflow-hidden group
         ${claimed ? `${bgClaimed} ${borderClaimed}` : accessible ? `${bgActive} ${borderActive}` : 'bg-slate-900/40 border-slate-800/30'}
         ${!isUnlocked ? 'opacity-50' : ''}`}
       style={{ width: CELL_W, height: 140 }}
@@ -110,31 +110,76 @@ const RewardCell: React.FC<RewardCellProps> = ({
 
       {/* Icon + Label */}
       <div className="flex flex-col items-center gap-1.5 flex-1 justify-center w-full">
-        <div className={`${claimed ? textClaimed : accessible ? iconColor : 'text-slate-600'} transition-colors`}>
-          {claimed
-            ? <CheckCircle size={24} />
-            : isLocked
-              ? <Lock size={22} className="text-slate-600" />
-              : rewardImageUrl
-                ? <img
-                    src={rewardImageUrl}
-                    alt={rewardLabel ?? 'Récompense'}
-                    className="w-10 h-10 rounded-xl object-cover border border-white/10"
-                  />
-                : <RewardIcon type={rewardType} size={24} />
-          }
-        </div>
-        <div className={`text-center text-xs font-bold leading-tight px-1 transition-colors
-          ${claimed ? textClaimed : accessible ? textActive : 'text-slate-600'}`}>
-          {rewardLabel ?? rewardType}
-          {rewardType === 'BALANCE' && rewardValue != null && (
-            <div className={`text-sm font-black mt-0.5 ${isPremium ? 'text-amber-400' : 'text-emerald-400'}`}>
-              +{fmt(rewardValue)}€
+        {rewardImageUrl ? (
+          <>
+            <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-white/10 flex-shrink-0">
+              <img
+                src={rewardImageUrl}
+                alt={rewardLabel ?? 'Récompense'}
+                className={`w-full h-full object-cover transition-all ${isLocked && !claimed ? 'opacity-50 grayscale' : ''}`}
+              />
+              {isLocked && !claimed && (
+                <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-slate-950/80 border border-slate-700 flex items-center justify-center">
+                  <Lock size={11} className="text-slate-400" />
+                </div>
+              )}
+              {claimed && (
+                <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-slate-950/80 border border-emerald-600/40 flex items-center justify-center">
+                  <CheckCircle size={12} className={textClaimed} />
+                </div>
+              )}
             </div>
-          )}
-        </div>
-        {rewardDetails && accessible && !claimed && (
-          <p className="text-[10px] text-slate-500 text-center leading-tight px-1 line-clamp-2">{rewardDetails}</p>
+            <div className={`text-center text-xs font-bold leading-tight px-1 transition-colors
+              ${claimed ? textClaimed : accessible ? textActive : 'text-slate-500'}`}>
+              {rewardLabel ?? rewardType}
+              {rewardType === 'BALANCE' && rewardValue != null && (
+                <div className={`text-sm font-black mt-0.5 ${isPremium ? 'text-amber-400' : 'text-emerald-400'}`}>
+                  +{fmt(rewardValue)}€
+                </div>
+              )}
+            </div>
+
+            {/* Overlay détails au survol */}
+            {(rewardDetails || rewardLabel) && (
+              <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col items-center justify-center text-center p-3 gap-1 pointer-events-none">
+                <span className={`text-xs font-black ${isPremium ? 'text-amber-300' : 'text-emerald-300'}`}>
+                  {rewardLabel ?? rewardType}
+                </span>
+                {rewardType === 'BALANCE' && rewardValue != null && (
+                  <span className="text-sm font-black text-emerald-400">+{fmt(rewardValue)}€</span>
+                )}
+                {rewardDetails && (
+                  <p className="text-[10px] text-slate-400 leading-snug line-clamp-4">{rewardDetails}</p>
+                )}
+                {isLocked && !claimed && (
+                  <span className="text-[10px] text-amber-500 font-bold mt-1">🔒 Premium requis</span>
+                )}
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <div className={`${claimed ? textClaimed : accessible ? iconColor : 'text-slate-600'} transition-colors`}>
+              {claimed
+                ? <CheckCircle size={24} />
+                : isLocked
+                  ? <Lock size={22} className="text-slate-600" />
+                  : <RewardIcon type={rewardType} size={24} />
+              }
+            </div>
+            <div className={`text-center text-xs font-bold leading-tight px-1 transition-colors
+              ${claimed ? textClaimed : accessible ? textActive : 'text-slate-600'}`}>
+              {rewardLabel ?? rewardType}
+              {rewardType === 'BALANCE' && rewardValue != null && (
+                <div className={`text-sm font-black mt-0.5 ${isPremium ? 'text-amber-400' : 'text-emerald-400'}`}>
+                  +{fmt(rewardValue)}€
+                </div>
+              )}
+            </div>
+            {rewardDetails && accessible && !claimed && (
+              <p className="text-[10px] text-slate-500 text-center leading-tight px-1 line-clamp-2">{rewardDetails}</p>
+            )}
+          </>
         )}
       </div>
 
