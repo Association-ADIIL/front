@@ -267,7 +267,7 @@ const LeaderboardRow: React.FC<{ entry: LeaderboardEntry; isMe: boolean }> = ({ 
 const LeaderboardSection: React.FC<{
   data: LeaderboardResponse | null;
   loading: boolean;
-  currentUserId?: number;
+  currentUserId?: string;
 }> = ({ data, loading, currentUserId }) => {
   if (loading) {
     return (
@@ -281,7 +281,7 @@ const LeaderboardSection: React.FC<{
   const entries = data?.entries ?? [];
   const top3 = entries.filter((e) => e.rank <= 3);
   const rest = entries.filter((e) => e.rank > 3);
-  const meInTop = entries.some((e) => e.userId === currentUserId);
+  const meInTop = entries.some((e) => String(e.userId) === currentUserId);
   const showMyRankPin = !!currentUserId && !!data?.myRank && !meInTop;
 
   return (
@@ -310,18 +310,18 @@ const LeaderboardSection: React.FC<{
           {top3.length > 0 && (
             <div className="flex items-end justify-center gap-3 sm:gap-6 mb-6">
               {[top3.find((e) => e.rank === 2), top3.find((e) => e.rank === 1), top3.find((e) => e.rank === 3)]
-                .filter((e): e is LeaderboardEntry => !!e)
-                .map((e) => (
-                  <PodiumCard key={e.userId} entry={e} isMe={e.userId === currentUserId} />
-                ))}
+                              .filter((e): e is LeaderboardEntry => !!e)
+                              .map((e) => (
+                                <PodiumCard key={e.userId} entry={e} isMe={String(e.userId) === currentUserId} />
+                              ))}
             </div>
           )}
 
           {rest.length > 0 && (
             <div className="space-y-1">
               {rest.map((e) => (
-                <LeaderboardRow key={e.userId} entry={e} isMe={e.userId === currentUserId} />
-              ))}
+                              <LeaderboardRow key={e.userId} entry={e} isMe={String(e.userId) === currentUserId} />
+                            ))}
             </div>
           )}
 
