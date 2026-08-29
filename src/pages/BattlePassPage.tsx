@@ -66,6 +66,7 @@ const RewardCell: React.FC<RewardCellProps> = ({
   const rewardLabel = isPremium ? lvl.premiumRewardLabel : lvl.freeRewardLabel;
   const rewardDetails = isPremium ? lvl.premiumRewardDetails : lvl.freeRewardDetails;
   const rewardValue = isPremium ? lvl.premiumRewardValue : lvl.freeRewardValue;
+  const rewardImageUrl = isPremium ? lvl.premiumRewardImageUrl : lvl.freeRewardImageUrl;
 
   const accessible = isUnlocked && (!isPremium || hasPremium);
   const canClaim = accessible && !claimed && !isExpired && !!rewardType;
@@ -114,7 +115,13 @@ const RewardCell: React.FC<RewardCellProps> = ({
             ? <CheckCircle size={24} />
             : isLocked
               ? <Lock size={22} className="text-slate-600" />
-              : <RewardIcon type={rewardType} size={24} />
+              : rewardImageUrl
+                ? <img
+                    src={rewardImageUrl}
+                    alt={rewardLabel ?? 'Récompense'}
+                    className="w-10 h-10 rounded-xl object-cover border border-white/10"
+                  />
+                : <RewardIcon type={rewardType} size={24} />
           }
         </div>
         <div className={`text-center text-xs font-bold leading-tight px-1 transition-colors
