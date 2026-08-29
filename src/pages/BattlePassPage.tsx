@@ -7,6 +7,7 @@ import {
   getMyBattlePass,
   unlockPremium,
   joinBattlePass,
+    claimReward,
   getBattlePassLeaderboard,
   type BattlePass,
   type BattlePassLevel,
@@ -49,13 +50,14 @@ interface RewardCellProps {
   userPass: UserBattlePass | null;
   isUnlocked: boolean;
   onShowQr: (level: number, tier: 'FREE' | 'PREMIUM', label: string | null) => void;
+  onClaimBalance: (level: number, tier: 'FREE' | 'PREMIUM') => void;
   isExpired: boolean;
 }
 
 const CELL_W = 140; // px — synced between premium, node and free rows
 
 const RewardCell: React.FC<RewardCellProps> = ({
-  lvl, tier, userPass, isUnlocked, onShowQr, isExpired,
+  lvl, tier, userPass, isUnlocked, onShowQr, onClaimBalance, isExpired,
 }) => {
   const isPremium = tier === 'PREMIUM';
   const claimed = isPremium
@@ -187,13 +189,22 @@ const RewardCell: React.FC<RewardCellProps> = ({
       <div className="w-full mt-1">
         {claimed ? (
           <div className={`text-center text-[10px] font-bold py-1 ${textClaimed}`}>✓ Réclamé</div>
-        ) : canClaim ? (
-          <button
-            onClick={() => onShowQr(lvl.level, tier, rewardLabel)}
-            className={`w-full py-1.5 rounded-xl text-[11px] font-bold border transition-all hover:scale-[1.02] flex items-center justify-center gap-1 ${btnBg}`}
-          >
-            <QrCode size={12} />QR Code
-          </button>
+        )) : canClaim ? (
+           rewardType === 'BALANCE' ? (
+             <button
+               onClick={() => onClaimBalance(lvl.level, tier)}
+               className={`w-full py-1.5 rounded-xl text-[11px] font-bold border transition-all hover:scale-[1.02] flex items-center justify-center gap-1 ${btnBg}`}
+             >
+               <Euro size={12} />Réclamer
+             </button>
+           ) : (
+             <button
+               onClick={() => onShowQr(lvl.level, tier, rewardLabel)}
+               className={`w-full py-1.5 rounded-xl text-[11px] font-bold border transition-all hover:scale-[1.02] flex items-center justify-center gap-1 ${btnBg}`}
+             >
+               <QrCode size={12} />QR Code
+             </button>
+           )
         ) : isLocked ? (
           <div className="text-center text-[10px] text-slate-600 py-1">Premium requis</div>
         ) : !isUnlocked ? (
@@ -481,7 +492,22 @@ const BattlePassPage: React.FC = () => {
       document.removeEventListener('visibilitychange', fetchUserPass);
     };
   }, [selectedPass, user]);
+    const [claimingBalance, setClaimingBalance] = useState(false);
 
+    const handleClaimBalance = async (level: number, tier: 'FREE' | 'PREMIUM') => {
+      if (!selectedPass || claimingBalance) return;
+      setClaimingBalance(true);
+      try {
+        const result = await claimReward(selectedPass.id, level, tier);
+        const updated = await getMyBattlePass(selectedPass.id);
+        setUserPass(updated);
+        addNotification('success', `+${result.balanceAdded.toFixed(2).replace('.', ',')}€ crédités sur ton solde !`);
+      } catch (e: any) {
+        addNotification('error', e.message ?? 'Erreur lors de la réclamation');
+      } finally {
+        setClaimingBalance(false);
+      }
+    };
   const handleUnlockPremium = async () => {
     if (!selectedPass || !user) return;
     setUnlocking(true);
@@ -794,6 +820,7 @@ const BattlePassPage: React.FC = () => {
                           userPass={user ? userPass : null}
                           isUnlocked={currentSpend >= lvl.requiredSpend}
                           onShowQr={(level, tier, label) => setQrReward({ level, tier, label })}
+                          onClaimBalance={handleClaimBalance}
                           isExpired={isExpired}
                         />
                       ))}
@@ -846,6 +873,7 @@ const BattlePassPage: React.FC = () => {
                           userPass={user ? userPass : null}
                           isUnlocked={currentSpend >= lvl.requiredSpend}
                           onShowQr={(level, tier, label) => setQrReward({ level, tier, label })}
+                          onClaimBalance={handleClaimBalance}
                           isExpired={isExpired}
                         />
                       ))}
