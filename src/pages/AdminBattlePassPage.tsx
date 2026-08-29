@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { useNotification } from '../context/NotificationContext';
 import {
@@ -24,6 +24,8 @@ import {
   Plus, Pencil, Trash2, Trophy, Crown, Users, Euro, RefreshCw, Save, Star, Gift, BarChart3
 } from 'lucide-react';
 import ConfirmDialog from '../components/ConfirmDialog';
+import ImageUpload from '../components/ImageUpload';
+import { deleteImage } from '../api/upload';
 
 const fmt = (n: number) => n.toFixed(2).replace('.', ',');
 const formatDate = (d: string) => new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -64,10 +66,12 @@ interface LevelFormData {
   freeRewardLabel: string;
   freeRewardValue: string;
   freeRewardDetails: string;
+  freeRewardImageUrl: string;
   premiumRewardType: RewardType | '';
   premiumRewardLabel: string;
   premiumRewardValue: string;
   premiumRewardDetails: string;
+  premiumRewardImageUrl: string;
 }
 
 const emptyLevelForm = (nextLevel: number): LevelFormData => ({
@@ -77,10 +81,12 @@ const emptyLevelForm = (nextLevel: number): LevelFormData => ({
   freeRewardLabel: '',
   freeRewardValue: '',
   freeRewardDetails: '',
+  freeRewardImageUrl: '',
   premiumRewardType: '',
   premiumRewardLabel: '',
   premiumRewardValue: '',
   premiumRewardDetails: '',
+  premiumRewardImageUrl: '',
 });
 
 // ─── Level Form Component ─────────────────────────────────────────────────────
@@ -91,7 +97,8 @@ const LevelFormRow: React.FC<{
   onSave: () => void;
   onCancel: () => void;
   saving: boolean;
-}> = ({ form, onChange, onSave, onCancel, saving }) => {
+  onImageCleanup: (url: string) => void;
+}> = ({ form, onChange, onSave, onCancel, saving, onImageCleanup }) => {
   const field = (key: keyof LevelFormData, label: string, type = 'text', placeholder = '') => (
     <div>
       <label className="block text-[10px] text-slate-500 mb-1">{label}</label>
@@ -129,22 +136,40 @@ const LevelFormRow: React.FC<{
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Free tier */}
         <div className="space-y-2 p-3 rounded-lg bg-slate-900/40 border border-slate-700/20">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-2">Tier Gratuit</div>
-          {select('freeRewardType', 'Type de récompense')}
-          {field('freeRewardLabel', 'Libellé affiché', 'text', 'Café offert')}
-          {form.freeRewardType === 'BALANCE' && field('freeRewardValue', 'Montant (€)', 'number', '2')}
-          {field('freeRewardDetails', 'Description complémentaire')}
-        </div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-2">Tier Gratuit</div>
+                  {select('freeRewardType', 'Type de récompense')}
+                  {field('freeRewardLabel', 'Libellé affiché', 'text', 'Café offert')}
+                  {form.freeRewardType === 'BALANCE' && field('freeRewardValue', 'Montant (€)', 'number', '2')}
+                  {field('freeRewardDetails', 'Description complémentaire')}
+                  <ImageUpload
+                                      value={form.freeRewardImageUrl}
+                                      onChange={(url) => onChange({ ...form, freeRewardImageUrl: url || '' })}
+                                      folder="battle-pass-rewards"
+                                      label="Image (optionnel)"
+                                      aspectRatio="1:1"
+                                      onCleanup={onImageCleanup}
+                                      accentColor="mint"
+                                    />
+                </div>
 
-        {/* Premium tier */}
-        <div className="space-y-2 p-3 rounded-lg bg-slate-900/40 border border-amber-700/20">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400 mb-2 flex items-center gap-1">
-            <Crown size={10} /> Tier Premium
-          </div>
-          {select('premiumRewardType', 'Type de récompense')}
-          {field('premiumRewardLabel', 'Libellé affiché', 'text', 'Bière offerte')}
-          {form.premiumRewardType === 'BALANCE' && field('premiumRewardValue', 'Montant (€)', 'number', '5')}
-          {field('premiumRewardDetails', 'Description complémentaire')}
+                {/* Premium tier */}
+                <div className="space-y-2 p-3 rounded-lg bg-slate-900/40 border border-amber-700/20">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400 mb-2 flex items-center gap-1">
+                    <Crown size={10} /> Tier Premium
+                  </div>
+                  {select('premiumRewardType', 'Type de récompense')}
+                  {field('premiumRewardLabel', 'Libellé affiché', 'text', 'Bière offerte')}
+                  {form.premiumRewardType === 'BALANCE' && field('premiumRewardValue', 'Montant (€)', 'number', '5')}
+                  {field('premiumRewardDetails', 'Description complémentaire')}
+                  <ImageUpload
+                                      value={form.premiumRewardImageUrl}
+                                      onChange={(url) => onChange({ ...form, premiumRewardImageUrl: url || '' })}
+                                      folder="battle-pass-rewards"
+                                      label="Image (optionnel)"
+                                      aspectRatio="1:1"
+                                      onCleanup={onImageCleanup}
+                                      accentColor="amber"
+                                    />
         </div>
       </div>
 
@@ -241,6 +266,7 @@ const AdminBattlePassPage: React.FC = () => {
   const [levelForm, setLevelForm] = useState<LevelFormData>(emptyLevelForm(1));
   const [savingLevel, setSavingLevel] = useState(false);
   const [deleteLevelTarget, setDeleteLevelTarget] = useState<{ passId: number; level: number } | null>(null);
+  const uploadedLevelImagesRef = useRef<string[]>([]);
 
   const [syncing, setSyncing] = useState(false);
   const [removeUserTarget, setRemoveUserTarget] = useState<number | null>(null);
@@ -342,61 +368,68 @@ const AdminBattlePassPage: React.FC = () => {
   // ── Level CRUD ──
 
   const openAddLevel = () => {
-    if (!selectedPass) return;
-    const nextLevel = selectedPass.levels.length + 1;
-    setEditingLevel(null);
-    setLevelForm(emptyLevelForm(nextLevel));
-    setShowLevelForm(true);
-  };
+      if (!selectedPass) return;
+      const nextLevel = selectedPass.levels.length + 1;
+      setEditingLevel(null);
+      uploadedLevelImagesRef.current = [];
+      setLevelForm(emptyLevelForm(nextLevel));
+      setShowLevelForm(true);
+    };
 
   const openEditLevel = (lvl: BattlePassLevel) => {
-    setEditingLevel(lvl);
-    setLevelForm({
-      level: String(lvl.level),
-      requiredSpend: String(lvl.requiredSpend),
-      freeRewardType: lvl.freeRewardType ?? '',
-      freeRewardLabel: lvl.freeRewardLabel ?? '',
-      freeRewardValue: lvl.freeRewardValue != null ? String(lvl.freeRewardValue) : '',
-      freeRewardDetails: lvl.freeRewardDetails ?? '',
-      premiumRewardType: lvl.premiumRewardType ?? '',
-      premiumRewardLabel: lvl.premiumRewardLabel ?? '',
-      premiumRewardValue: lvl.premiumRewardValue != null ? String(lvl.premiumRewardValue) : '',
-      premiumRewardDetails: lvl.premiumRewardDetails ?? '',
-    });
-    setShowLevelForm(true);
-  };
+      setEditingLevel(lvl);
+      uploadedLevelImagesRef.current = [];
+      setLevelForm({
+        level: String(lvl.level),
+        requiredSpend: String(lvl.requiredSpend),
+        freeRewardType: lvl.freeRewardType ?? '',
+        freeRewardLabel: lvl.freeRewardLabel ?? '',
+        freeRewardValue: lvl.freeRewardValue != null ? String(lvl.freeRewardValue) : '',
+        freeRewardDetails: lvl.freeRewardDetails ?? '',
+        freeRewardImageUrl: lvl.freeRewardImageUrl ?? '',
+        premiumRewardType: lvl.premiumRewardType ?? '',
+        premiumRewardLabel: lvl.premiumRewardLabel ?? '',
+        premiumRewardValue: lvl.premiumRewardValue != null ? String(lvl.premiumRewardValue) : '',
+        premiumRewardDetails: lvl.premiumRewardDetails ?? '',
+        premiumRewardImageUrl: lvl.premiumRewardImageUrl ?? '',
+      });
+      setShowLevelForm(true);
+    };
 
   const saveLevel = async () => {
-    if (!selectedPass) return;
-    if (!levelForm.level || !levelForm.requiredSpend) {
-      addNotification('error', 'Numéro de niveau et dépenses requises obligatoires');
-      return;
-    }
-    setSavingLevel(true);
-    try {
-      await adminUpsertLevel(selectedPass.id, {
-        level: parseInt(levelForm.level),
-        requiredSpend: parseFloat(levelForm.requiredSpend),
-        freeRewardType: (levelForm.freeRewardType as RewardType) || null,
-        freeRewardLabel: levelForm.freeRewardLabel || null,
-        freeRewardValue: levelForm.freeRewardValue ? parseFloat(levelForm.freeRewardValue) : null,
-        freeRewardDetails: levelForm.freeRewardDetails || null,
-        premiumRewardType: (levelForm.premiumRewardType as RewardType) || null,
-        premiumRewardLabel: levelForm.premiumRewardLabel || null,
-        premiumRewardValue: levelForm.premiumRewardValue ? parseFloat(levelForm.premiumRewardValue) : null,
-        premiumRewardDetails: levelForm.premiumRewardDetails || null,
-      });
-      addNotification('success', editingLevel ? 'Niveau mis à jour' : 'Niveau ajouté');
-      setShowLevelForm(false);
-      const freshPasses = await load();
-      const updated = freshPasses.find(p => p.id === selectedPass.id);
-      if (updated) setSelectedPass(updated);
-    } catch (e: any) {
-      addNotification('error', e.message ?? 'Erreur');
-    } finally {
-      setSavingLevel(false);
-    }
-  };
+      if (!selectedPass) return;
+      if (!levelForm.level || !levelForm.requiredSpend) {
+        addNotification('error', 'Numéro de niveau et dépenses requises obligatoires');
+        return;
+      }
+      setSavingLevel(true);
+      try {
+        await adminUpsertLevel(selectedPass.id, {
+          level: parseInt(levelForm.level),
+          requiredSpend: parseFloat(levelForm.requiredSpend),
+          freeRewardType: (levelForm.freeRewardType as RewardType) || null,
+          freeRewardLabel: levelForm.freeRewardLabel || null,
+          freeRewardValue: levelForm.freeRewardValue ? parseFloat(levelForm.freeRewardValue) : null,
+          freeRewardDetails: levelForm.freeRewardDetails || null,
+          freeRewardImageUrl: levelForm.freeRewardImageUrl || null,
+          premiumRewardType: (levelForm.premiumRewardType as RewardType) || null,
+          premiumRewardLabel: levelForm.premiumRewardLabel || null,
+          premiumRewardValue: levelForm.premiumRewardValue ? parseFloat(levelForm.premiumRewardValue) : null,
+          premiumRewardDetails: levelForm.premiumRewardDetails || null,
+          premiumRewardImageUrl: levelForm.premiumRewardImageUrl || null,
+        });
+        addNotification('success', editingLevel ? 'Niveau mis à jour' : 'Niveau ajouté');
+        uploadedLevelImagesRef.current = [];
+        setShowLevelForm(false);
+        const freshPasses = await load();
+        const updated = freshPasses.find(p => p.id === selectedPass.id);
+        if (updated) setSelectedPass(updated);
+      } catch (e: any) {
+        addNotification('error', e.message ?? 'Erreur');
+      } finally {
+        setSavingLevel(false);
+      }
+    };
 
   const deleteLevel = async () => {
     if (!deleteLevelTarget) return;
@@ -586,16 +619,23 @@ const AdminBattlePassPage: React.FC = () => {
                   </div>
 
                   {showLevelForm && (
-                    <div className="mb-4">
-                      <LevelFormRow
-                        form={levelForm}
-                        onChange={setLevelForm}
-                        onSave={saveLevel}
-                        onCancel={() => setShowLevelForm(false)}
-                        saving={savingLevel}
-                      />
-                    </div>
-                  )}
+                                      <div className="mb-4">
+                                        <LevelFormRow
+                                          form={levelForm}
+                                          onChange={setLevelForm}
+                                          onSave={saveLevel}
+                                          onCancel={async () => {
+                                            for (const url of uploadedLevelImagesRef.current) {
+                                              try { await deleteImage(url); } catch { /* ignore */ }
+                                            }
+                                            uploadedLevelImagesRef.current = [];
+                                            setShowLevelForm(false);
+                                          }}
+                                          saving={savingLevel}
+                                          onImageCleanup={(url) => uploadedLevelImagesRef.current.push(url)}
+                                        />
+                                      </div>
+                                    )}
 
                   <div className="space-y-2">
                     {selectedPass.levels.length === 0 ? (
@@ -614,18 +654,28 @@ const AdminBattlePassPage: React.FC = () => {
                                 </span>
                               </div>
                               <div className="grid grid-cols-2 gap-2">
-                                <div className="text-[10px]">
-                                  <div className="text-emerald-500 font-bold mb-0.5 uppercase tracking-wider">Gratuit</div>
-                                  {lvl.freeRewardType ? (
-                                    <span className="text-slate-300">{lvl.freeRewardLabel ?? lvl.freeRewardType}{lvl.freeRewardValue ? ` (+${fmt(lvl.freeRewardValue)}€)` : ''}</span>
-                                  ) : <span className="text-slate-600">—</span>}
-                                </div>
-                                <div className="text-[10px]">
-                                  <div className="text-amber-500 font-bold mb-0.5 uppercase tracking-wider flex items-center gap-1"><Crown size={8} />Premium</div>
-                                  {lvl.premiumRewardType ? (
-                                    <span className="text-slate-300">{lvl.premiumRewardLabel ?? lvl.premiumRewardType}{lvl.premiumRewardValue ? ` (+${fmt(lvl.premiumRewardValue)}€)` : ''}</span>
-                                  ) : <span className="text-slate-600">—</span>}
-                                </div>
+                                 <div className="text-[10px] flex items-center gap-1.5">
+                                                                  {lvl.freeRewardImageUrl && (
+                                                                    <img src={lvl.freeRewardImageUrl} alt="" className="w-6 h-6 rounded object-cover flex-shrink-0 border border-slate-700/40" />
+                                                                  )}
+                                                                  <div>
+                                                                    <div className="text-emerald-500 font-bold mb-0.5 uppercase tracking-wider">Gratuit</div>
+                                                                    {lvl.freeRewardType ? (
+                                                                      <span className="text-slate-300">{lvl.freeRewardLabel ?? lvl.freeRewardType}{lvl.freeRewardValue ? ` (+${fmt(lvl.freeRewardValue)}€)` : ''}</span>
+                                                                    ) : <span className="text-slate-600">—</span>}
+                                                                  </div>
+                                                                </div>
+                                                                <div className="text-[10px] flex items-center gap-1.5">
+                                                                  {lvl.premiumRewardImageUrl && (
+                                                                    <img src={lvl.premiumRewardImageUrl} alt="" className="w-6 h-6 rounded object-cover flex-shrink-0 border border-amber-700/30" />
+                                                                  )}
+                                                                  <div>
+                                                                    <div className="text-amber-500 font-bold mb-0.5 uppercase tracking-wider flex items-center gap-1"><Crown size={8} />Premium</div>
+                                                                    {lvl.premiumRewardType ? (
+                                                                      <span className="text-slate-300">{lvl.premiumRewardLabel ?? lvl.premiumRewardType}{lvl.premiumRewardValue ? ` (+${fmt(lvl.premiumRewardValue)}€)` : ''}</span>
+                                                                    ) : <span className="text-slate-600">—</span>}
+                                                                  </div>
+                                                                </div>
                               </div>
                             </div>
                             <div className="flex gap-1 flex-shrink-0">

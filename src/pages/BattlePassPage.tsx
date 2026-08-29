@@ -7,15 +7,18 @@ import {
   getMyBattlePass,
   unlockPremium,
   joinBattlePass,
+  getBattlePassLeaderboard,
   type BattlePass,
   type BattlePassLevel,
   type UserBattlePass,
+  type LeaderboardEntry,
+  type LeaderboardResponse,
 } from '../api/battlePass';
 import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   Lock, CheckCircle, Crown, Trophy, Clock, Euro,
-  Coffee, Package, Zap, Star, Gift, QrCode, X, AlertTriangle, Info,
+  Coffee, Package, Zap, Star, Gift, QrCode, X, AlertTriangle, Info, Medal,
 } from 'lucide-react';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -192,6 +195,159 @@ const LevelNode: React.FC<{
   </div>
 );
 
+// ─── Leaderboard ────────────────────────────────────────────────────────────
+
+const PODIUM_HEIGHTS: Record<number, number> = { 1: 96, 2: 68, 3: 52 };
+
+const getInitials = (name: string) =>
+  name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
+
+const PodiumCard: React.FC<{ entry: LeaderboardEntry; isMe: boolean }> = ({ entry, isMe }) => {
+  const isFirst = entry.rank === 1;
+  const isSecond = entry.rank === 2;
+  const ringColor = isFirst ? 'border-amber-400' : isSecond ? 'border-slate-300' : 'border-amber-700';
+  const glow = isFirst ? 'shadow-[0_0_30px_rgba(251,191,36,0.5)]' : '';
+  const avatarBg = isFirst
+    ? 'bg-gradient-to-br from-amber-400 to-amber-600'
+    : isSecond
+      ? 'bg-gradient-to-br from-slate-300 to-slate-500'
+      : 'bg-gradient-to-br from-amber-700 to-amber-900';
+  const pedestalBg = isFirst
+    ? 'bg-gradient-to-t from-amber-600/40 to-amber-400/10 border-amber-500/40'
+    : isSecond
+      ? 'bg-gradient-to-t from-slate-500/30 to-slate-300/10 border-slate-400/30'
+      : 'bg-gradient-to-t from-amber-800/30 to-amber-700/10 border-amber-700/30';
+
+  return (
+    <div className="flex flex-col items-center" style={{ width: 100 }}>
+      {isFirst && (
+        <Crown size={20} className="text-amber-400 mb-1 drop-shadow-[0_0_6px_rgba(251,191,36,0.7)]" />
+      )}
+      <div className={`relative w-14 h-14 rounded-full flex items-center justify-center text-white font-black text-lg border-2 ${ringColor} ${glow} ${avatarBg}`}>
+        {getInitials(entry.displayName)}
+        {!isFirst && (
+          <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center text-[9px] font-black text-slate-300">
+            {entry.rank}
+          </div>
+        )}
+      </div>
+      <div className={`text-xs font-bold mt-2 text-center leading-tight px-1 truncate max-w-[90px] ${isMe ? 'text-emerald-400' : 'text-white'}`}>
+        {isMe ? 'Toi' : entry.displayName}
+      </div>
+      <div className="text-[10px] text-amber-400 font-bold flex items-center gap-0.5 mt-0.5">
+        <Zap size={9} />{fmtXp(entry.currentSpend)} XP
+      </div>
+      <div
+        className={`w-full mt-2 rounded-t-xl border-t border-x flex items-start justify-center pt-1 ${pedestalBg}`}
+        style={{ height: PODIUM_HEIGHTS[entry.rank] }}
+      >
+        <span className="text-2xl font-black text-white/80">#{entry.rank}</span>
+      </div>
+    </div>
+  );
+};
+
+const LeaderboardRow: React.FC<{ entry: LeaderboardEntry; isMe: boolean }> = ({ entry, isMe }) => (
+  <div className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-colors ${isMe ? 'bg-emerald-500/10 border border-emerald-500/30' : 'hover:bg-slate-800/40'}`}>
+    <span className={`w-6 text-center text-xs font-black ${isMe ? 'text-emerald-400' : 'text-slate-500'}`}>{entry.rank}</span>
+    <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-black text-slate-200 flex-shrink-0">
+      {getInitials(entry.displayName)}
+    </div>
+    <div className="flex-1 min-w-0">
+      <div className={`text-sm font-bold truncate ${isMe ? 'text-emerald-300' : 'text-slate-200'}`}>
+        {isMe ? 'Toi' : entry.displayName}
+      </div>
+      <div className="text-[10px] text-slate-500">Niveau {entry.level}</div>
+    </div>
+    {entry.hasPremium && <Crown size={12} className="text-amber-500 flex-shrink-0" />}
+    <span className="text-xs font-black text-emerald-400 tabular-nums flex-shrink-0">{fmtXp(entry.currentSpend)} XP</span>
+  </div>
+);
+
+const LeaderboardSection: React.FC<{
+  data: LeaderboardResponse | null;
+  loading: boolean;
+  currentUserId?: string;
+}> = ({ data, loading, currentUserId }) => {
+  if (loading) {
+    return (
+      <div className="rounded-3xl border border-slate-700/40 mb-6 p-8 flex items-center justify-center"
+        style={{ background: 'linear-gradient(135deg, #0f1420 0%, #0a0e1a 100%)' }}>
+        <div className="w-6 h-6 border-2 border-amber-400/30 border-t-amber-400 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  const entries = data?.entries ?? [];
+  const top3 = entries.filter((e) => e.rank <= 3);
+  const rest = entries.filter((e) => e.rank > 3);
+  const meInTop = entries.some((e) => e.userId === currentUserId);
+  const showMyRankPin = !!currentUserId && !!data?.myRank && !meInTop;
+
+  return (
+    <div className="rounded-3xl border border-slate-700/40 mb-6 overflow-hidden"
+      style={{ background: 'linear-gradient(135deg, #0f1420 0%, #0a0e1a 100%)' }}>
+
+      <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-800/60">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+            <Trophy size={16} className="text-amber-400" />
+          </div>
+          <div>
+            <h2 className="text-sm sm:text-base font-black text-white">Classement</h2>
+            <p className="text-[11px] text-slate-500">Les plus grands dépensiers de la saison</p>
+          </div>
+        </div>
+      </div>
+
+      {entries.length === 0 ? (
+        <div className="text-center py-10 px-4 text-slate-500">
+          <Medal size={32} className="mx-auto mb-2 opacity-30" />
+          <p className="text-sm">Sois le premier à apparaître ici — fais un achat pour lancer le classement !</p>
+        </div>
+      ) : (
+        <div className="px-4 sm:px-6 py-5">
+          {top3.length > 0 && (
+            <div className="flex items-end justify-center gap-3 sm:gap-6 mb-6">
+              {[top3.find((e) => e.rank === 2), top3.find((e) => e.rank === 1), top3.find((e) => e.rank === 3)]
+                .filter((e): e is LeaderboardEntry => !!e)
+                .map((e) => (
+                  <PodiumCard key={e.userId} entry={e} isMe={e.userId === currentUserId} />
+                ))}
+            </div>
+          )}
+
+          {rest.length > 0 && (
+            <div className="space-y-1">
+              {rest.map((e) => (
+                <LeaderboardRow key={e.userId} entry={e} isMe={e.userId === currentUserId} />
+              ))}
+            </div>
+          )}
+
+          {showMyRankPin && (
+            <>
+              <div className="flex items-center justify-center gap-2 my-2 text-slate-700">
+                <div className="flex-1 h-px bg-slate-800" />
+                <span className="text-[10px]">•••</span>
+                <div className="flex-1 h-px bg-slate-800" />
+              </div>
+              <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+                <span className="w-6 text-center text-xs font-black text-emerald-400">{data?.myRank}</span>
+                <div className="w-8 h-8 rounded-full bg-emerald-700/60 flex items-center justify-center text-[10px] font-black text-emerald-200 flex-shrink-0">
+                  Toi
+                </div>
+                <div className="flex-1 text-sm font-bold text-emerald-300">Ta position</div>
+                <span className="text-xs font-bold text-emerald-500 hidden sm:inline">Continue à dépenser pour grimper !</span>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const BattlePassPage: React.FC = () => {
@@ -224,8 +380,20 @@ const BattlePassPage: React.FC = () => {
 
   const [showUnlockConfirm, setShowUnlockConfirm] = useState(false);
   const [qrReward, setQrReward] = useState<{ level: number; tier: 'FREE' | 'PREMIUM'; label: string | null } | null>(null);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardResponse | null>(null);
+  const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
+  const [activeTab, setActiveTab] = useState<'progression' | 'classement'>('progression');
 
   const trackRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+      if (!selectedPass) { setLeaderboard(null); return; }
+      setLoadingLeaderboard(true);
+      getBattlePassLeaderboard(selectedPass.id, 10)
+        .then(setLeaderboard)
+        .catch(() => setLeaderboard(null))
+        .finally(() => setLoadingLeaderboard(false));
+    }, [selectedPass]);
 
   useEffect(() => {
     getPublicBattlePasses()
@@ -352,11 +520,39 @@ const BattlePassPage: React.FC = () => {
           )}
         </div>
 
-        {selectedPass && (
-          <>
-            {/* ── Pass hero card ─────────────────────────────────────────────── */}
-            <div className="rounded-3xl border border-slate-700/40 mb-6 overflow-hidden"
-              style={{ background: 'linear-gradient(135deg, #0f1420 0%, #0a0e1a 100%)' }}>
+        {/* ── Tabs ────────────────────────────────────────────────────────────── */}
+                {selectedPass && (
+                  <div className="flex gap-2 mb-6 p-1 rounded-2xl bg-slate-900/60 border border-slate-800/40 max-w-md">
+                    <button
+                      onClick={() => setActiveTab('progression')}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                        activeTab === 'progression'
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                          : 'text-slate-500 hover:text-slate-300'
+                      }`}
+                    >
+                      <Zap size={15} />Progression
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('classement')}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                        activeTab === 'classement'
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                          : 'text-slate-500 hover:text-slate-300'
+                      }`}
+                    >
+                      <Trophy size={15} />Classement
+                    </button>
+                  </div>
+                )}
+
+                {selectedPass && (
+                          <>
+                            {activeTab === 'progression' && (
+                            <>
+                            {/* ── Pass hero card ─────────────────────────────────────────────── */}
+                            <div className="rounded-3xl border border-slate-700/40 mb-6 overflow-hidden"
+                              style={{ background: 'linear-gradient(135deg, #0f1420 0%, #0a0e1a 100%)' }}>
 
               {/* Top bar */}
               <div className="flex flex-wrap items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-800/60 gap-2">
@@ -499,6 +695,7 @@ const BattlePassPage: React.FC = () => {
                 )}
               </div>
             </div>
+
 
             {/* ── Track ──────────────────────────────────────────────────────────── */}
             {levels.length === 0 ? (
@@ -644,15 +841,25 @@ const BattlePassPage: React.FC = () => {
                             <span>Les récompenses doivent être réclamées <strong className="text-slate-300">avant l'expiration</strong> du pass.</span>
                         </li>
                         <li className="flex gap-2">
-                            <span className="text-amber-600">•</span>
-                            <span>Les récompenses <strong className="text-slate-300">Produit</strong> (boissons, snacks…) sont à récupérer au BDE.</span>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-          </>
-        )}
-      </div>
+                                                    <span className="text-amber-600">•</span>
+                                                    <span>Les récompenses <strong className="text-slate-300">Produit</strong> (boissons, snacks…) sont à récupérer au BDE.</span>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                    </>
+                                    )}
+
+                                        {activeTab === 'classement' && (
+                                          <LeaderboardSection
+                                            data={leaderboard}
+                                            loading={loadingLeaderboard}
+                                            currentUserId={user?.id}
+                                          />
+                                        )}
+                                      </>
+                                    )}
+                                  </div>
 
       {/* ── Unlock Premium Modal ─────────────────────────────────────────────── */}
       {showUnlockConfirm && selectedPass && (

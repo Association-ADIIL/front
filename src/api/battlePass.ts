@@ -12,10 +12,12 @@ export interface BattlePassLevel {
   freeRewardLabel: string | null;
   freeRewardValue: number | null;
   freeRewardDetails: string | null;
+  freeRewardImageUrl?: string | null;
   premiumRewardType: RewardType | null;
   premiumRewardLabel: string | null;
   premiumRewardValue: number | null;
   premiumRewardDetails: string | null;
+  premiumRewardImageUrl?: string | null;
 }
 
 export interface BattlePass {
@@ -67,6 +69,20 @@ export interface BattlePassStats {
   totalSpend: number;
 }
 
+export interface LeaderboardEntry {
+  rank: number;
+  userId: string;
+  displayName: string;
+  currentSpend: number;
+  level: number;
+  hasPremium: boolean;
+}
+
+export interface LeaderboardResponse {
+  entries: LeaderboardEntry[];
+  myRank: number | null;
+}
+
 // ─── Public ──────────────────────────────────────────────────────────────────
 
 export const getPublicBattlePasses = () =>
@@ -113,6 +129,9 @@ export interface ClaimPickupInfo {
 export const getClaimPickupInfo = (battlePassId: number, userId: number, level: number, tier: 'FREE' | 'PREMIUM') =>
   fetchJson<ClaimPickupInfo>(`/battle-pass/claim-pickup/${battlePassId}/${userId}/${level}/${tier}`);
 
+export const getBattlePassLeaderboard = (passId: string, limit = 10) =>
+  fetchJson<LeaderboardResponse>(`/battle-pass/${passId}/leaderboard?limit=${limit}`);
+
 // ─── Admin ────────────────────────────────────────────────────────────────────
 
 export const adminGetAllBattlePasses = () =>
@@ -148,10 +167,12 @@ export const adminUpsertLevel = (
     freeRewardLabel?: string | null;
     freeRewardValue?: number | null;
     freeRewardDetails?: string | null;
+    freeRewardImageUrl?: string | null;
     premiumRewardType?: RewardType | null;
     premiumRewardLabel?: string | null;
     premiumRewardValue?: number | null;
     premiumRewardDetails?: string | null;
+    premiumRewardImageUrl?: string | null;
   }
 ) => fetchJson<BattlePassLevel>(`/battle-pass/admin/${battlePassId}/levels`, {
   method: 'PUT',
