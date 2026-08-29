@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useNotification } from '../context/NotificationContext';
-import { Minus, Plus, Trash2, ShoppingBag, CreditCard, Heart, ArrowLeft, ChevronRight, Gift, Tag, Wallet, CheckCircle2, Banknote, Package, Receipt, Clock, QrCode, X } from 'lucide-react';
+import { Minus, Plus, Trash2, ShoppingBag, CreditCard, Heart, ArrowLeft, ChevronRight, Gift, Tag, Wallet, CheckCircle2, Banknote, Package, Clock, QrCode, X } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../context/AuthContext';
 import { createOrder, getMyOrders, deleteOrder, type OrderItem as ApiOrderItem, type Order } from '../api/orders';

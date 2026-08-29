@@ -22,7 +22,7 @@ import {
   Trophy,
   Megaphone,
   Receipt,
-  Sparkles
+
 } from 'lucide-react';
 
 interface AdminLayoutProps {
