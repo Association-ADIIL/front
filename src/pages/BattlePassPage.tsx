@@ -189,7 +189,7 @@ const RewardCell: React.FC<RewardCellProps> = ({
       <div className="w-full mt-1">
         {claimed ? (
           <div className={`text-center text-[10px] font-bold py-1 ${textClaimed}`}>✓ Réclamé</div>
-        )) : canClaim ? (
+        ) : canClaim ? (
            rewardType === 'BALANCE' ? (
              <button
                onClick={() => onClaimBalance(lvl.level, tier)}
