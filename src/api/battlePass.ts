@@ -71,7 +71,7 @@ export interface BattlePassStats {
 
 export interface LeaderboardEntry {
   rank: number;
-  userId: string;
+  userId: number;
   displayName: string;
   currentSpend: number;
   level: number;
@@ -129,7 +129,7 @@ export interface ClaimPickupInfo {
 export const getClaimPickupInfo = (battlePassId: number, userId: number, level: number, tier: 'FREE' | 'PREMIUM') =>
   fetchJson<ClaimPickupInfo>(`/battle-pass/claim-pickup/${battlePassId}/${userId}/${level}/${tier}`);
 
-export const getBattlePassLeaderboard = (passId: string, limit = 10) =>
+export const getBattlePassLeaderboard = (passId: number, limit = 10) =>
   fetchJson<LeaderboardResponse>(`/battle-pass/${passId}/leaderboard?limit=${limit}`);
 
 // ─── Admin ────────────────────────────────────────────────────────────────────

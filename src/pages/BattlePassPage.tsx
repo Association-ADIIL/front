@@ -267,7 +267,7 @@ const LeaderboardRow: React.FC<{ entry: LeaderboardEntry; isMe: boolean }> = ({ 
 const LeaderboardSection: React.FC<{
   data: LeaderboardResponse | null;
   loading: boolean;
-  currentUserId?: string;
+  currentUserId?: number;
 }> = ({ data, loading, currentUserId }) => {
   if (loading) {
     return (
