@@ -112,7 +112,7 @@ const RewardCell: React.FC<RewardCellProps> = ({
       <div className="flex flex-col items-center gap-1.5 flex-1 justify-center w-full">
         {rewardImageUrl ? (
           <>
-            <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-white/10 flex-shrink-0">
+            <div className={`relative rounded-xl overflow-hidden border border-white/10 flex-shrink-0 ${rewardType === 'BALANCE' ? 'w-14 h-14' : 'w-20 h-20'}`}>
               <img
                 src={rewardImageUrl}
                 alt={rewardLabel ?? 'Récompense'}
@@ -129,7 +129,7 @@ const RewardCell: React.FC<RewardCellProps> = ({
                 </div>
               )}
             </div>
-            <div className={`text-center text-xs font-bold leading-tight px-1 transition-colors
+            <div className={`text-center text-xs font-bold leading-tight px-1 line-clamp-1 transition-colors
               ${claimed ? textClaimed : accessible ? textActive : 'text-slate-500'}`}>
               {rewardLabel ?? rewardType}
               {rewardType === 'BALANCE' && rewardValue != null && (
