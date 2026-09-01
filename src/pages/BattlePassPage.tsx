@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
@@ -7,7 +7,7 @@ import {
   getMyBattlePass,
   unlockPremium,
   joinBattlePass,
-    claimReward,
+  claimReward,
   getBattlePassLeaderboard,
   type BattlePass,
   type BattlePassLevel,
@@ -18,7 +18,7 @@ import {
 import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import {
-  Lock, CheckCircle, Crown, Trophy, Clock, Euro,
+  Lock, Check, CheckCircle, Crown, Trophy, Clock, Euro,
   Coffee, Package, Zap, Star, Gift, QrCode, X, AlertTriangle, Info, Medal,
 } from 'lucide-react';
 
@@ -29,6 +29,8 @@ const fmt = (n: number) => n.toFixed(2).replace('.', ',');
 const XP_RATIO = 5; // 1€ dépensé = 5 XP
 const toXp = (euros: number) => Math.round(euros * XP_RATIO);
 const fmtXp = (euros: number) => toXp(euros).toLocaleString('fr-FR');
+
+const CELL_W = 140; // px — synced between premium, node and free rows
 
 const formatDate = (d: string) =>
   new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -54,8 +56,6 @@ interface RewardCellProps {
   isExpired: boolean;
 }
 
-const CELL_W = 140; // px — synced between premium, node and free rows
-
 const RewardCell: React.FC<RewardCellProps> = ({
   lvl, tier, userPass, isUnlocked, onShowQr, onClaimBalance, isExpired,
 }) => {
@@ -72,10 +72,10 @@ const RewardCell: React.FC<RewardCellProps> = ({
 
   const accessible = isUnlocked && (!isPremium || hasPremium);
   const canClaim = accessible && !claimed && !isExpired && !!rewardType;
-  const isLocked = isPremium && !hasPremium;
+  // Palier "validé" : atteint (et Premium débloqué si besoin) → coche verte, sinon cadenas
+  const reached = accessible || claimed;
 
-  // Colors
-  //const accentColor = isPremium ? 'amber' : 'emerald';
+  // Colors — la case reste toujours en couleur pleine, seul le badge d'état change
   const bgActive = isPremium ? 'bg-amber-950/60' : 'bg-emerald-950/50';
   const bgClaimed = isPremium ? 'bg-amber-900/30' : 'bg-emerald-900/30';
   const borderActive = isPremium ? 'border-amber-700/40' : 'border-emerald-700/40';
@@ -101,14 +101,25 @@ const RewardCell: React.FC<RewardCellProps> = ({
   return (
     <div
       className={`flex-shrink-0 rounded-2xl border flex flex-col items-center justify-between p-3 transition-all duration-300 relative overflow-hidden group
-        ${claimed ? `${bgClaimed} ${borderClaimed}` : accessible ? `${bgActive} ${borderActive}` : 'bg-slate-900/40 border-slate-800/30'}
-        ${!isUnlocked ? 'opacity-50' : ''}`}
+        ${claimed ? `${bgClaimed} ${borderClaimed}` : `${bgActive} ${borderActive}`}`}
       style={{ width: CELL_W, height: 140 }}
     >
       {/* Glow effect for claimable */}
       {canClaim && (
         <div className={`absolute inset-0 ${isPremium ? 'bg-amber-500/5' : 'bg-emerald-500/5'} pointer-events-none`} />
       )}
+
+      {/* Badge d'état : coche verte si palier atteint, cadenas sinon */}
+      <div className={`absolute bottom-2 right-2 w-6 h-6 rounded-full flex items-center justify-center border-2 z-10 ${
+        reached
+          ? 'bg-emerald-500 border-emerald-300 shadow-[0_0_8px_rgba(52,211,153,0.5)]'
+          : 'bg-slate-800 border-slate-600'
+      }`}>
+        {reached
+          ? <Check size={13} className="text-white" strokeWidth={3} />
+          : <Lock size={12} className="text-slate-400" />
+        }
+      </div>
 
       {/* Icon + Label */}
       <div className="flex flex-col items-center gap-1.5 flex-1 justify-center w-full">
@@ -118,24 +129,13 @@ const RewardCell: React.FC<RewardCellProps> = ({
               <img
                 src={rewardImageUrl}
                 alt={rewardLabel ?? 'Récompense'}
-                className={`w-full h-full object-cover transition-all ${isLocked && !claimed ? 'opacity-50 grayscale' : ''}`}
+                className="w-full h-full object-cover"
               />
-              {isLocked && !claimed && (
-                <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-slate-950/80 border border-slate-700 flex items-center justify-center">
-                  <Lock size={11} className="text-slate-400" />
-                </div>
-              )}
-              {claimed && (
-                <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-slate-950/80 border border-emerald-600/40 flex items-center justify-center">
-                  <CheckCircle size={12} className={textClaimed} />
-                </div>
-              )}
             </div>
             {rewardType === 'BALANCE' && rewardValue != null && (
-            <div className={`text-center text-sm font-black transition-colors
-                ${claimed ? textClaimed : accessible ? textActive : 'text-slate-500'}`}>
+              <div className={`text-center text-sm font-black transition-colors ${claimed ? textClaimed : textActive}`}>
                 +{fmt(rewardValue)}€
-            </div>
+              </div>
             )}
 
             {/* Overlay détails au survol */}
@@ -150,7 +150,7 @@ const RewardCell: React.FC<RewardCellProps> = ({
                 {rewardDetails && (
                   <p className="text-[10px] text-slate-400 leading-snug line-clamp-4">{rewardDetails}</p>
                 )}
-                {isLocked && !claimed && (
+                {isPremium && !hasPremium && (
                   <span className="text-[10px] text-amber-500 font-bold mt-1">🔒 Premium requis</span>
                 )}
               </div>
@@ -158,16 +158,10 @@ const RewardCell: React.FC<RewardCellProps> = ({
           </>
         ) : (
           <>
-            <div className={`${claimed ? textClaimed : accessible ? iconColor : 'text-slate-600'} transition-colors`}>
-              {claimed
-                ? <CheckCircle size={24} />
-                : isLocked
-                  ? <Lock size={22} className="text-slate-600" />
-                  : <RewardIcon type={rewardType} size={24} />
-              }
+            <div className={`${claimed ? textClaimed : iconColor} transition-colors`}>
+              {claimed ? <CheckCircle size={24} /> : <RewardIcon type={rewardType} size={24} />}
             </div>
-            <div className={`text-center text-xs font-bold leading-tight px-1 transition-colors
-              ${claimed ? textClaimed : accessible ? textActive : 'text-slate-600'}`}>
+            <div className={`text-center text-xs font-bold leading-tight px-1 transition-colors ${claimed ? textClaimed : textActive}`}>
               {rewardLabel ?? rewardType}
               {rewardType === 'BALANCE' && rewardValue != null && (
                 <div className={`text-sm font-black mt-0.5 ${isPremium ? 'text-amber-400' : 'text-emerald-400'}`}>
@@ -175,7 +169,7 @@ const RewardCell: React.FC<RewardCellProps> = ({
                 </div>
               )}
             </div>
-            {rewardDetails && accessible && !claimed && (
+            {rewardDetails && !claimed && (
               <p className="text-[10px] text-slate-500 text-center leading-tight px-1 line-clamp-2">{rewardDetails}</p>
             )}
           </>
@@ -187,25 +181,25 @@ const RewardCell: React.FC<RewardCellProps> = ({
         {claimed ? (
           <div className={`text-center text-[10px] font-bold py-1 ${textClaimed}`}>✓ Réclamé</div>
         ) : canClaim ? (
-           rewardType === 'BALANCE' ? (
-             <button
-               onClick={() => onClaimBalance(lvl.level, tier)}
-               className={`w-full py-1.5 rounded-xl text-[11px] font-bold border transition-all hover:scale-[1.02] flex items-center justify-center gap-1 ${btnBg}`}
-             >
-               <Euro size={12} />Réclamer
-             </button>
-           ) : (
-             <button
-               onClick={() => onShowQr(lvl.level, tier, rewardLabel)}
-               className={`w-full py-1.5 rounded-xl text-[11px] font-bold border transition-all hover:scale-[1.02] flex items-center justify-center gap-1 ${btnBg}`}
-             >
-               <QrCode size={12} />QR Code
-             </button>
-           )
-        ) : isLocked ? (
-          <div className="text-center text-[10px] text-slate-600 py-1">Premium requis</div>
+          rewardType === 'BALANCE' ? (
+            <button
+              onClick={() => onClaimBalance(lvl.level, tier)}
+              className={`w-full py-1.5 rounded-xl text-[11px] font-bold border transition-all hover:scale-[1.02] flex items-center justify-center gap-1 ${btnBg}`}
+            >
+              <Euro size={12} />Réclamer
+            </button>
+          ) : (
+            <button
+              onClick={() => onShowQr(lvl.level, tier, rewardLabel)}
+              className={`w-full py-1.5 rounded-xl text-[11px] font-bold border transition-all hover:scale-[1.02] flex items-center justify-center gap-1 ${btnBg}`}
+            >
+              <QrCode size={12} />QR Code
+            </button>
+          )
+        ) : isPremium && !hasPremium ? (
+          <div className="text-center text-[10px] text-slate-500 py-1">Premium requis</div>
         ) : !isUnlocked ? (
-          <div className="text-center text-[10px] text-slate-600 py-1">Pas encore atteint</div>
+          <div className="text-center text-[10px] text-slate-500 py-1">Pas encore atteint</div>
         ) : isExpired ? (
           <div className="text-center text-[10px] text-red-600 py-1">Expiré</div>
         ) : null}
@@ -254,6 +248,144 @@ const LevelNode: React.FC<{
     </div>
   </div>
 );
+
+// ─── Pass Tickets (Premium / Free) ────────────────────────────────────────────
+// Couleur de fond de page utilisée pour "creuser" les encoches du ticket
+const PAGE_BG = '#0a0e1a';
+
+// Motif code-barres généré une seule fois (largeurs de barres fixes, look réaliste)
+const BARCODE_PATTERN =
+  '2px,transparent 2px,transparent 3px,currentColor 3px,currentColor 6px,transparent 6px,transparent 7px,currentColor 7px,currentColor 8px,transparent 8px,transparent 10px,currentColor 10px,currentColor 11px,transparent 11px,transparent 13px,currentColor 13px,currentColor 16px,transparent 16px,transparent 17px,currentColor 17px,currentColor 19px';
+
+const PassTicket: React.FC<{
+  variant: 'premium' | 'free';
+  active: boolean;
+  serial: string;
+  onClick?: () => void;
+}> = ({ variant, active, serial, onClick }) => {
+  const isPremium = variant === 'premium';
+  const tilt = isPremium ? '-1.5deg' : '1.2deg';
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={!onClick}
+      className={`relative rounded-lg overflow-visible border-2 transition-all duration-300 flex-shrink-0
+        ${onClick ? 'cursor-pointer hover:scale-[1.03] hover:!rotate-0' : 'cursor-default'}
+        ${isPremium
+          ? 'border-amber-300/80'
+          : active
+            ? 'border-emerald-400/80'
+            : 'border-slate-600/50'
+        }`}
+      style={{
+        width: 132,
+        height: 100,
+        transform: `rotate(${tilt})`,
+        boxShadow: '0 6px 16px rgba(0,0,0,0.35)',
+      }}
+    >
+      {/* Encoches (comme un vrai ticket détaché d'un carnet) */}
+      <div
+        className="absolute top-1/2 -left-[9px] -translate-y-1/2 w-[18px] h-[18px] rounded-full z-10 border-2"
+        style={{ backgroundColor: PAGE_BG, borderColor: 'inherit' }}
+      />
+      <div
+        className="absolute top-1/2 -right-[9px] -translate-y-1/2 w-[18px] h-[18px] rounded-full z-10 border-2"
+        style={{ backgroundColor: PAGE_BG, borderColor: 'inherit' }}
+      />
+
+      <div className="relative w-full h-full rounded-lg overflow-hidden">
+        {/* Radial glow derrière le pass doré */}
+        {isPremium && (
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: 'radial-gradient(ellipse at 50% 25%, rgba(253,224,71,0.9) 0%, rgba(245,158,11,0.5) 40%, transparent 72%)',
+            }}
+          />
+        )}
+
+        {/* Fond */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background: isPremium
+              ? 'linear-gradient(160deg, #fde68a 0%, #f59e0b 45%, #b45309 100%)'
+              : active
+                ? 'linear-gradient(160deg, #1e293b 0%, #0f172a 100%)'
+                : 'linear-gradient(160deg, #1e293b 0%, #0a0e1a 100%)',
+          }}
+        />
+
+        {/* Grain papier léger */}
+        <div
+          className="absolute inset-0 pointer-events-none opacity-[0.06] mix-blend-overlay"
+          style={{
+            backgroundImage: 'repeating-linear-gradient(0deg, #000 0px, transparent 1px, transparent 2px)',
+          }}
+        />
+
+        {/* Reflet (premium uniquement) */}
+        {isPremium && (
+          <div
+            className="absolute inset-0 pointer-events-none animate-pass-shine"
+            style={{
+              background: 'linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.65) 48%, rgba(255,255,255,0.65) 52%, transparent 70%)',
+            }}
+          />
+        )}
+
+        {/* Ligne de perforation verticale (pointillés ronds, façon vraie découpe) */}
+        <div className="absolute top-2 bottom-[26px] left-1/2 -translate-x-1/2 flex flex-col justify-between items-center opacity-40">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <div
+              key={i}
+              className="w-[3px] h-[3px] rounded-full"
+              style={{ backgroundColor: isPremium ? '#78350f' : '#64748b' }}
+            />
+          ))}
+        </div>
+
+        {/* Contenu principal */}
+        <div className="relative h-full flex flex-col items-center justify-center gap-1 px-3 pb-6">
+          {isPremium ? (
+            <Crown size={20} className="text-amber-950 drop-shadow-[0_1px_1px_rgba(255,255,255,0.4)]" />
+          ) : (
+            <Star size={18} className={active ? 'text-emerald-400' : 'text-slate-500'} />
+          )}
+          <span className={`font-black text-[11px] tracking-wide uppercase text-center leading-tight ${isPremium ? 'text-amber-950' : active ? 'text-white' : 'text-slate-400'}`}>
+            {isPremium ? 'Golden Pass' : 'Free Pass'}
+          </span>
+          {active && (
+            <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider ${
+              isPremium ? 'bg-amber-950/20 text-amber-950' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+            }`}>
+              {isPremium ? 'Actif' : 'Débloqué'}
+            </span>
+          )}
+        </div>
+
+        {/* Bandeau bas : numéro de série + code-barres, façon souche de ticket */}
+        <div className={`absolute bottom-0 left-0 right-0 h-[22px] flex items-center justify-between px-2.5 ${
+          isPremium ? 'border-t border-amber-950/20' : 'border-t border-slate-700/40'
+        }`}>
+          <span className={`text-[7px] font-mono tracking-tight ${isPremium ? 'text-amber-950/70' : 'text-slate-500'}`}>
+            №{serial}
+          </span>
+          <div
+            className={isPremium ? 'text-amber-950/60' : 'text-slate-500/60'}
+            style={{
+              width: 20,
+              height: 10,
+              backgroundImage: `repeating-linear-gradient(90deg, currentColor 0px, currentColor ${BARCODE_PATTERN})`,
+            }}
+          />
+        </div>
+      </div>
+    </button>
+  );
+};
 
 // ─── Leaderboard ────────────────────────────────────────────────────────────
 
@@ -370,18 +502,18 @@ const LeaderboardSection: React.FC<{
           {top3.length > 0 && (
             <div className="flex items-end justify-center gap-3 sm:gap-6 mb-6">
               {[top3.find((e) => e.rank === 2), top3.find((e) => e.rank === 1), top3.find((e) => e.rank === 3)]
-                              .filter((e): e is LeaderboardEntry => !!e)
-                              .map((e) => (
-                                <PodiumCard key={e.userId} entry={e} isMe={String(e.userId) === currentUserId} />
-                              ))}
+                .filter((e): e is LeaderboardEntry => !!e)
+                .map((e) => (
+                  <PodiumCard key={e.userId} entry={e} isMe={String(e.userId) === currentUserId} />
+                ))}
             </div>
           )}
 
           {rest.length > 0 && (
             <div className="space-y-1">
               {rest.map((e) => (
-                              <LeaderboardRow key={e.userId} entry={e} isMe={String(e.userId) === currentUserId} />
-                            ))}
+                <LeaderboardRow key={e.userId} entry={e} isMe={String(e.userId) === currentUserId} />
+              ))}
             </div>
           )}
 
@@ -446,14 +578,44 @@ const BattlePassPage: React.FC = () => {
 
   const trackRef = useRef<HTMLDivElement>(null);
 
+  // Refs sur les 3 rangées du track, pour mesurer leur hauteur réelle
+  // et aligner les tickets Premium/Free dessus dynamiquement.
+  const row1Ref = useRef<HTMLDivElement>(null); // rangée récompenses Premium
+  const row2Ref = useRef<HTMLDivElement>(null); // rangée niveaux (nodes)
+  const row3Ref = useRef<HTMLDivElement>(null); // rangée récompenses Gratuit
+
+  const [rowHeights, setRowHeights] = useState({ row1: 156, row2: 76, row3: 156 });
+
+  const levels = selectedPass?.levels ?? [];
+  const currentSpend = userPass?.currentSpend ?? 0;
+  const currentLevel = levels.reduce((max, l) => currentSpend >= l.requiredSpend ? l.level : max, 0);
+
+  useLayoutEffect(() => {
+    const els = [row1Ref.current, row2Ref.current, row3Ref.current];
+    if (els.some((el) => !el)) return;
+
+    const measure = () => {
+      setRowHeights({
+        row1: (row1Ref.current?.offsetHeight ?? 144) + 12, // +12 = son mb-3
+        row2: (row2Ref.current?.offsetHeight ?? 64) + 12,  // +12 = son mb-3
+        row3: row3Ref.current?.offsetHeight ?? 144,        // dernière ligne, pas de mb-3
+      });
+    };
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    els.forEach((el) => el && ro.observe(el));
+    return () => ro.disconnect();
+  }, [selectedPass, levels, currentLevel, currentSpend]);
+
   useEffect(() => {
-      if (!selectedPass) { setLeaderboard(null); return; }
-      setLoadingLeaderboard(true);
-      getBattlePassLeaderboard(selectedPass.id, 10)
-        .then(setLeaderboard)
-        .catch(() => setLeaderboard(null))
-        .finally(() => setLoadingLeaderboard(false));
-    }, [selectedPass]);
+    if (!selectedPass) { setLeaderboard(null); return; }
+    setLoadingLeaderboard(true);
+    getBattlePassLeaderboard(selectedPass.id, 10)
+      .then(setLeaderboard)
+      .catch(() => setLeaderboard(null))
+      .finally(() => setLoadingLeaderboard(false));
+  }, [selectedPass]);
 
   useEffect(() => {
     getPublicBattlePasses()
@@ -489,22 +651,24 @@ const BattlePassPage: React.FC = () => {
       document.removeEventListener('visibilitychange', fetchUserPass);
     };
   }, [selectedPass, user]);
-    const [claimingBalance, setClaimingBalance] = useState(false);
 
-    const handleClaimBalance = async (level: number, tier: 'FREE' | 'PREMIUM') => {
-      if (!selectedPass || claimingBalance) return;
-      setClaimingBalance(true);
-      try {
-        const result = await claimReward(selectedPass.id, level, tier);
-        const updated = await getMyBattlePass(selectedPass.id);
-        setUserPass(updated);
-        addNotification('success', `+${result.balanceAdded.toFixed(2).replace('.', ',')}€ crédités sur ton solde !`);
-      } catch (e: any) {
-        addNotification('error', e.message ?? 'Erreur lors de la réclamation');
-      } finally {
-        setClaimingBalance(false);
-      }
-    };
+  const [claimingBalance, setClaimingBalance] = useState(false);
+
+  const handleClaimBalance = async (level: number, tier: 'FREE' | 'PREMIUM') => {
+    if (!selectedPass || claimingBalance) return;
+    setClaimingBalance(true);
+    try {
+      const result = await claimReward(selectedPass.id, level, tier);
+      const updated = await getMyBattlePass(selectedPass.id);
+      setUserPass(updated);
+      addNotification('success', `+${result.balanceAdded.toFixed(2).replace('.', ',')}€ crédités sur ton solde !`);
+    } catch (e: any) {
+      addNotification('error', e.message ?? 'Erreur lors de la réclamation');
+    } finally {
+      setClaimingBalance(false);
+    }
+  };
+
   const handleUnlockPremium = async () => {
     if (!selectedPass || !user) return;
     setUnlocking(true);
@@ -521,9 +685,6 @@ const BattlePassPage: React.FC = () => {
     }
   };
 
-  const currentSpend = userPass?.currentSpend ?? 0;
-  const levels = selectedPass?.levels ?? [];
-  const currentLevel = levels.reduce((max, l) => currentSpend >= l.requiredSpend ? l.level : max, 0);
   const nextLevel = levels.find((l) => l.level === currentLevel + 1);
   const progressToNext = nextLevel
     ? Math.min(100, (currentSpend / nextLevel.requiredSpend) * 100)
@@ -596,347 +757,365 @@ const BattlePassPage: React.FC = () => {
         </div>
 
         {/* ── Tabs ────────────────────────────────────────────────────────────── */}
-                {selectedPass && (
-                  <div className="flex gap-2 mb-6 p-1 rounded-2xl bg-slate-900/60 border border-slate-800/40 max-w-md">
-                    <button
-                      onClick={() => setActiveTab('progression')}
-                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all ${
-                        activeTab === 'progression'
-                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                          : 'text-slate-500 hover:text-slate-300'
-                      }`}
-                    >
-                      <Zap size={15} />Progression
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('classement')}
-                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all ${
-                        activeTab === 'classement'
-                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                          : 'text-slate-500 hover:text-slate-300'
-                      }`}
-                    >
-                      <Trophy size={15} />Classement
-                    </button>
-                  </div>
-                )}
+        {selectedPass && (
+          <div className="flex gap-2 mb-6 p-1 rounded-2xl bg-slate-900/60 border border-slate-800/40 max-w-md">
+            <button
+              onClick={() => setActiveTab('progression')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                activeTab === 'progression'
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                  : 'text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              <Zap size={15} />Progression
+            </button>
+            <button
+              onClick={() => setActiveTab('classement')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                activeTab === 'classement'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                  : 'text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              <Trophy size={15} />Classement
+            </button>
+          </div>
+        )}
 
-                {selectedPass && (
-                          <>
-                            {activeTab === 'progression' && (
-                            <>
-                            {/* ── Pass hero card ─────────────────────────────────────────────── */}
-                            <div className="rounded-3xl border border-slate-700/40 mb-6 overflow-hidden"
-                              style={{ background: 'linear-gradient(135deg, #0f1420 0%, #0a0e1a 100%)' }}>
+        {selectedPass && (
+          <>
+            {activeTab === 'progression' && (
+              <>
+                {/* ── Pass hero card ─────────────────────────────────────────────── */}
+                <div className="rounded-3xl border border-slate-700/40 mb-6 overflow-hidden"
+                  style={{ background: 'linear-gradient(135deg, #0f1420 0%, #0a0e1a 100%)' }}>
 
-              {/* Top bar */}
-              <div className="flex flex-wrap items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-800/60 gap-2">
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <span className="text-base sm:text-lg font-black text-white">{selectedPass.name}</span>
-                  {!isExpired ? (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 uppercase tracking-wider">
-                      Actif
-                    </span>
-                  ) : (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/15 text-red-400 border border-red-500/20 uppercase tracking-wider">
-                      Terminé
-                    </span>
-                  )}
-                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-700/40 text-slate-400 border border-slate-600/30">
-                    <Zap size={10} className="text-emerald-500" />1€ = {XP_RATIO} XP
-                  </span>
-                </div>
-                <div className="flex items-center gap-3 text-xs text-slate-500">
-                  <span className="hidden sm:flex items-center gap-1.5">
-                    <Clock size={12} />
-                    {formatDate(selectedPass.startDate)} → {formatDate(selectedPass.endDate)}
-                  </span>
-                  {!isExpired && (
-                    <span className={`flex items-center gap-1 font-bold ${daysLeft <= 7 ? 'text-red-400' : 'text-slate-400'}`}>
-                      <Zap size={12} />
-                      {daysLeft}j restants
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Stats + progress */}
-              <div className="px-4 sm:px-6 py-4 sm:py-5">
-                {user ? (
-                  loadingUserPass ? (
-                    <div className="flex items-center gap-3">
-                      <div className="w-6 h-6 border-2 border-amber-400/30 border-t-amber-400 rounded-full animate-spin" />
-                      <span className="text-sm text-slate-500">Chargement de ta progression…</span>
+                  {/* Top bar */}
+                  <div className="flex flex-wrap items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-800/60 gap-2">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <span className="text-base sm:text-lg font-black text-white">{selectedPass.name}</span>
+                      {!isExpired ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 uppercase tracking-wider">
+                          Actif
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/15 text-red-400 border border-red-500/20 uppercase tracking-wider">
+                          Terminé
+                        </span>
+                      )}
+                      <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-700/40 text-slate-400 border border-slate-600/30">
+                        <Zap size={10} className="text-emerald-500" />1€ = {XP_RATIO} XP
+                      </span>
                     </div>
-                  ) : (
-                    <div className="flex flex-col lg:flex-row lg:items-center gap-5 lg:gap-6">
-                      {/* Left: current level + spend */}
-                      <div className="flex items-center gap-4 sm:gap-6">
-                        <div>
-                          <div className="text-[10px] uppercase tracking-widest text-slate-600 mb-1">Niveau actuel</div>
-                          <div className="text-4xl sm:text-5xl font-black text-white leading-none">{currentLevel}</div>
+                    <div className="flex items-center gap-3 text-xs text-slate-500">
+                      <span className="hidden sm:flex items-center gap-1.5">
+                        <Clock size={12} />
+                        {formatDate(selectedPass.startDate)} → {formatDate(selectedPass.endDate)}
+                      </span>
+                      {!isExpired && (
+                        <span className={`flex items-center gap-1 font-bold ${daysLeft <= 7 ? 'text-red-400' : 'text-slate-400'}`}>
+                          <Zap size={12} />
+                          {daysLeft}j restants
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Stats + progress */}
+                  <div className="px-4 sm:px-6 py-4 sm:py-5">
+                    {user ? (
+                      loadingUserPass ? (
+                        <div className="flex items-center gap-3">
+                          <div className="w-6 h-6 border-2 border-amber-400/30 border-t-amber-400 rounded-full animate-spin" />
+                          <span className="text-sm text-slate-500">Chargement de ta progression…</span>
                         </div>
-                        <div className="w-px h-10 sm:h-12 bg-slate-800" />
-                        <div>
-                          <div className="text-[10px] uppercase tracking-widest text-slate-600 mb-1">XP</div>
-                          <div className="text-2xl sm:text-3xl font-black text-emerald-400 leading-none tabular-nums">{fmtXp(currentSpend)} XP</div>
-                        </div>
-                        {nextLevel && (
-                          <>
+                      ) : (
+                        <div className="flex flex-col lg:flex-row lg:items-center gap-5 lg:gap-6">
+                          {/* Left: current level + spend */}
+                          <div className="flex items-center gap-4 sm:gap-6">
+                            <div>
+                              <div className="text-[10px] uppercase tracking-widest text-slate-600 mb-1">Niveau actuel</div>
+                              <div className="text-4xl sm:text-5xl font-black text-white leading-none">{currentLevel}</div>
+                            </div>
                             <div className="w-px h-10 sm:h-12 bg-slate-800" />
                             <div>
-                              <div className="text-[10px] uppercase tracking-widest text-slate-600 mb-1">Prochain niveau à</div>
-                              <div className="text-xl sm:text-2xl font-black text-slate-300 leading-none">{fmtXp(nextLevel.requiredSpend)} XP</div>
+                              <div className="text-[10px] uppercase tracking-widest text-slate-600 mb-1">XP</div>
+                              <div className="text-2xl sm:text-3xl font-black text-emerald-400 leading-none tabular-nums">{fmtXp(currentSpend)} XP</div>
                             </div>
-                          </>
-                        )}
-                      </div>
+                            {nextLevel && (
+                              <>
+                                <div className="w-px h-10 sm:h-12 bg-slate-800" />
+                                <div>
+                                  <div className="text-[10px] uppercase tracking-widest text-slate-600 mb-1">Prochain niveau à</div>
+                                  <div className="text-xl sm:text-2xl font-black text-slate-300 leading-none">{fmtXp(nextLevel.requiredSpend)} XP</div>
+                                </div>
+                              </>
+                            )}
+                          </div>
 
-                      {/* Progress bar */}
-                      <div className="flex-1 lg:max-w-xl">
-                        <div className="flex items-center justify-between text-[10px] text-slate-500 mb-2">
-                          <span>Progression vers le niveau {currentLevel + 1}</span>
-                          <span className="text-emerald-500 font-bold">{Math.round(progressToNext)}%</span>
+                          {/* Progress bar */}
+                          <div className="flex-1 lg:max-w-xl">
+                            <div className="flex items-center justify-between text-[10px] text-slate-500 mb-2">
+                              <span>Progression vers le niveau {currentLevel + 1}</span>
+                              <span className="text-emerald-500 font-bold">{Math.round(progressToNext)}%</span>
+                            </div>
+                            <div className="h-3 rounded-full bg-slate-800/80 overflow-hidden border border-slate-700/30">
+                              <div
+                                className="h-full rounded-full transition-all duration-1000 ease-out"
+                                style={{
+                                  width: `${progressToNext}%`,
+                                  background: 'linear-gradient(90deg, #059669 0%, #34d399 100%)',
+                                  boxShadow: '0 0 12px rgba(52,211,153,0.4)',
+                                }}
+                              />
+                            </div>
+                            {nextLevel && (
+                              <div className="text-[10px] text-slate-600 mt-1 text-right">
+                                encore {fmtXp(Math.max(0, nextLevel.requiredSpend - currentSpend))} XP
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Premium button */}
+                          <div className="flex-shrink-0 flex gap-3">
+                            {!userPass && !isExpired && (
+                              <button
+                                onClick={handleJoin}
+                                disabled={joining}
+                                className="w-full lg:w-auto flex items-center justify-center gap-2 px-5 py-3 rounded-2xl text-white font-bold text-sm transition-all hover:scale-[1.02] border border-emerald-500/30 disabled:opacity-50"
+                                style={{ background: 'linear-gradient(135deg, #064e3b 0%, #059669 100%)', boxShadow: '0 8px 24px rgba(5,150,105,0.3)' }}
+                              >
+                                <Star size={18} />
+                                <div>
+                                  <div>Rejoindre</div>
+                                  <div className="text-[11px] text-emerald-200 font-normal">Tier gratuit</div>
+                                </div>
+                              </button>
+                            )}
+                            {userPass && (
+                              hasPremium ? (
+                                <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-400 font-bold text-sm w-full lg:w-auto justify-center lg:justify-start">
+                                  <Crown size={16} className="text-amber-400" />
+                                  <div>
+                                    <div>Premium actif</div>
+                                    <div className="text-[10px] text-amber-600 font-normal">Toutes les récompenses débloquées</div>
+                                  </div>
+                                </div>
+                              ) : !isExpired ? (
+                                <button
+                                  onClick={() => setShowUnlockConfirm(true)}
+                                  className="w-full lg:w-auto flex items-center justify-center gap-2.5 px-5 py-3 rounded-2xl text-white font-bold text-sm transition-all hover:scale-[1.02] border border-amber-500/30"
+                                  style={{ background: 'linear-gradient(135deg, #92400e 0%, #b45309 50%, #d97706 100%)', boxShadow: '0 8px 24px rgba(180,83,9,0.3)' }}
+                                >
+                                  <Crown size={18} />
+                                  <div>
+                                    <div>Débloquer Premium</div>
+                                    <div className="text-[11px] text-amber-200 font-normal">{fmt(selectedPass.premiumPrice)}€ via solde Adiil</div>
+                                  </div>
+                                </button>
+                              ) : null
+                            )}
+                          </div>
                         </div>
-                        <div className="h-3 rounded-full bg-slate-800/80 overflow-hidden border border-slate-700/30">
-                          <div
-                            className="h-full rounded-full transition-all duration-1000 ease-out"
-                            style={{
-                              width: `${progressToNext}%`,
-                              background: 'linear-gradient(90deg, #059669 0%, #34d399 100%)',
-                              boxShadow: '0 0 12px rgba(52,211,153,0.4)',
-                            }}
+                      )
+                    ) : (
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+                        <div className="text-slate-400 text-sm">Connecte-toi pour suivre ta progression et réclamer des récompenses.</div>
+                        <Link
+                          to="/login"
+                          className="flex-shrink-0 px-4 py-2 rounded-xl bg-slate-700/60 border border-slate-600/30 text-white text-sm font-semibold hover:bg-slate-600/60 transition-all"
+                        >
+                          Se connecter
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* ── Track ──────────────────────────────────────────────────────────── */}
+                {levels.length === 0 ? (
+                  <div className="text-center py-20 text-slate-500">
+                    <Gift size={36} className="mx-auto mb-3 opacity-30" />
+                    <p>Les niveaux de ce pass seront bientôt configurés</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* ── Tickets Premium / Free — mobile : côte à côte au-dessus du track ── */}
+                    <div className="flex md:hidden flex-row gap-4 mb-4">
+                      <PassTicket
+                        variant="premium"
+                        active={hasPremium}
+                        serial={String(selectedPass.id).padStart(4, '0')}
+                        onClick={!hasPremium && userPass && !isExpired ? () => setShowUnlockConfirm(true) : undefined}
+                      />
+                      <PassTicket
+                        variant="free"
+                        active={!!userPass}
+                        serial={`F${String(selectedPass.id).padStart(3, '0')}`}
+                        onClick={!userPass && !isExpired ? handleJoin : undefined}
+                      />
+                    </div>
+
+                    <div className="flex items-start gap-4">
+                      {/* ── Tickets Premium / Free — desktop : alignés dynamiquement sur leur rangée ── */}
+                      <div className="hidden md:flex flex-col flex-shrink-0" style={{ width: 132 }}>
+                        <div className="flex items-center justify-center" style={{ height: rowHeights.row1 }}>
+                          <PassTicket
+                            variant="premium"
+                            active={hasPremium}
+                            serial={selectedPass ? String(selectedPass.id).padStart(4, '0') : '0000'}
+                            onClick={!hasPremium && userPass && !isExpired ? () => setShowUnlockConfirm(true) : undefined}
                           />
                         </div>
-                        {nextLevel && (
-                          <div className="text-[10px] text-slate-600 mt-1 text-right">
-                            encore {fmtXp(Math.max(0, nextLevel.requiredSpend - currentSpend))} XP
-                          </div>
-                        )}
+                        <div style={{ height: rowHeights.row2 }} />
+                        <div className="flex items-center justify-center" style={{ height: rowHeights.row3 }}>
+                          <PassTicket
+                            variant="free"
+                            active={!!userPass}
+                            serial={selectedPass ? `F${String(selectedPass.id).padStart(3, '0')}` : 'F000'}
+                            onClick={!userPass && !isExpired ? handleJoin : undefined}
+                          />
+                        </div>
                       </div>
 
-                      {/* Premium button */}
-                      <div className="flex-shrink-0 flex gap-3">
-                        {!userPass && !isExpired && (
-                          <button
-                            onClick={handleJoin}
-                            disabled={joining}
-                            className="w-full lg:w-auto flex items-center justify-center gap-2 px-5 py-3 rounded-2xl text-white font-bold text-sm transition-all hover:scale-[1.02] border border-emerald-500/30 disabled:opacity-50"
-                            style={{ background: 'linear-gradient(135deg, #064e3b 0%, #059669 100%)', boxShadow: '0 8px 24px rgba(5,150,105,0.3)' }}
-                          >
-                            <Star size={18} />
-                            <div>
-                              <div>Rejoindre</div>
-                              <div className="text-[11px] text-emerald-200 font-normal">Tier gratuit</div>
-                            </div>
-                          </button>
-                        )}
-                        {userPass && (
-                          hasPremium ? (
-                            <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-400 font-bold text-sm w-full lg:w-auto justify-center lg:justify-start">
-                              <Crown size={16} className="text-amber-400" />
-                              <div>
-                                <div>Premium actif</div>
-                                <div className="text-[10px] text-amber-600 font-normal">Toutes les récompenses débloquées</div>
-                              </div>
-                            </div>
-                          ) : !isExpired ? (
-                            <button
-                              onClick={() => setShowUnlockConfirm(true)}
-                              className="w-full lg:w-auto flex items-center justify-center gap-2.5 px-5 py-3 rounded-2xl text-white font-bold text-sm transition-all hover:scale-[1.02] border border-amber-500/30"
-                              style={{ background: 'linear-gradient(135deg, #92400e 0%, #b45309 50%, #d97706 100%)', boxShadow: '0 8px 24px rgba(180,83,9,0.3)' }}
+                      <div className="flex-1 min-w-0">
+                        {/* ── Scrollable track ── */}
+                        <div
+                          ref={trackRef}
+                          className="overflow-x-auto pb-4"
+                          style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(100,116,139,0.25) transparent' }}
+                        >
+                          <div className="inline-flex flex-col min-w-full">
+
+                            {/* ROW 1 : Premium rewards */}
+                            <div
+                              ref={row1Ref}
+                              className="flex gap-2 mb-3 px-2 py-2 rounded-2xl"
+                              style={{ background: 'linear-gradient(180deg, rgba(120,53,15,0.15) 0%, rgba(120,53,15,0.03) 100%)' }}
                             >
-                              <Crown size={18} />
-                              <div>
-                                <div>Débloquer Premium</div>
-                                <div className="text-[11px] text-amber-200 font-normal">{fmt(selectedPass.premiumPrice)}€ via solde Adiil</div>
+                              <div className="flex-shrink-0" style={{ width: 40 }} />
+                              {levels.map((lvl) => (
+                                <RewardCell
+                                  key={`prem-${lvl.id}`}
+                                  lvl={lvl}
+                                  tier="PREMIUM"
+                                  userPass={user ? userPass : null}
+                                  isUnlocked={currentSpend >= lvl.requiredSpend}
+                                  onShowQr={(level, tier, label) => setQrReward({ level, tier, label })}
+                                  onClaimBalance={handleClaimBalance}
+                                  isExpired={isExpired}
+                                />
+                              ))}
+                              <div className="flex-shrink-0" style={{ width: 56 }} />
+                            </div>
+
+                            {/* ROW 2 : Level nodes + connector track */}
+                            <div ref={row2Ref} className="flex gap-2 mb-3 ml-2">
+                              <div className="flex-shrink-0 h-8 flex items-center" style={{ width: 40 }}>
+                                <div className="w-8 h-8 rounded-full bg-slate-800 border-2 border-slate-600 flex items-center justify-center flex-shrink-0">
+                                  <Star size={14} className="text-slate-500" />
+                                </div>
+                                <div className={`flex-1 h-0.5 -mr-1 ${levels.length > 0 && currentSpend >= levels[0].requiredSpend ? 'bg-emerald-500/60' : 'bg-slate-700/40'}`} />
                               </div>
-                            </button>
-                          ) : null
-                        )}
+
+                              {levels.map((lvl) => (
+                                <LevelNode
+                                  key={`node-${lvl.id}`}
+                                  lvl={lvl}
+                                  isUnlocked={currentSpend >= lvl.requiredSpend}
+                                  isCurrent={lvl.level === currentLevel}
+                                />
+                              ))}
+
+                              <div className="flex-shrink-0 h-8 flex items-center" style={{ width: 48 }}>
+                                <div className={`flex-1 h-0.5 -ml-1 ${levels.length > 0 && currentSpend >= levels[levels.length - 1].requiredSpend ? 'bg-emerald-500/60' : 'bg-slate-700/40'}`} />
+                                <div className="w-8 h-8 rounded-full border-2 border-amber-600/40 bg-amber-950/40 flex items-center justify-center flex-shrink-0">
+                                  <Trophy size={16} className="text-amber-500" />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* ROW 3 : Free rewards */}
+                            <div
+                              ref={row3Ref}
+                              className="flex gap-2 px-2 py-2 rounded-2xl"
+                              style={{ background: 'linear-gradient(0deg, rgba(6,78,59,0.15) 0%, rgba(6,78,59,0.03) 100%)' }}
+                            >
+                              <div className="flex-shrink-0" style={{ width: 40 }} />
+                              {levels.map((lvl) => (
+                                <RewardCell
+                                  key={`free-${lvl.id}`}
+                                  lvl={lvl}
+                                  tier="FREE"
+                                  userPass={user ? userPass : null}
+                                  isUnlocked={currentSpend >= lvl.requiredSpend}
+                                  onShowQr={(level, tier, label) => setQrReward({ level, tier, label })}
+                                  onClaimBalance={handleClaimBalance}
+                                  isExpired={isExpired}
+                                />
+                              ))}
+                              <div className="flex-shrink-0" style={{ width: 56 }} />
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  )
-                ) : (
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-                    <div className="text-slate-400 text-sm">Connecte-toi pour suivre ta progression et réclamer des récompenses.</div>
-                    <Link
-                      to="/login"
-                      className="flex-shrink-0 px-4 py-2 rounded-xl bg-slate-700/60 border border-slate-600/30 text-white text-sm font-semibold hover:bg-slate-600/60 transition-all"
-                    >
-                      Se connecter
-                    </Link>
-                  </div>
+                  </>
                 )}
-              </div>
-            </div>
 
+                {/* ── Info banner ─────────────────────────────────────────────────── */}
+                <div className="mt-6 rounded-2xl border border-amber-700/30 overflow-hidden"
+                  style={{ background: 'linear-gradient(135deg, rgba(120,53,15,0.12) 0%, rgba(15,20,32,0.6) 100%)' }}>
 
-            {/* ── Track ──────────────────────────────────────────────────────────── */}
-            {levels.length === 0 ? (
-              <div className="text-center py-20 text-slate-500">
-                <Gift size={36} className="mx-auto mb-3 opacity-30" />
-                <p>Les niveaux de ce pass seront bientôt configurés</p>
-              </div>
-            ) : (
-              <div className="space-y-0">
-                {/* ── Tier labels ── */}
-                <div className="grid grid-cols-2 gap-4 mb-3 max-w-xs">
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-900/20 border border-amber-800/30">
-                    <Crown size={12} className="text-amber-500" />
-                    <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider">Premium</span>
-                  </div>
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-900/20 border border-emerald-800/30">
-                    <Star size={12} className="text-emerald-500" />
-                    <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">Gratuit</span>
-                  </div>
-                </div>
-
-                {/* ── Scrollable track ── */}
-                <div
-                  ref={trackRef}
-                  className="overflow-x-auto pb-4"
-                  style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(100,116,139,0.25) transparent' }}
-                >
-                  {/* Outer wrapper : 3 rows stacked */}
-                  <div className="inline-flex flex-col min-w-full">
-
-                    {/* ROW 1 : Premium rewards */}
-                    <div
-                      className="flex gap-2 mb-3 px-2 py-2 rounded-2xl"
-                      style={{ background: 'linear-gradient(180deg, rgba(120,53,15,0.15) 0%, rgba(120,53,15,0.03) 100%)' }}
-                    >
-                      {/* Start spacer */}
-                      <div className="flex-shrink-0" style={{ width: 40 }} />
-
-                      {levels.map((lvl) => (
-                        <RewardCell
-                          key={`prem-${lvl.id}`}
-                          lvl={lvl}
-                          tier="PREMIUM"
-                          userPass={user ? userPass : null}
-                          isUnlocked={currentSpend >= lvl.requiredSpend}
-                          onShowQr={(level, tier, label) => setQrReward({ level, tier, label })}
-                          onClaimBalance={handleClaimBalance}
-                          isExpired={isExpired}
-                        />
-                      ))}
-
-                      {/* End spacer */}
-                      <div className="flex-shrink-0" style={{ width: 56 }} />
-                    </div>
-
-                    {/* ROW 2 : Level nodes + connector track */}
-                    <div className="flex gap-2 mb-3 ml-2">
-                      {/* Start cap : cercle seul, la ligne gauche du premier nœud colle directement */}
-                      <div className="flex-shrink-0 h-8 flex items-center" style={{ width: 40 }}>
-                        <div className="w-8 h-8 rounded-full bg-slate-800 border-2 border-slate-600 flex items-center justify-center flex-shrink-0">
-                          <Star size={14} className="text-slate-500" />
-                        </div>
-                        <div className={`flex-1 h-0.5 -mr-1 ${levels.length > 0 && currentSpend >= levels[0].requiredSpend ? 'bg-emerald-500/60' : 'bg-slate-700/40'}`} />
-                      </div>
-
-                      {levels.map((lvl) => (
-                        <LevelNode
-                          key={`node-${lvl.id}`}
-                          lvl={lvl}
-                          isUnlocked={currentSpend >= lvl.requiredSpend}
-                          isCurrent={lvl.level === currentLevel}
-                        />
-                      ))}
-
-                      {/* End cap : ligne puis trophée */}
-                      <div className="flex-shrink-0 h-8 flex items-center" style={{ width: 48 }}>
-                        <div className={`flex-1 h-0.5 -ml-1 ${levels.length > 0 && currentSpend >= levels[levels.length - 1].requiredSpend ? 'bg-emerald-500/60' : 'bg-slate-700/40'}`} />
-                        <div className="w-8 h-8 rounded-full border-2 border-amber-600/40 bg-amber-950/40 flex items-center justify-center flex-shrink-0">
-                          <Trophy size={16} className="text-amber-500" />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* ROW 3 : Free rewards */}
-                    <div
-                      className="flex gap-2 px-2 py-2 rounded-2xl"
-                      style={{ background: 'linear-gradient(0deg, rgba(6,78,59,0.15) 0%, rgba(6,78,59,0.03) 100%)' }}
-                    >
-                      {/* Start spacer */}
-                      <div className="flex-shrink-0" style={{ width: 40 }} />
-
-                      {levels.map((lvl) => (
-                        <RewardCell
-                          key={`free-${lvl.id}`}
-                          lvl={lvl}
-                          tier="FREE"
-                          userPass={user ? userPass : null}
-                          isUnlocked={currentSpend >= lvl.requiredSpend}
-                          onShowQr={(level, tier, label) => setQrReward({ level, tier, label })}
-                          onClaimBalance={handleClaimBalance}
-                          isExpired={isExpired}
-                        />
-                      ))}
-
-                      {/* End spacer */}
-                      <div className="flex-shrink-0" style={{ width: 56 }} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-
-           {/* ── Info banner ─────────────────────────────────────────────────── */}
-            <div className="mt-6 rounded-2xl border border-amber-700/30 overflow-hidden"
-                style={{ background: 'linear-gradient(135deg, rgba(120,53,15,0.12) 0%, rgba(15,20,32,0.6) 100%)' }}>
-
-                {/* Header */}
-                <div className="flex items-center gap-2 px-4 sm:px-5 pt-4">
+                  {/* Header */}
+                  <div className="flex items-center gap-2 px-4 sm:px-5 pt-4">
                     <Info size={16} className="text-amber-500" />
                     <h3 className="text-sm font-black text-amber-400 uppercase tracking-wider">Conditions de validité</h3>
-                </div>
+                  </div>
 
-                <div className="px-4 sm:px-5 pb-4 pt-3 space-y-2.5">
+                  <div className="px-4 sm:px-5 pb-4 pt-3 space-y-2.5">
                     {/* Règle critique, mise en avant */}
                     <div className="flex items-start gap-2.5 p-3 rounded-xl bg-red-500/10 border border-red-500/30">
-                        <AlertTriangle size={16} className="text-red-400 flex-shrink-0 mt-0.5" />
-                        <p className="text-xs sm:text-sm font-bold text-red-300 leading-snug">
-                            Tout achat ne passant pas par le site ne pourra pas faire avancer ta progression sur le Battle Pass.
-                        </p>
+                      <AlertTriangle size={16} className="text-red-400 flex-shrink-0 mt-0.5" />
+                      <p className="text-xs sm:text-sm font-bold text-red-300 leading-snug">
+                        Tout achat ne passant pas par le site ne pourra pas faire avancer ta progression sur le Battle Pass.
+                      </p>
                     </div>
 
                     {/* Autres règles */}
                     <ul className="text-xs text-slate-400 space-y-1.5 pt-1">
-                        <li className="flex gap-2">
-                            <span className="text-amber-600">•</span>
-                            <span><strong className="text-slate-300">Dépenses comptabilisées</strong> : commandes boutique payées pendant la saison (toute méthode, sauf gratuités). Les rechargements de solde et les inscriptions événements ne comptent pas.</span>
-                        </li>
-                        <li className="flex gap-2">
-                            <span className="text-amber-600">•</span>
-                            <span>Chaque pass est <strong className="text-slate-300">indépendant</strong> — payer le Premium d'un pass ne donne pas accès aux suivants.</span>
-                        </li>
-                        <li className="flex gap-2">
-                            <span className="text-amber-600">•</span>
-                            <span>Les récompenses doivent être réclamées <strong className="text-slate-300">avant l'expiration</strong> du pass.</span>
-                        </li>
-                        <li className="flex gap-2">
-                                                    <span className="text-amber-600">•</span>
-                                                    <span>Les récompenses <strong className="text-slate-300">Produit</strong> (boissons, snacks…) sont à récupérer au BDE.</span>
-                                                </li>
-                                            </ul>
-                                        </div>
-                                    </div>
-                                    </>
-                                    )}
+                      <li className="flex gap-2">
+                        <span className="text-amber-600">•</span>
+                        <span><strong className="text-slate-300">Dépenses comptabilisées</strong> : commandes boutique payées pendant la saison (toute méthode, sauf gratuités). Les rechargements de solde et les inscriptions événements ne comptent pas.</span>
+                      </li>
+                      <li className="flex gap-2">
+                        <span className="text-amber-600">•</span>
+                        <span>Chaque pass est <strong className="text-slate-300">indépendant</strong> — payer le Premium d'un pass ne donne pas accès aux suivants.</span>
+                      </li>
+                      <li className="flex gap-2">
+                        <span className="text-amber-600">•</span>
+                        <span>Les récompenses doivent être réclamées <strong className="text-slate-300">avant l'expiration</strong> du pass.</span>
+                      </li>
+                      <li className="flex gap-2">
+                        <span className="text-amber-600">•</span>
+                        <span>Les récompenses <strong className="text-slate-300">Produit</strong> (boissons, snacks…) sont à récupérer au BDE.</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </>
+            )}
 
-                                        {activeTab === 'classement' && (
-                                          <LeaderboardSection
-                                            data={leaderboard}
-                                            loading={loadingLeaderboard}
-                                            currentUserId={user?.id}
-                                          />
-                                        )}
-                                      </>
-                                    )}
-                                  </div>
+            {activeTab === 'classement' && (
+              <LeaderboardSection
+                data={leaderboard}
+                loading={loadingLeaderboard}
+                currentUserId={user?.id}
+              />
+            )}
+          </>
+        )}
+      </div>
 
       {/* ── Unlock Premium Modal ─────────────────────────────────────────────── */}
       {showUnlockConfirm && selectedPass && (
@@ -991,6 +1170,7 @@ const BattlePassPage: React.FC = () => {
           </div>
         </div>
       )}
+
       {/* ── QR Code Modal ─────────────────────────────────────────────────── */}
       {qrReward && selectedPass && user && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm px-4">

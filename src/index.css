@@ -5,6 +5,15 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes pass-shine {
+  0% { transform: translateX(-120%); }
+  60% { transform: translateX(120%); }
+  100% { transform: translateX(120%); }
+}
+.animate-pass-shine {
+  animation: pass-shine 3.2s ease-in-out infinite;
+}
+
 @layer base {
   * {
     font-family: 'Montserrat', sans-serif;
