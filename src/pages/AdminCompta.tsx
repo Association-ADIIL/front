@@ -211,7 +211,7 @@ interface FormItem {
   uid: string;
   productId: number | null;
   productName: string;
-  quantite: string;
+  nbPaquets: string;     // ← Remplace "quantite"
   nbParPaquet: string;
   prixPaquet: string;
   showSuggestions: boolean;
@@ -228,19 +228,20 @@ function AchatModal({ initial, defaultDate, products, achatCategories, fournisse
   const [categorie, setCategorie] = useState<string>(initial?.categorie ?? '');
   const [fournisseurCategorie, setFournisseurCategorie] = useState<string>(initial?.fournisseurCategorie ?? '');
   const [itemsState, setItems] = useState<FormItem[]>(() => {
-    if (initial && initial.items.length > 0) {
-      return initial.items.map((i) => ({
-        uid: makeUid(),
-        productId: i.product.id,
-        productName: i.product.name,
-        quantite: String(i.quantite),
-        nbParPaquet: '1',
-        prixPaquet: String(i.prixUnitaire),
-        showSuggestions: false,
-      }));
-    }
-    return [{ uid: makeUid(), productId: null, productName: '', quantite: '', nbParPaquet: '', prixPaquet: '', showSuggestions: false }];
-  });
+      if (initial && initial.items.length > 0) {
+        return initial.items.map((i) => ({
+          uid: makeUid(),
+          productId: i.product.id,
+          productName: i.product.name,
+          // Historique : réaffiché comme 1 paquet de N articles en lecture seule
+          nbPaquets: String(i.quantite),
+          nbParPaquet: '1',
+          prixPaquet: String(i.prixUnitaire),
+          showSuggestions: false,
+        }));
+      }
+      return [{ uid: makeUid(), productId: null, productName: '', nbPaquets: '', nbParPaquet: '', prixPaquet: '', showSuggestions: false }];
+    });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -253,9 +254,9 @@ function AchatModal({ initial, defaultDate, products, achatCategories, fournisse
   }
 
   function addItem() {
-    if (isEdit) return;
-    setItems((arr) => [...arr, { uid: makeUid(), productId: null, productName: '', quantite: '', nbParPaquet: '', prixPaquet: '', showSuggestions: false }]);
-  }
+      if (isEdit) return;
+      setItems((arr) => [...arr, { uid: makeUid(), productId: null, productName: '', nbPaquets: '', nbParPaquet: '', prixPaquet: '', showSuggestions: false }]);
+    }
 
   function removeItem(uid: string) {
     if (isEdit) return;
@@ -268,57 +269,58 @@ function AchatModal({ initial, defaultDate, products, achatCategories, fournisse
   }
 
   const total = itemsState.reduce((s, it) => {
-    const q = parseFloat(it.quantite) || 0;
-    const n = parseFloat(it.nbParPaquet) || 1;
-    const pp = parseFloat(it.prixPaquet) || 0;
-    const prixUnitaire = n > 0 ? pp / n : 0;
-    return s + q * prixUnitaire;
-  }, 0);
+      const nb = parseFloat(it.nbPaquets) || 0;
+      const pp = parseFloat(it.prixPaquet) || 0;
+      return s + nb * pp;
+    }, 0);
 
   async function handleSubmit() {
-    if (!date) { setError('Date obligatoire.'); return; }
+      if (!date) { setError('Date obligatoire.'); return; }
+      setSaving(true);
+      try {
+        if (isEdit) {
+          await onSave({
+            date,
+            fournisseur: '',
+            categorie,
+            fournisseurCategorie: fournisseurCategorie || null,
+            items: [],
+          });
+        } else {
+          for (const it of itemsState) {
+            if (!it.productId) { setError('Sélectionne un produit pour chaque ligne.'); setSaving(false); return; }
+            const nb = parseFloat(it.nbPaquets);
+            const n = parseFloat(it.nbParPaquet);
+            const pp = parseFloat(it.prixPaquet);
+            if (isNaN(nb) || nb <= 0) { setError('Nombre de paquets invalide sur une ligne.'); setSaving(false); return; }
+            if (isNaN(n) || n <= 0) { setError('Quantité par paquet invalide sur une ligne.'); setSaving(false); return; }
+            if (isNaN(pp) || pp < 0) { setError('Prix du paquet invalide sur une ligne.'); setSaving(false); return; }
+          }
+          await onSave({
+            date,
+            fournisseur: '',
+            categorie,
+            fournisseurCategorie: fournisseurCategorie || null,
+            items: itemsState.map((it) => {
+              const nb = parseFloat(it.nbPaquets);
+              const n = parseFloat(it.nbParPaquet);
+              const pp = parseFloat(it.prixPaquet);
 
-    setSaving(true);
-    try {
-      if (isEdit) {
-        // En édition, seuls date/catégories changent — les articles ne sont
-        // pas renvoyés (le backend n'accepte plus "items" sur updateAchat).
-        await onSave({
-          date,
-          fournisseur: '',
-          categorie,
-          fournisseurCategorie: fournisseurCategorie || null,
-          items: [],
-        });
-      } else {
-        for (const it of itemsState) {
-          if (!it.productId) { setError('Sélectionne un produit pour chaque ligne.'); setSaving(false); return; }
-          const q = parseFloat(it.quantite);
-          const n = parseFloat(it.nbParPaquet);
-          const pp = parseFloat(it.prixPaquet);
-          if (isNaN(q) || q <= 0) { setError('Quantité invalide sur une ligne.'); setSaving(false); return; }
-          if (isNaN(n) || n <= 0) { setError('Nb par paquet invalide sur une ligne.'); setSaving(false); return; }
-          if (isNaN(pp) || pp < 0) { setError('Prix paquet invalide sur une ligne.'); setSaving(false); return; }
+              return {
+                productId: it.productId as number,
+                quantite: nb * n,       // nb paquets × qté/paquet = nb articles total
+                prixUnitaire: pp / n,   // prix/paquet ÷ qté/paquet = prix par article
+              };
+            }),
+          });
         }
-        await onSave({
-          date,
-          fournisseur: '',
-          categorie,
-          fournisseurCategorie: fournisseurCategorie || null,
-          items: itemsState.map((it) => ({
-            productId: it.productId as number,
-            quantite: parseFloat(it.quantite),
-            prixUnitaire: parseFloat(it.prixPaquet) / (parseFloat(it.nbParPaquet) || 1),
-          })),
-        });
+        onClose();
+      } catch (e: any) {
+        setError(e.message ?? 'Erreur lors de la sauvegarde.');
+      } finally {
+        setSaving(false);
       }
-      onClose();
-    } catch (e: any) {
-      setError(e.message ?? 'Erreur lors de la sauvegarde.');
-    } finally {
-      setSaving(false);
     }
-  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
@@ -406,25 +408,25 @@ function AchatModal({ initial, defaultDate, products, achatCategories, fournisse
                     )}
                   </div>
                   <input
-                    type="number" min="1" step="1" placeholder="Qté"
-                    value={it.quantite}
-                    disabled={isEdit}
-                    onChange={(e) => updateItem(it.uid, { quantite: e.target.value })}
-                    className={`${inputCls} w-20`}
+                      type="number" min="1" step="1" placeholder="Nb paquets"
+                      value={it.nbPaquets}
+                      disabled={isEdit}
+                      onChange={(e) => updateItem(it.uid, { nbPaquets: e.target.value })}
+                      className={`${inputCls} w-24`}
                   />
                   <input
-                    type="number" min="1" step="1" placeholder="/ paquet"
-                    value={it.nbParPaquet}
-                    disabled={isEdit}
-                    onChange={(e) => updateItem(it.uid, { nbParPaquet: e.target.value })}
-                    className={`${inputCls} w-20`}
+                      type="number" min="1" step="1" placeholder="Qté/paquet"
+                      value={it.nbParPaquet}
+                      disabled={isEdit}
+                      onChange={(e) => updateItem(it.uid, { nbParPaquet: e.target.value })}
+                      className={`${inputCls} w-24`}
                   />
                   <input
-                    type="number" min="0" step="0.01" placeholder="Prix paquet"
-                    value={it.prixPaquet}
-                    disabled={isEdit}
-                    onChange={(e) => updateItem(it.uid, { prixPaquet: e.target.value })}
-                    className={`${inputCls} w-28`}
+                      type="number" min="0" step="0.01" placeholder="Prix paquet"
+                      value={it.prixPaquet}
+                      disabled={isEdit}
+                      onChange={(e) => updateItem(it.uid, { prixPaquet: e.target.value })}
+                      className={`${inputCls} w-28`}
                   />
                   {!isEdit && (
                     <button

@@ -51,3 +51,32 @@ export const refreshTransactionStatus = async (
     method: 'POST',
   });
 };
+
+/**
+ * Update a balance recharge's payment status (admin only)
+ */
+export const updateRechargeStatus = async (
+  rechargeId: number,
+  status: PaymentStatus
+): Promise<{ message: string }> => {
+  return fetchJson(`/balance/admin/recharges/${rechargeId}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status }),
+  });
+};
+
+/**
+ * Delete a balance recharge (admin only).
+ * By default the linked amount is deducted from the user's balance if the recharge was PAID.
+ * Pass { keepBalance: true } to delete the recharge record without touching the user's balance.
+ */
+export const deleteRecharge = async (
+  rechargeId: number,
+  options?: { keepBalance?: boolean }
+): Promise<{ message: string }> => {
+  const query = options?.keepBalance ? '?keepBalance=true' : '';
+  return fetchJson(`/balance/admin/recharges/${rechargeId}${query}`, {
+    method: 'DELETE',
+  });
+};

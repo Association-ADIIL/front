@@ -940,25 +940,9 @@ const BattlePassPage: React.FC = () => {
                   </div>
                 ) : (
                   <>
-                    {/* ── Tickets Premium / Free — mobile : côte à côte au-dessus du track ── */}
-                    <div className="flex md:hidden flex-row gap-4 mb-4">
-                      <PassTicket
-                        variant="premium"
-                        active={hasPremium}
-                        serial={String(selectedPass.id).padStart(4, '0')}
-                        onClick={!hasPremium && userPass && !isExpired ? () => setShowUnlockConfirm(true) : undefined}
-                      />
-                      <PassTicket
-                        variant="free"
-                        active={!!userPass}
-                        serial={`F${String(selectedPass.id).padStart(3, '0')}`}
-                        onClick={!userPass && !isExpired ? handleJoin : undefined}
-                      />
-                    </div>
-
-                    <div className="flex items-start gap-4">
-                      {/* ── Tickets Premium / Free — desktop : alignés dynamiquement sur leur rangée ── */}
-                      <div className="hidden md:flex flex-col flex-shrink-0" style={{ width: 132 }}>
+                                       <div className="flex items-start gap-2 sm:gap-4">
+                                         {/* ── Tickets Premium / Free — alignés dynamiquement sur leur rangée, sur toutes les tailles d'écran ── */}
+                                         <div className="flex flex-col flex-shrink-0 scale-[0.78] sm:scale-90 md:scale-100 origin-top" style={{ width: 132 }}>
                         <div className="flex items-center justify-center" style={{ height: rowHeights.row1 }}>
                           <PassTicket
                             variant="premium"

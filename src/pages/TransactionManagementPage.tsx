@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { logger } from '../utils/logger';
-import { getAllTransactions, refreshTransactionStatus } from '../api/transactions';
+import { getAllTransactions, refreshTransactionStatus, deleteRecharge } from '../api/transactions';
 import type { Transaction, TransactionType, PaymentStatus, PaymentMethod } from '../api/transactions';
-import { Search, RefreshCw, CreditCard, ShoppingCart, Calendar, Eye, Clock, CheckCircle, XCircle, AlertCircle, Wallet, Banknote, Gift, User, Hash, FileText } from 'lucide-react';
+import { Search, RefreshCw, CreditCard, ShoppingCart, Calendar, Eye, Clock, CheckCircle, XCircle, AlertCircle, Wallet, Banknote, Gift, User, Hash, FileText, Trash2 } from 'lucide-react';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
@@ -63,6 +63,11 @@ const TransactionManagementPage: React.FC = () => {
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Admin recharge management (delete)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const fetchTransactions = async () => {
     try {
@@ -162,6 +167,32 @@ const TransactionManagementPage: React.FC = () => {
   const handleOpenDetail = (tx: Transaction) => {
     setSelectedTransaction(tx);
     setIsDetailModalOpen(true);
+  };
+
+  const isBalanceRecharge = (tx: Transaction) => tx.type === 'BALANCE_RECHARGE';
+
+  const openDeleteConfirm = (tx: Transaction) => {
+    setDeleteTarget(tx);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteRecharge = async (keepBalance: boolean) => {
+    if (!deleteTarget) return;
+    setActionLoading(true);
+    try {
+      await deleteRecharge(deleteTarget.entityId, { keepBalance });
+      addNotification(
+        'success',
+        keepBalance ? 'Recharge supprimée, solde conservé' : 'Recharge supprimée'
+      );
+      setDeleteConfirmOpen(false);
+      fetchTransactions();
+    } catch (error) {
+      logger.error('Failed to delete recharge', error);
+      addNotification('error', (error as any).message || 'Erreur lors de la suppression');
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const formatDate = (dateStr: string) => {
@@ -475,6 +506,15 @@ const TransactionManagementPage: React.FC = () => {
                               <RefreshCw size={16} className={refreshingId === tx.id ? 'animate-spin' : ''} />
                             </button>
                           )}
+                          {isBalanceRecharge(tx) && (
+                            <button
+                              onClick={() => openDeleteConfirm(tx)}
+                              className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors"
+                              title="Supprimer la recharge"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -619,6 +659,80 @@ const TransactionManagementPage: React.FC = () => {
             </div>
           );
         })()}
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        title="Supprimer la recharge"
+      >
+        {deleteTarget && (
+          <div className="space-y-5">
+            <p className="text-sm text-gray-300">
+              Supprimer définitivement la recharge de <span className="text-white font-medium">{deleteTarget.user.firstName} {deleteTarget.user.lastName}</span> ({formatAmount(deleteTarget.amount, deleteTarget.bonusAmount)}) ?
+            </p>
+
+            {deleteTarget.paymentStatus === 'PAID' ? (
+              <>
+                <p className="text-sm text-amber-400">
+                  Cette recharge a été payée. Choisissez comment traiter le solde de l'utilisateur :
+                </p>
+
+                <div className="space-y-3">
+                  <button
+                    onClick={() => handleDeleteRecharge(false)}
+                    disabled={actionLoading}
+                    className="w-full py-3 px-4 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold rounded-xl transition-colors"
+                  >
+                    {actionLoading ? 'Suppression...' : "Supprimer et retirer l'argent du solde"}
+                  </button>
+                  <p className="text-xs text-gray-500 text-center">
+                    Le montant sera déduit du solde ADIIL de l'utilisateur.
+                  </p>
+
+                  <div className="border-t border-gray-700 pt-3">
+                    <button
+                      onClick={() => handleDeleteRecharge(true)}
+                      disabled={actionLoading}
+                      className="w-full py-3 px-4 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-white font-bold rounded-xl transition-colors"
+                    >
+                      {actionLoading ? 'Suppression...' : 'Supprimer sans toucher au solde'}
+                    </button>
+                    <p className="text-xs text-gray-500 text-center mt-2">
+                      La recharge sera retirée de l'historique, mais l'argent restera crédité sur le solde de l'utilisateur.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2 border-t border-gray-700">
+                  <button
+                    onClick={() => setDeleteConfirmOpen(false)}
+                    className="px-4 py-2 text-gray-300 hover:text-white"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeleteConfirmOpen(false)}
+                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={() => handleDeleteRecharge(false)}
+                  disabled={actionLoading}
+                  className="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-4 rounded-xl transition-colors disabled:opacity-50"
+                >
+                  {actionLoading ? 'Suppression...' : 'Supprimer'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </Modal>
     </div>
   );
