@@ -275,7 +275,7 @@ const PassTicket: React.FC<{
         ${onClick ? 'cursor-pointer hover:scale-[1.04]' : 'cursor-default'}`}
       style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.35))' }}
     >
-      <svg viewBox="0 0 750 500" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
+      <svg viewBox="0 0 750 500" preserveAspectRatio="none" className="relative inset-0 w-full h-full">
         {/* Corps principal + contour extérieur */}
         <rect x="3" y="3" width="744" height="494" rx="20" fill={body} stroke={outline} strokeWidth="6" />
 
