@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
@@ -30,7 +30,8 @@ const XP_RATIO = 5; // 1€ dépensé = 5 XP
 const toXp = (euros: number) => Math.round(euros * XP_RATIO);
 const fmtXp = (euros: number) => toXp(euros).toLocaleString('fr-FR');
 
-const CELL_W = 140; // px — synced between premium, node and free rows
+const CELL_W = 140; // px — largeur d'une colonne de palier
+const TICKET_W = 168; // px — largeur augmentée pour donner du padding entre ticket et premier palier
 
 const formatDate = (d: string) =>
   new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -72,10 +73,8 @@ const RewardCell: React.FC<RewardCellProps> = ({
 
   const accessible = isUnlocked && (!isPremium || hasPremium);
   const canClaim = accessible && !claimed && !isExpired && !!rewardType;
-  // Palier "validé" : atteint (et Premium débloqué si besoin) → coche verte, sinon cadenas
   const reached = accessible || claimed;
 
-  // Colors — la case reste toujours en couleur pleine, seul le badge d'état change
   const bgActive = isPremium ? 'bg-amber-950/60' : 'bg-emerald-950/50';
   const bgClaimed = isPremium ? 'bg-amber-900/30' : 'bg-emerald-900/30';
   const borderActive = isPremium ? 'border-amber-700/40' : 'border-emerald-700/40';
@@ -90,8 +89,8 @@ const RewardCell: React.FC<RewardCellProps> = ({
   if (!rewardType) {
     return (
       <div
-        className="flex-shrink-0 flex items-center justify-center rounded-2xl border border-slate-800/40 bg-transparent"
-        style={{ width: CELL_W, height: 140 }}
+        className="w-full flex items-center justify-center rounded-2xl border border-slate-800/40 bg-transparent"
+        style={{ height: 140 }}
       >
         <span className="text-slate-700 text-lg">—</span>
       </div>
@@ -100,16 +99,14 @@ const RewardCell: React.FC<RewardCellProps> = ({
 
   return (
     <div
-      className={`flex-shrink-0 rounded-2xl border flex flex-col items-center justify-between p-3 transition-all duration-300 relative overflow-hidden group
+      className={`w-full rounded-2xl border flex flex-col items-center justify-between p-3 transition-all duration-300 relative overflow-hidden group
         ${claimed ? `${bgClaimed} ${borderClaimed}` : `${bgActive} ${borderActive}`}`}
-      style={{ width: CELL_W, height: 140 }}
+      style={{ height: 140 }}
     >
-      {/* Glow effect for claimable */}
       {canClaim && (
         <div className={`absolute inset-0 ${isPremium ? 'bg-amber-500/5' : 'bg-emerald-500/5'} pointer-events-none`} />
       )}
 
-      {/* Badge d'état : coche verte si palier atteint, cadenas sinon */}
       <div className={`absolute bottom-2 right-2 w-6 h-6 rounded-full flex items-center justify-center border-2 z-10 ${
         reached
           ? 'bg-emerald-500 border-emerald-300 shadow-[0_0_8px_rgba(52,211,153,0.5)]'
@@ -121,7 +118,6 @@ const RewardCell: React.FC<RewardCellProps> = ({
         }
       </div>
 
-      {/* Icon + Label */}
       <div className="flex flex-col items-center gap-1.5 flex-1 justify-center w-full">
         {rewardImageUrl ? (
           <>
@@ -138,7 +134,6 @@ const RewardCell: React.FC<RewardCellProps> = ({
               </div>
             )}
 
-            {/* Overlay détails au survol */}
             {(rewardDetails || rewardLabel) && (
               <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col items-center justify-center text-center p-3 gap-1 pointer-events-none">
                 <span className={`text-xs font-black ${isPremium ? 'text-amber-300' : 'text-emerald-300'}`}>
@@ -176,7 +171,6 @@ const RewardCell: React.FC<RewardCellProps> = ({
         )}
       </div>
 
-      {/* CTA */}
       <div className="w-full mt-1">
         {claimed ? (
           <div className={`text-center text-[10px] font-bold py-1 ${textClaimed}`}>✓ Réclamé</div>
@@ -215,12 +209,8 @@ const LevelNode: React.FC<{
   isUnlocked: boolean;
   isCurrent: boolean;
 }> = ({ lvl, isUnlocked, isCurrent }) => (
-  <div className="flex-shrink-0 flex flex-col items-center justify-center gap-0" style={{ width: CELL_W }}>
-    {/* Connector line + node row */}
-    <div className="flex items-center w-full h-8 overflow-visible">
-      {/* Left line */}
-      <div className={`flex-1 h-0.5 -ml-1 transition-all ${isUnlocked ? 'bg-emerald-500/60' : 'bg-slate-700/40'}`} />
-      {/* Node */}
+  <div className="w-full flex flex-col items-center justify-center relative">
+    <div className="h-8 flex items-center justify-center relative z-10">
       <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 flex-shrink-0 transition-all duration-500
         ${isCurrent
           ? 'bg-emerald-400 border-emerald-200 shadow-[0_0_20px_rgba(52,211,153,0.6)]'
@@ -233,14 +223,11 @@ const LevelNode: React.FC<{
           : <span className="text-[10px] font-black text-slate-500">{lvl.level}</span>
         }
       </div>
-      {/* Right line */}
-      <div className={`flex-1 h-0.5 -mr-1 transition-all ${isUnlocked ? 'bg-emerald-500/60' : 'bg-slate-700/40'}`} />
     </div>
 
-    {/* Level label + spend */}
     <div className="text-center mt-1">
       <div className={`text-xs font-black tracking-wide ${isUnlocked ? 'text-white' : 'text-slate-500'}`}>
-        {isCurrent ? <span className="text-emerald-400">NV. {lvl.level}</span> : `NV. ${lvl.level}`}
+        {isCurrent ? <span className="text-emerald-400">NV. {lvl.level}</span> : `NV. {lvl.level}`}
       </div>
       <div className={`text-[10px] ${isUnlocked ? 'text-emerald-500' : 'text-slate-600'} flex items-center justify-center gap-0.5`}>
         <Zap size={8} />{fmtXp(lvl.requiredSpend)} XP
@@ -250,7 +237,7 @@ const LevelNode: React.FC<{
 );
 
 // ─── Pass Tickets (Premium / Free) ────────────────────────────────────────────
-const PAGE_BG = '#0a0e1a'; // couleur derrière le ticket, utilisée pour "creuser" les encoches
+const PAGE_BG = '#0a0e1a';
 
 const PassTicket: React.FC<{
   variant: 'premium' | 'free';
@@ -265,7 +252,7 @@ const PassTicket: React.FC<{
   const outline = isPremium ? '#78350f' : active ? '#065f46' : '#1e293b';
   const textOn  = isPremium ? '#78350f' : '#ffffff';
 
-  const NOTCH_R = 42; // rayon des encoches aux coins
+  const NOTCH_R = 42;
 
   return (
     <button
@@ -275,32 +262,24 @@ const PassTicket: React.FC<{
         ${onClick ? 'cursor-pointer hover:scale-[1.04]' : 'cursor-default'}`}
       style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.35))' }}
     >
-      <svg viewBox="0 0 750 500" preserveAspectRatio="none" className="relative inset-0 w-full h-full">
-        {/* Corps principal + contour extérieur */}
+      <svg viewBox="0 0 750 500" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
         <rect x="3" y="3" width="744" height="494" rx="20" fill={body} stroke={outline} strokeWidth="6" />
 
-        {/* Bandes claires haut / bas */}
         <rect x="190" y="0" width="560" height="100" fill={light} />
         <rect x="190" y="400" width="560" height="100" fill={light} />
-        {/* trait séparant chaque bande du corps */}
         <line x1="190" y1="100" x2="750" y2="100" stroke={outline} strokeWidth="3" />
         <line x1="190" y1="400" x2="750" y2="400" stroke={outline} strokeWidth="3" />
 
-        {/* tirets dans les bandes claires */}
         <line x1="230" y1="50" x2="700" y2="50" stroke={outline} strokeWidth="7" strokeDasharray="24 16" />
         <line x1="230" y1="450" x2="700" y2="450" stroke={outline} strokeWidth="7" strokeDasharray="24 16" />
 
-        {/* cadre autour du numéro de série (souche) */}
         <rect x="30" y="60" width="130" height="380" rx="6" fill="none" stroke={outline} strokeWidth="4" />
-        {/* colonne de points = perforation entre souche et corps */}
         {Array.from({ length: 13 }).map((_, i) => (
           <circle key={i} cx="190" cy={30 + i * 36} r="4" fill={outline} />
         ))}
 
-        {/* cadre intérieur léger autour de la zone centrale */}
         <rect x="200" y="112" width="540" height="276" rx="10" fill="none" stroke={outline} strokeWidth="2" strokeOpacity="0.35" />
 
-        {/* numéro de série vertical */}
         <text
           x="95" y="250"
           textAnchor="middle"
@@ -313,14 +292,12 @@ const PassTicket: React.FC<{
           №{serial}
         </text>
 
-        {/* Encoches : cercles "de découpe" avec leur PROPRE contour, posés par-dessus tout */}
         <circle cx="0"   cy="0"   r={NOTCH_R} fill={PAGE_BG} stroke={outline} strokeWidth="6" />
         <circle cx="750" cy="0"   r={NOTCH_R} fill={PAGE_BG} stroke={outline} strokeWidth="6" />
         <circle cx="0"   cy="500" r={NOTCH_R} fill={PAGE_BG} stroke={outline} strokeWidth="6" />
         <circle cx="750" cy="500" r={NOTCH_R} fill={PAGE_BG} stroke={outline} strokeWidth="6" />
       </svg>
 
-      {/* Contenu central */}
       <div
         className="absolute flex flex-col items-center justify-center gap-1"
         style={{ left: '25.3%', right: 0, top: '20%', bottom: '20%' }}
@@ -509,7 +486,6 @@ const BattlePassPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [loadingUserPass, setLoadingUserPass] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
-
   const [joining, setJoining] = useState(false);
 
   const handleJoin = async () => {
@@ -534,35 +510,9 @@ const BattlePassPage: React.FC = () => {
 
   const trackRef = useRef<HTMLDivElement>(null);
 
-  // Refs sur les 3 rangées du track, pour mesurer leur hauteur réelle
-  // et aligner les tickets Premium/Free dessus dynamiquement.
-  const row1Ref = useRef<HTMLDivElement>(null); // rangée récompenses Premium
-  const row2Ref = useRef<HTMLDivElement>(null); // rangée niveaux (nodes)
-  const row3Ref = useRef<HTMLDivElement>(null); // rangée récompenses Gratuit
-
-  const [rowHeights, setRowHeights] = useState({ row1: 156, row2: 76, row3: 156 });
-
   const levels = selectedPass?.levels ?? [];
   const currentSpend = userPass?.currentSpend ?? 0;
   const currentLevel = levels.reduce((max, l) => currentSpend >= l.requiredSpend ? l.level : max, 0);
-
-  useLayoutEffect(() => {
-    const els = [row1Ref.current, row2Ref.current, row3Ref.current];
-    if (els.some((el) => !el)) return;
-
-    const measure = () => {
-      setRowHeights({
-        row1: (row1Ref.current?.offsetHeight ?? 144) + 12, // +12 = son mb-3
-        row2: (row2Ref.current?.offsetHeight ?? 64) + 12,  // +12 = son mb-3
-        row3: row3Ref.current?.offsetHeight ?? 144,        // dernière ligne, pas de mb-3
-      });
-    };
-
-    measure();
-    const ro = new ResizeObserver(measure);
-    els.forEach((el) => el && ro.observe(el));
-    return () => ro.disconnect();
-  }, [selectedPass, levels, currentLevel, currentSpend]);
 
   useEffect(() => {
     if (!selectedPass) { setLeaderboard(null); return; }
@@ -598,7 +548,6 @@ const BattlePassPage: React.FC = () => {
       .catch(() => setUserPass(null))
       .finally(() => setLoadingUserPass(false));
 
-    // Re-fetch quand l'onglet redevient actif
     window.addEventListener('focus', fetchUserPass);
     document.addEventListener('visibilitychange', fetchUserPass);
 
@@ -650,6 +599,12 @@ const BattlePassPage: React.FC = () => {
 
   const hasPremium = userPass?.hasPremium ?? false;
 
+  // Configuration de la grille : première colonne élargie (TICKET_W) pour espacer tickets/paliers
+  const gridTemplateColumns = `${TICKET_W}px repeat(${levels.length}, ${CELL_W}px) 48px`;
+  const unlockedIndex = levels.reduce((max, l, idx) => currentSpend >= l.requiredSpend ? idx + 1 : 0, 0);
+  const totalCols = levels.length + 1;
+  const trackProgressPercent = totalCols > 0 ? Math.min(100, (unlockedIndex / totalCols) * 100) : 0;
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -672,7 +627,6 @@ const BattlePassPage: React.FC = () => {
 
   return (
     <div className="min-h-screen relative overflow-x-hidden">
-      {/* Background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[-100px] left-1/3 w-[700px] h-[500px] bg-amber-600/4 rounded-full blur-[140px]" />
         <div className="absolute bottom-0 right-1/4 w-[600px] h-[400px] bg-emerald-600/4 rounded-full blur-[120px]" />
@@ -692,7 +646,6 @@ const BattlePassPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Pass selector */}
           {passes.length > 1 && (
             <div className="flex gap-2 flex-wrap">
               {passes.map((p) => (
@@ -746,7 +699,6 @@ const BattlePassPage: React.FC = () => {
                 <div className="rounded-3xl border border-slate-700/40 mb-6 overflow-hidden"
                   style={{ background: 'linear-gradient(135deg, #0f1420 0%, #0a0e1a 100%)' }}>
 
-                  {/* Top bar */}
                   <div className="flex flex-wrap items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-800/60 gap-2">
                     <div className="flex items-center gap-2 sm:gap-3">
                       <span className="text-base sm:text-lg font-black text-white">{selectedPass.name}</span>
@@ -777,7 +729,6 @@ const BattlePassPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Stats + progress */}
                   <div className="px-4 sm:px-6 py-4 sm:py-5">
                     {user ? (
                       loadingUserPass ? (
@@ -787,7 +738,6 @@ const BattlePassPage: React.FC = () => {
                         </div>
                       ) : (
                         <div className="flex flex-col lg:flex-row lg:items-center gap-5 lg:gap-6">
-                          {/* Left: current level + spend */}
                           <div className="flex items-center gap-4 sm:gap-6">
                             <div>
                               <div className="text-[10px] uppercase tracking-widest text-slate-600 mb-1">Niveau actuel</div>
@@ -809,7 +759,6 @@ const BattlePassPage: React.FC = () => {
                             )}
                           </div>
 
-                          {/* Progress bar */}
                           <div className="flex-1 lg:max-w-xl">
                             <div className="flex items-center justify-between text-[10px] text-slate-500 mb-2">
                               <span>Progression vers le niveau {currentLevel + 1}</span>
@@ -832,7 +781,6 @@ const BattlePassPage: React.FC = () => {
                             )}
                           </div>
 
-                          {/* Premium button */}
                           <div className="flex-shrink-0 flex gap-3">
                             {!userPass && !isExpired && (
                               <button
@@ -861,7 +809,7 @@ const BattlePassPage: React.FC = () => {
                                 <button
                                   onClick={() => setShowUnlockConfirm(true)}
                                   className="w-full lg:w-auto flex items-center justify-center gap-2.5 px-5 py-3 rounded-2xl text-white font-bold text-sm transition-all hover:scale-[1.02] border border-amber-500/30"
-                                  style={{ background: 'linear-gradient(135deg, #92400e 0%, #b45309 50%, #d97706 100%)', boxShadow: '0 8px 24px rgba(180,83,9,0.3)' }}
+                                  style={{ background: 'linear-gradient(135deg, #92400e, #b45309 50%, #d97706 100%)', boxShadow: '0 8px 24px rgba(180,83,9,0.3)' }}
                                 >
                                   <Crown size={18} />
                                   <div>
@@ -895,11 +843,23 @@ const BattlePassPage: React.FC = () => {
                     <p>Les niveaux de ce pass seront bientôt configurés</p>
                   </div>
                 ) : (
-                  <>
-                                       <div className="flex items-start gap-2 sm:gap-4">
-                                         {/* ── Tickets Premium / Free — alignés dynamiquement sur leur rangée, sur toutes les tailles d'écran ── */}
-                                         <div className="flex flex-col flex-shrink-0 w-[clamp(6rem,26vw,9rem)]">
-                        <div className="flex items-center justify-center" style={{ height: rowHeights.row1 }}>
+                  <div
+                    ref={trackRef}
+                    className="overflow-x-auto pb-4"
+                    style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(100,116,139,0.25) transparent' }}
+                  >
+                    <div className="inline-flex flex-col min-w-full">
+
+                      {/* ROW 1 : Premium ticket + rewards */}
+                      <div
+                        className="grid gap-3 mb-3 px-3 py-2 rounded-2xl items-center"
+                        style={{
+                          gridTemplateColumns,
+                          background: 'linear-gradient(180deg, rgba(120,53,15,0.15) 0%, rgba(120,53,15,0.03) 100%)',
+                        }}
+                      >
+                        {/* Espace à droite pour séparer le ticket du palier 1 */}
+                        <div className="w-full flex items-center pr-7">
                           <PassTicket
                             variant="premium"
                             active={hasPremium}
@@ -907,8 +867,77 @@ const BattlePassPage: React.FC = () => {
                             onClick={!hasPremium && userPass && !isExpired ? () => setShowUnlockConfirm(true) : undefined}
                           />
                         </div>
-                        <div style={{ height: rowHeights.row2 }} />
-                        <div className="flex items-center justify-center" style={{ height: rowHeights.row3 }}>
+
+                        {levels.map((lvl) => (
+                          <RewardCell
+                            key={`prem-${lvl.id}`}
+                            lvl={lvl}
+                            tier="PREMIUM"
+                            userPass={user ? userPass : null}
+                            isUnlocked={currentSpend >= lvl.requiredSpend}
+                            onShowQr={(level, tier, label) => setQrReward({ level, tier, label })}
+                            onClaimBalance={handleClaimBalance}
+                            isExpired={isExpired}
+                          />
+                        ))}
+                        <div />
+                      </div>
+
+                      {/* ROW 2 : Level nodes + connector track */}
+                      <div
+                        className="relative grid gap-3 mb-4 mt-1 px-3 items-start"
+                        style={{ gridTemplateColumns }}
+                      >
+                        {/* Ligne continue absolue de fond */}
+                        <div
+                          className="absolute h-0.5"
+                          style={{
+                            left: `${(TICKET_W - 28) / 2 + 12}px`, /* Centre sur l'étoile (qui est dans la zone sans le padding droit) */
+                            right: '28px',                         /* Centre du trophée */
+                            top: 16,
+                            background: `linear-gradient(90deg, rgba(16, 185, 129, 0.6) ${trackProgressPercent}%, rgba(51, 65, 85, 0.4) ${trackProgressPercent}%)`,
+                          }}
+                        />
+
+                        {/* Étoile de départ — alignée avec le ticket */}
+                        <div className="w-full flex flex-col items-center pr-7">
+                          <div className="h-8 flex items-center justify-center relative z-10">
+                            <div className="w-8 h-8 rounded-full bg-slate-800 border-2 border-slate-600 flex items-center justify-center">
+                              <Star size={14} className="text-slate-500" />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Nœuds de niveaux */}
+                        {levels.map((lvl) => (
+                          <LevelNode
+                            key={`node-${lvl.id}`}
+                            lvl={lvl}
+                            isUnlocked={currentSpend >= lvl.requiredSpend}
+                            isCurrent={lvl.level === currentLevel}
+                          />
+                        ))}
+
+                        {/* Trophée final */}
+                        <div className="w-full flex flex-col items-center" style={{ width: 48 }}>
+                          <div className="h-8 flex items-center justify-center relative z-10">
+                            <div className="w-8 h-8 rounded-full border-2 border-amber-600/40 bg-amber-950/40 flex items-center justify-center">
+                              <Trophy size={16} className="text-amber-500" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* ROW 3 : Free ticket + rewards */}
+                      <div
+                        className="grid gap-3 px-3 py-2 rounded-2xl items-center"
+                        style={{
+                          gridTemplateColumns,
+                          background: 'linear-gradient(0deg, rgba(6,78,59,0.15) 0%, rgba(6,78,59,0.03) 100%)',
+                        }}
+                      >
+                        {/* Espace à droite pour séparer le ticket du palier 1 */}
+                        <div className="w-full flex items-center pr-7">
                           <PassTicket
                             variant="free"
                             active={!!userPass}
@@ -916,105 +945,36 @@ const BattlePassPage: React.FC = () => {
                             onClick={!userPass && !isExpired ? handleJoin : undefined}
                           />
                         </div>
+
+                        {levels.map((lvl) => (
+                          <RewardCell
+                            key={`free-${lvl.id}`}
+                            lvl={lvl}
+                            tier="FREE"
+                            userPass={user ? userPass : null}
+                            isUnlocked={currentSpend >= lvl.requiredSpend}
+                            onShowQr={(level, tier, label) => setQrReward({ level, tier, label })}
+                            onClaimBalance={handleClaimBalance}
+                            isExpired={isExpired}
+                          />
+                        ))}
+                        <div />
                       </div>
 
-                      <div className="flex-1 min-w-0">
-                        {/* ── Scrollable track ── */}
-                        <div
-                          ref={trackRef}
-                          className="overflow-x-auto pb-4"
-                          style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(100,116,139,0.25) transparent' }}
-                        >
-                          <div className="inline-flex flex-col min-w-full">
-
-                            {/* ROW 1 : Premium rewards */}
-                            <div
-                              ref={row1Ref}
-                              className="flex gap-2 mb-3 px-2 py-2 rounded-2xl"
-                              style={{ background: 'linear-gradient(180deg, rgba(120,53,15,0.15) 0%, rgba(120,53,15,0.03) 100%)' }}
-                            >
-                              <div className="flex-shrink-0" style={{ width: 40 }} />
-                              {levels.map((lvl) => (
-                                <RewardCell
-                                  key={`prem-${lvl.id}`}
-                                  lvl={lvl}
-                                  tier="PREMIUM"
-                                  userPass={user ? userPass : null}
-                                  isUnlocked={currentSpend >= lvl.requiredSpend}
-                                  onShowQr={(level, tier, label) => setQrReward({ level, tier, label })}
-                                  onClaimBalance={handleClaimBalance}
-                                  isExpired={isExpired}
-                                />
-                              ))}
-                              <div className="flex-shrink-0" style={{ width: 56 }} />
-                            </div>
-
-                            {/* ROW 2 : Level nodes + connector track */}
-                            <div ref={row2Ref} className="flex gap-2 mb-3 ml-2">
-                              <div className="flex-shrink-0 h-8 flex items-center" style={{ width: 40 }}>
-                                <div className="w-8 h-8 rounded-full bg-slate-800 border-2 border-slate-600 flex items-center justify-center flex-shrink-0">
-                                  <Star size={14} className="text-slate-500" />
-                                </div>
-                                <div className={`flex-1 h-0.5 -mr-1 ${levels.length > 0 && currentSpend >= levels[0].requiredSpend ? 'bg-emerald-500/60' : 'bg-slate-700/40'}`} />
-                              </div>
-
-                              {levels.map((lvl) => (
-                                <LevelNode
-                                  key={`node-${lvl.id}`}
-                                  lvl={lvl}
-                                  isUnlocked={currentSpend >= lvl.requiredSpend}
-                                  isCurrent={lvl.level === currentLevel}
-                                />
-                              ))}
-
-                              <div className="flex-shrink-0 h-8 flex items-center" style={{ width: 48 }}>
-                                <div className={`flex-1 h-0.5 -ml-1 ${levels.length > 0 && currentSpend >= levels[levels.length - 1].requiredSpend ? 'bg-emerald-500/60' : 'bg-slate-700/40'}`} />
-                                <div className="w-8 h-8 rounded-full border-2 border-amber-600/40 bg-amber-950/40 flex items-center justify-center flex-shrink-0">
-                                  <Trophy size={16} className="text-amber-500" />
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* ROW 3 : Free rewards */}
-                            <div
-                              ref={row3Ref}
-                              className="flex gap-2 px-2 py-2 rounded-2xl"
-                              style={{ background: 'linear-gradient(0deg, rgba(6,78,59,0.15) 0%, rgba(6,78,59,0.03) 100%)' }}
-                            >
-                              <div className="flex-shrink-0" style={{ width: 40 }} />
-                              {levels.map((lvl) => (
-                                <RewardCell
-                                  key={`free-${lvl.id}`}
-                                  lvl={lvl}
-                                  tier="FREE"
-                                  userPass={user ? userPass : null}
-                                  isUnlocked={currentSpend >= lvl.requiredSpend}
-                                  onShowQr={(level, tier, label) => setQrReward({ level, tier, label })}
-                                  onClaimBalance={handleClaimBalance}
-                                  isExpired={isExpired}
-                                />
-                              ))}
-                              <div className="flex-shrink-0" style={{ width: 56 }} />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
                     </div>
-                  </>
+                  </div>
                 )}
 
                 {/* ── Info banner ─────────────────────────────────────────────────── */}
                 <div className="mt-6 rounded-2xl border border-amber-700/30 overflow-hidden"
                   style={{ background: 'linear-gradient(135deg, rgba(120,53,15,0.12) 0%, rgba(15,20,32,0.6) 100%)' }}>
 
-                  {/* Header */}
                   <div className="flex items-center gap-2 px-4 sm:px-5 pt-4">
                     <Info size={16} className="text-amber-500" />
                     <h3 className="text-sm font-black text-amber-400 uppercase tracking-wider">Conditions de validité</h3>
                   </div>
 
                   <div className="px-4 sm:px-5 pb-4 pt-3 space-y-2.5">
-                    {/* Règle critique, mise en avant */}
                     <div className="flex items-start gap-2.5 p-3 rounded-xl bg-red-500/10 border border-red-500/30">
                       <AlertTriangle size={16} className="text-red-400 flex-shrink-0 mt-0.5" />
                       <p className="text-xs sm:text-sm font-bold text-red-300 leading-snug">
@@ -1022,7 +982,6 @@ const BattlePassPage: React.FC = () => {
                       </p>
                     </div>
 
-                    {/* Autres règles */}
                     <ul className="text-xs text-slate-400 space-y-1.5 pt-1">
                       <li className="flex gap-2">
                         <span className="text-amber-600">•</span>
@@ -1063,7 +1022,6 @@ const BattlePassPage: React.FC = () => {
           <div className="w-full max-w-sm rounded-3xl border border-amber-600/20 overflow-hidden shadow-2xl"
             style={{ background: 'linear-gradient(160deg, #0f1015 0%, #0a0c10 100%)' }}>
 
-            {/* Modal header */}
             <div className="px-6 pt-6 pb-4 border-b border-slate-800/60">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
