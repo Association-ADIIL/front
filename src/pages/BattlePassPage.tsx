@@ -601,7 +601,7 @@ const BattlePassPage: React.FC = () => {
 
   // Configuration de la grille : première colonne élargie (TICKET_W) pour espacer tickets/paliers
   const gridTemplateColumns = `${TICKET_W}px repeat(${levels.length}, ${CELL_W}px) 48px`;
-  const unlockedIndex = levels.reduce((max, l, idx) => currentSpend >= l.requiredSpend ? idx + 1 : 0, 0);
+  const unlockedIndex = levels.reduce((max, l, idx) => currentSpend >= l.requiredSpend ? idx + 1 : max, 0);
   const totalCols = levels.length + 1;
   const trackProgressPercent = totalCols > 0 ? Math.min(100, (unlockedIndex / totalCols) * 100) : 0;
 
