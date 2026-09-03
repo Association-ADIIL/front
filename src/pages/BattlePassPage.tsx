@@ -250,12 +250,7 @@ const LevelNode: React.FC<{
 );
 
 // ─── Pass Tickets (Premium / Free) ────────────────────────────────────────────
-// Couleur de fond de page utilisée pour "creuser" les encoches du ticket
-const PAGE_BG = '#0a0e1a';
-
-// Motif code-barres généré une seule fois (largeurs de barres fixes, look réaliste)
-const BARCODE_PATTERN =
-  '2px,transparent 2px,transparent 3px,currentColor 3px,currentColor 6px,transparent 6px,transparent 7px,currentColor 7px,currentColor 8px,transparent 8px,transparent 10px,currentColor 10px,currentColor 11px,transparent 11px,transparent 13px,currentColor 13px,currentColor 16px,transparent 16px,transparent 17px,currentColor 17px,currentColor 19px';
+const PAGE_BG = '#0a0e1a'; // couleur derrière le ticket, utilisée pour "creuser" les encoches
 
 const PassTicket: React.FC<{
   variant: 'premium' | 'free';
@@ -264,124 +259,85 @@ const PassTicket: React.FC<{
   onClick?: () => void;
 }> = ({ variant, active, serial, onClick }) => {
   const isPremium = variant === 'premium';
-  const tilt = isPremium ? '-1.5deg' : '1.2deg';
+
+  const body    = isPremium ? '#f59e0b' : active ? '#10b981' : '#475569';
+  const light   = isPremium ? '#fde68a' : active ? '#6ee7b7' : '#94a3b8';
+  const outline = isPremium ? '#78350f' : active ? '#065f46' : '#1e293b';
+  const textOn  = isPremium ? '#78350f' : '#ffffff';
+
+  const NOTCH_R = 42; // rayon des encoches aux coins
 
   return (
     <button
       onClick={onClick}
       disabled={!onClick}
-      className={`relative rounded-lg overflow-visible border-2 transition-all duration-300 flex-shrink-0
-        ${onClick ? 'cursor-pointer hover:scale-[1.03] hover:!rotate-0' : 'cursor-default'}
-        ${isPremium
-          ? 'border-amber-300/80'
-          : active
-            ? 'border-emerald-400/80'
-            : 'border-slate-600/50'
-        }`}
-      style={{
-        width: 132,
-        height: 100,
-        transform: `rotate(${tilt})`,
-        boxShadow: '0 6px 16px rgba(0,0,0,0.35)',
-      }}
+      className={`relative block w-full aspect-[3/2] min-w-0 transition-transform duration-300
+        ${onClick ? 'cursor-pointer hover:scale-[1.04]' : 'cursor-default'}`}
+      style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.35))' }}
     >
-      {/* Encoches (comme un vrai ticket détaché d'un carnet) */}
+      <svg viewBox="0 0 750 500" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
+        {/* Corps principal + contour extérieur */}
+        <rect x="3" y="3" width="744" height="494" rx="20" fill={body} stroke={outline} strokeWidth="6" />
+
+        {/* Bandes claires haut / bas */}
+        <rect x="190" y="0" width="560" height="100" fill={light} />
+        <rect x="190" y="400" width="560" height="100" fill={light} />
+        {/* trait séparant chaque bande du corps */}
+        <line x1="190" y1="100" x2="750" y2="100" stroke={outline} strokeWidth="3" />
+        <line x1="190" y1="400" x2="750" y2="400" stroke={outline} strokeWidth="3" />
+
+        {/* tirets dans les bandes claires */}
+        <line x1="230" y1="50" x2="700" y2="50" stroke={outline} strokeWidth="7" strokeDasharray="24 16" />
+        <line x1="230" y1="450" x2="700" y2="450" stroke={outline} strokeWidth="7" strokeDasharray="24 16" />
+
+        {/* cadre autour du numéro de série (souche) */}
+        <rect x="30" y="60" width="130" height="380" rx="6" fill="none" stroke={outline} strokeWidth="4" />
+        {/* colonne de points = perforation entre souche et corps */}
+        {Array.from({ length: 13 }).map((_, i) => (
+          <circle key={i} cx="190" cy={30 + i * 36} r="4" fill={outline} />
+        ))}
+
+        {/* cadre intérieur léger autour de la zone centrale */}
+        <rect x="200" y="112" width="540" height="276" rx="10" fill="none" stroke={outline} strokeWidth="2" strokeOpacity="0.35" />
+
+        {/* numéro de série vertical */}
+        <text
+          x="95" y="250"
+          textAnchor="middle"
+          fill={outline}
+          fontFamily="monospace"
+          fontSize="26"
+          letterSpacing="4"
+          transform="rotate(-90 95 250)"
+        >
+          №{serial}
+        </text>
+
+        {/* Encoches : cercles "de découpe" avec leur PROPRE contour, posés par-dessus tout */}
+        <circle cx="0"   cy="0"   r={NOTCH_R} fill={PAGE_BG} stroke={outline} strokeWidth="6" />
+        <circle cx="750" cy="0"   r={NOTCH_R} fill={PAGE_BG} stroke={outline} strokeWidth="6" />
+        <circle cx="0"   cy="500" r={NOTCH_R} fill={PAGE_BG} stroke={outline} strokeWidth="6" />
+        <circle cx="750" cy="500" r={NOTCH_R} fill={PAGE_BG} stroke={outline} strokeWidth="6" />
+      </svg>
+
+      {/* Contenu central */}
       <div
-        className="absolute top-1/2 -left-[9px] -translate-y-1/2 w-[18px] h-[18px] rounded-full z-10 border-2"
-        style={{ backgroundColor: PAGE_BG, borderColor: 'inherit' }}
-      />
-      <div
-        className="absolute top-1/2 -right-[9px] -translate-y-1/2 w-[18px] h-[18px] rounded-full z-10 border-2"
-        style={{ backgroundColor: PAGE_BG, borderColor: 'inherit' }}
-      />
-
-      <div className="relative w-full h-full rounded-lg overflow-hidden">
-        {/* Radial glow derrière le pass doré */}
-        {isPremium && (
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              background: 'radial-gradient(ellipse at 50% 25%, rgba(253,224,71,0.9) 0%, rgba(245,158,11,0.5) 40%, transparent 72%)',
-            }}
-          />
+        className="absolute flex flex-col items-center justify-center gap-1"
+        style={{ left: '25.3%', right: 0, top: '20%', bottom: '20%' }}
+      >
+        {isPremium ? (
+          <Crown size={26} color={textOn} />
+        ) : (
+          <Star size={22} color={textOn} />
         )}
-
-        {/* Fond */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background: isPremium
-              ? 'linear-gradient(160deg, #fde68a 0%, #f59e0b 45%, #b45309 100%)'
-              : active
-                ? 'linear-gradient(160deg, #1e293b 0%, #0f172a 100%)'
-                : 'linear-gradient(160deg, #1e293b 0%, #0a0e1a 100%)',
-          }}
-        />
-
-        {/* Grain papier léger */}
-        <div
-          className="absolute inset-0 pointer-events-none opacity-[0.06] mix-blend-overlay"
-          style={{
-            backgroundImage: 'repeating-linear-gradient(0deg, #000 0px, transparent 1px, transparent 2px)',
-          }}
-        />
-
-        {/* Reflet (premium uniquement) */}
-        {isPremium && (
-          <div
-            className="absolute inset-0 pointer-events-none animate-pass-shine"
-            style={{
-              background: 'linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.65) 48%, rgba(255,255,255,0.65) 52%, transparent 70%)',
-            }}
-          />
+        <span className="font-black text-xs sm:text-sm tracking-wider uppercase" style={{ color: textOn }}>
+          {isPremium ? 'Premium' : 'Gratuit'}
+        </span>
+        {active && (
+          <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider opacity-90" style={{ color: textOn }}>
+            {isPremium ? 'Actif' : 'Débloqué'}
+          </span>
         )}
-
-        {/* Ligne de perforation verticale (pointillés ronds, façon vraie découpe) */}
-        <div className="absolute top-2 bottom-[26px] left-1/2 -translate-x-1/2 flex flex-col justify-between items-center opacity-40">
-          {Array.from({ length: 7 }).map((_, i) => (
-            <div
-              key={i}
-              className="w-[3px] h-[3px] rounded-full"
-              style={{ backgroundColor: isPremium ? '#78350f' : '#64748b' }}
-            />
-          ))}
-        </div>
-
-        {/* Contenu principal */}
-        <div className="relative h-full flex flex-col items-center justify-center gap-1 px-3 pb-6">
-          {isPremium ? (
-            <Crown size={20} className="text-amber-950 drop-shadow-[0_1px_1px_rgba(255,255,255,0.4)]" />
-          ) : (
-            <Star size={18} className={active ? 'text-emerald-400' : 'text-slate-500'} />
-          )}
-          <span className={`font-black text-[11px] tracking-wide uppercase text-center leading-tight ${isPremium ? 'text-amber-950' : active ? 'text-white' : 'text-slate-400'}`}>
-            {isPremium ? 'Golden Pass' : 'Free Pass'}
-          </span>
-          {active && (
-            <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider ${
-              isPremium ? 'bg-amber-950/20 text-amber-950' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-            }`}>
-              {isPremium ? 'Actif' : 'Débloqué'}
-            </span>
-          )}
-        </div>
-
-        {/* Bandeau bas : numéro de série + code-barres, façon souche de ticket */}
-        <div className={`absolute bottom-0 left-0 right-0 h-[22px] flex items-center justify-between px-2.5 ${
-          isPremium ? 'border-t border-amber-950/20' : 'border-t border-slate-700/40'
-        }`}>
-          <span className={`text-[7px] font-mono tracking-tight ${isPremium ? 'text-amber-950/70' : 'text-slate-500'}`}>
-            №{serial}
-          </span>
-          <div
-            className={isPremium ? 'text-amber-950/60' : 'text-slate-500/60'}
-            style={{
-              width: 20,
-              height: 10,
-              backgroundImage: `repeating-linear-gradient(90deg, currentColor 0px, currentColor ${BARCODE_PATTERN})`,
-            }}
-          />
-        </div>
       </div>
     </button>
   );
@@ -942,7 +898,7 @@ const BattlePassPage: React.FC = () => {
                   <>
                                        <div className="flex items-start gap-2 sm:gap-4">
                                          {/* ── Tickets Premium / Free — alignés dynamiquement sur leur rangée, sur toutes les tailles d'écran ── */}
-                                         <div className="flex flex-col flex-shrink-0 scale-[0.78] sm:scale-90 md:scale-100 origin-top" style={{ width: 132 }}>
+                                         <div className="flex flex-col flex-shrink-0 w-20 sm:w-28 md:w-32">
                         <div className="flex items-center justify-center" style={{ height: rowHeights.row1 }}>
                           <PassTicket
                             variant="premium"
