@@ -671,7 +671,7 @@ const BattlePassPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen relative">
+    <div className="min-h-screen relative overflow-x-hidden">
       {/* Background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[-100px] left-1/3 w-[700px] h-[500px] bg-amber-600/4 rounded-full blur-[140px]" />
@@ -898,7 +898,7 @@ const BattlePassPage: React.FC = () => {
                   <>
                                        <div className="flex items-start gap-2 sm:gap-4">
                                          {/* ── Tickets Premium / Free — alignés dynamiquement sur leur rangée, sur toutes les tailles d'écran ── */}
-                                         <div className="flex flex-col flex-shrink-0 w-20 sm:w-28 md:w-32">
+                                         <div className="flex flex-col flex-shrink-0 w-[clamp(6rem,26vw,9rem)]">
                         <div className="flex items-center justify-center" style={{ height: rowHeights.row1 }}>
                           <PassTicket
                             variant="premium"
