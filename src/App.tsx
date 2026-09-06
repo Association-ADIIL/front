@@ -34,6 +34,7 @@ import { CartProvider } from './context/CartContext';
 import { ToastContainer } from './components/Toast';
 import { setUnauthorizedCallback, setErrorCallback } from './api/client';
 import { useBanner } from './context/BannerContext';
+import { useTrackLastPage } from './hooks/useTrackLastPage';
 
 
 
@@ -121,6 +122,11 @@ const ApiInterceptor = () => {
   return null;
 };
 
+const TrackLastPage = () => {
+  useTrackLastPage();
+  return null;
+};
+
 function App() {
   return (
     <div className="min-h-screen bg-dark-bg text-white flex flex-col font-montserrat">
@@ -129,6 +135,7 @@ function App() {
           <CartProvider>
             <BannerProvider>
               <ApiInterceptor />
+              <TrackLastPage />
               <ToastContainer />
               <Routes>
                 {/* Admin Routes (no Header/Footer) - Lazy loaded */}

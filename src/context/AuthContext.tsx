@@ -30,6 +30,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  // Redirige vers la dernière page visitée (hors pages d'auth), sinon vers `fallback`.
+  // `consume: false` permet de garder l'info pour une étape suivante du parcours
+  // (ex: register -> login -> destination finale).
+  const redirectAfterAuth = useCallback((fallback: string, consume: boolean = true) => {
+    const redirectTo = sessionStorage.getItem('lastVisitedPage');
+    if (redirectTo) {
+      if (consume) sessionStorage.removeItem('lastVisitedPage');
+      navigate(redirectTo);
+    } else {
+      navigate(fallback);
+    }
+  }, [navigate]);
+
   useEffect(() => {
     const initializeAuth = async () => {
       const storedToken = TokenStorage.get();
@@ -60,7 +73,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(response.user);
       TokenStorage.set(response.token);
       logger.auth('login', true);
-      navigate('/my-account');
+      redirectAfterAuth('/my-account');
     } catch (error) {
       logger.error('Login failed', error);
       logger.auth('login', false);
@@ -77,9 +90,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       logger.auth('login_google', true);
 
       if (response.isNewUser) {
-        navigate('/complete-profile');
+        redirectAfterAuth('/complete-profile');
       } else {
-        navigate('/my-account');
+        redirectAfterAuth('/my-account');
       }
     } catch (error) {
       logger.error('Google login failed', error);
@@ -92,7 +105,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       await apiRegister(data);
       logger.auth('register', true);
-      navigate('/login');
+      // consume: false -> on garde l'info pour la redirection après le login qui suit
+      redirectAfterAuth('/login', false);
     } catch (error) {
       logger.error('Register failed', error);
       logger.auth('register', false);
