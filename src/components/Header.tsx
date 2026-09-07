@@ -22,7 +22,7 @@ const Header: React.FC = () => {
         <div className="hidden md:flex space-x-4 items-center">
           <Link to="/events" className="header-link">Événements</Link>
           <Link to="/shop" className="header-link">Boutique</Link>
-          <Link to="/battle-pass" className="header-link">Battle Pass</Link>
+          <Link to="/battle-pass" className="header-link">Battle PAF</Link>
           <Link to="/about" className="header-link">À Propos</Link>
 
           {isAdmin && (
@@ -82,7 +82,7 @@ const Header: React.FC = () => {
           <div className="container mx-auto px-4 py-4 flex flex-col space-y-2">
             <Link to="/events" onClick={closeMobileMenu} className="header-link-mobile">Événements</Link>
             <Link to="/shop" onClick={closeMobileMenu} className="header-link-mobile">Boutique</Link>
-            <Link to="/battle-pass" onClick={closeMobileMenu} className="header-link-mobile">Battle Pass</Link>
+            <Link to="/battle-pass" onClick={closeMobileMenu} className="header-link-mobile">Battle PAF</Link>
             <Link to="/about" onClick={closeMobileMenu} className="header-link-mobile">À Propos</Link>
 
             {isAdmin && (

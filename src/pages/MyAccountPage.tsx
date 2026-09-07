@@ -731,7 +731,7 @@ const MyAccountPage: React.FC = () => {
                         <Trophy size={22} className="text-amber-400" />
                       </div>
                       <div className="text-left">
-                        <h2 className="text-lg font-bold text-white">Pass de combat</h2>
+                        <h2 className="text-lg font-bold text-white">Battle PAF</h2>
                         <p className="text-sm text-gray-500">{battlePasses.length} pass{battlePasses.length > 1 ? 'es' : ''} actif{battlePasses.length > 1 ? 's' : ''}</p>
                       </div>
                     </div>

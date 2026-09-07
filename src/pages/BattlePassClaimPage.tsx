@@ -144,7 +144,7 @@ const BattlePassClaimPage: React.FC = () => {
               <Trophy size={22} className="text-amber-400" />
             </div>
             <div>
-              <span className="text-amber-400 text-sm font-bold uppercase tracking-wider">Pass de combat</span>
+              <span className="text-amber-400 text-sm font-bold uppercase tracking-wider">Battle PAF</span>
               <h1 className="text-4xl md:text-5xl font-koulen text-white mt-1">RECUPERATION RECOMPENSE</h1>
             </div>
           </div>
@@ -157,7 +157,7 @@ const BattlePassClaimPage: React.FC = () => {
 
           {/* Pass info */}
           <div className="bg-darker-bg rounded-2xl border border-gray-800 p-6 mb-6">
-            <p className="text-gray-500 text-sm mb-1">Pass de combat</p>
+            <p className="text-gray-500 text-sm mb-1">Battle PAF</p>
             <h2 className="text-xl font-bold text-white">{info.battlePass.name}</h2>
             <p className="text-gray-500 text-xs mt-1">
               Du {new Date(info.battlePass.startDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })} au {new Date(info.battlePass.endDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
