@@ -288,6 +288,7 @@ const EventDetailPage: React.FC = () => {
                 <button
                   onClick={() => {
                     if (!user) {
+                        sessionStorage.setItem('postAuthRedirect', `/events/${event.id}`);
                       addNotification('info', 'Connectez-vous pour vous inscrire');
                       navigate('/login');
                     } else {
