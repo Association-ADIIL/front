@@ -189,7 +189,7 @@ const navSections = [
     items: [
       { path: '/admin/caisse', label: 'Caisse', icon: Receipt },
       { path: '/admin/comptabilite', label: 'Comptabilité', icon: Receipt },
-      { path: '/admin/battle-pass', label: 'Battle PAF', icon: Trophy },
+      { path: '/admin/battle-pass', label: 'BattlePass', icon: Trophy },
       { path: '/admin/banner', label: 'Bandeau', icon: Megaphone },
     ]
   },
