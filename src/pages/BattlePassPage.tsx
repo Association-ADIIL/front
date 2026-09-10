@@ -227,7 +227,7 @@ const LevelNode: React.FC<{
 
     <div className="text-center mt-1">
       <div className={`text-xs font-black tracking-wide ${isUnlocked ? 'text-white' : 'text-slate-500'}`}>
-        {isCurrent ? <span className="text-emerald-400">NV. {lvl.level}</span> : `NV. {lvl.level}`}
+        {isCurrent ? <span className="text-emerald-400">NV. {lvl.level}</span> : `NV. ${lvl.level}`}
       </div>
       <div className={`text-[10px] ${isUnlocked ? 'text-emerald-500' : 'text-slate-600'} flex items-center justify-center gap-0.5`}>
         <Zap size={8} />{fmtXp(lvl.requiredSpend)} XP
