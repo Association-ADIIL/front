@@ -476,7 +476,7 @@ const LeaderboardSection: React.FC<{
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const BattlePassPage: React.FC = () => {
-  useDocumentTitle('Battle PAF — ADIIL');
+  useDocumentTitle('Battle Pass — ADIIL');
   const { user } = useAuth();
   const { addNotification } = useNotification();
 
@@ -494,7 +494,7 @@ const BattlePassPage: React.FC = () => {
     try {
       const newPass = await joinBattlePass(selectedPass.id);
       setUserPass(newPass);
-      addNotification('success', 'Inscrit au Battle PAF !');
+      addNotification('success', 'Inscrit au Battle Pass !');
     } catch (e: any) {
       addNotification('error', e.message ?? 'Erreur');
     } finally {
@@ -529,7 +529,7 @@ const BattlePassPage: React.FC = () => {
         setPasses(data);
         if (data.length > 0) setSelectedPass(data[0]);
       })
-      .catch(() => addNotification('error', 'Impossible de charger les Battle PAF'))
+      .catch(() => addNotification('error', 'Impossible de charger les Battle Pass'))
       .finally(() => setLoading(false));
   }, []);
 
@@ -619,7 +619,7 @@ const BattlePassPage: React.FC = () => {
         <div className="text-center max-w-md">
           <Trophy size={48} className="mx-auto mb-4 text-slate-600" />
           <h1 className="text-2xl font-bold text-slate-300 mb-2">Pas de pass actif</h1>
-          <p className="text-slate-500">Aucun Battle PAF n'est disponible pour le moment. Revenez bientôt !</p>
+          <p className="text-slate-500">Aucun Battle Pass n'est disponible pour le moment. Revenez bientôt !</p>
         </div>
       </div>
     );
@@ -641,7 +641,7 @@ const BattlePassPage: React.FC = () => {
               <Trophy size={20} className="text-amber-400" />
             </div>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Battle PAF</h1>
+              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Battle Pass</h1>
               <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Achète en boutique, progresse et réclame tes récompenses</p>
             </div>
           </div>
@@ -978,7 +978,7 @@ const BattlePassPage: React.FC = () => {
                     <div className="flex items-start gap-2.5 p-3 rounded-xl bg-red-500/10 border border-red-500/30">
                       <AlertTriangle size={16} className="text-red-400 flex-shrink-0 mt-0.5" />
                       <p className="text-xs sm:text-sm font-bold text-red-300 leading-snug">
-                        Tout achat ne passant pas par le site ne pourra pas faire avancer ta progression sur le Battle PAF.
+                        Tout achat ne passant pas par le site ne pourra pas faire avancer ta progression sur le Battle Pass.
                       </p>
                     </div>
 

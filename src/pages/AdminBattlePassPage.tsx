@@ -243,7 +243,7 @@ const PassCard: React.FC<{
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const AdminBattlePassPage: React.FC = () => {
-  useDocumentTitle('Admin — Battle PAF');
+  useDocumentTitle('Admin — Battle Pass');
   const { addNotification } = useNotification();
 
   const [passes, setPasses] = useState<BattlePass[]>([]);
@@ -278,7 +278,7 @@ const AdminBattlePassPage: React.FC = () => {
       if (data.length > 0 && !selectedPass) setSelectedPass(data[0]);
       return data;
     } catch {
-      addNotification('error', 'Impossible de charger les Battle PAF');
+      addNotification('error', 'Impossible de charger les Battle Pass');
       return [];
     } finally {
       setLoading(false);
@@ -498,7 +498,7 @@ const AdminBattlePassPage: React.FC = () => {
       setUserPasses(updated);
       const s = await adminGetStats(selectedPass.id);
       setStats(s);
-      addNotification('success', 'Utilisateur retiré du Battle PAF');
+      addNotification('success', 'Utilisateur retiré du Battle Pass');
       setRemoveUserTarget(null);
     } catch (e: any) {
       addNotification('error', e.message ?? 'Erreur');
@@ -520,7 +520,7 @@ const AdminBattlePassPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <Trophy size={22} className="text-amber-400" />
-            Battle PAF
+            Battle Pass
           </h1>
           <p className="text-sm text-slate-500 mt-0.5">Gestion des saisons, niveaux et récompenses</p>
         </div>
@@ -795,7 +795,7 @@ const AdminBattlePassPage: React.FC = () => {
           <div className="w-full max-w-lg rounded-2xl border border-amber-500/20 bg-slate-900 p-6 shadow-2xl overflow-y-auto max-h-full">
             <h3 className="text-lg font-bold text-white mb-5 flex items-center gap-2">
               <Trophy size={18} className="text-amber-400" />
-              {editingPass ? 'Modifier le pass' : 'Créer un Battle PAF'}
+              {editingPass ? 'Modifier le pass' : 'Créer un Battle Pass'}
             </h3>
 
             <div className="space-y-4">
@@ -805,7 +805,7 @@ const AdminBattlePassPage: React.FC = () => {
                   type="text"
                   value={passForm.name}
                   onChange={e => setPassForm({ ...passForm, name: e.target.value })}
-                  placeholder="Battle PAF Printemps 2026"
+                  placeholder="Battle Pass Printemps 2026"
                   className="w-full bg-slate-800/60 border border-slate-700/40 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/40"
                 />
               </div>
@@ -891,7 +891,7 @@ const AdminBattlePassPage: React.FC = () => {
       <ConfirmDialog
         isOpen={removeUserTarget !== null}
         title="Retirer l'utilisateur ?"
-        message="L'utilisateur perdra toute sa progression sur ce Battle PAF. Cette action est irréversible."
+        message="L'utilisateur perdra toute sa progression sur ce Battle Pass. Cette action est irréversible."
         confirmText="Retirer"
         variant="danger"
         onConfirm={handleRemoveUser}

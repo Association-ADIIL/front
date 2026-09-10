@@ -219,9 +219,12 @@ const OrderManagementPage: React.FC = () => {
     if (!currentOrder) return;
     try {
       await updateOrderStatus(currentOrder.id, newStatus);
-      setIsModalOpen(false);
+      setCurrentOrder(prev => prev ? { ...prev, orderStatus: newStatus as Order['orderStatus'] } : prev);
       fetchOrders();
       addNotification('success', 'Statut mis à jour avec succès');
+      if (newStatus !== 'PAID') {
+        setIsModalOpen(false);
+      }
     } catch (error) {
       logger.error('Failed to update order status', error);
       addNotification('error', 'Erreur lors de la mise à jour du statut');
@@ -232,9 +235,12 @@ const OrderManagementPage: React.FC = () => {
     if (!currentOrder) return;
     try {
       await updatePaymentStatus(currentOrder.id, newStatus);
-      setIsModalOpen(false);
+      setCurrentOrder(prev => prev ? { ...prev, paymentStatus: newStatus as Order['paymentStatus'] } : prev);
       fetchOrders();
       addNotification('success', 'Statut de paiement mis à jour');
+      if (newStatus !== 'PAID') {
+        setIsModalOpen(false);
+      }
     } catch (error) {
       logger.error('Failed to update payment status', error);
       addNotification('error', 'Erreur lors de la mise à jour du statut de paiement');
