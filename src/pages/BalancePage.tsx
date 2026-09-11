@@ -425,7 +425,7 @@ const BalancePage: React.FC = () => {
                               <Wallet size={18} className={paymentMethod === 'HELLOASSO' && amountNum >= 0.50 ? 'text-white' : 'text-gray-400'} />
                             </div>
                             <div>
-                              <p className="font-bold text-white">HelloAsso</p>
+                              <p className="font-bold text-white">En ligne</p>
                               {amountNum < 0.50 ? (
                                 <p className="text-xs text-orange-400">Min. 0.50€</p>
                               ) : (

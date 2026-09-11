@@ -438,7 +438,7 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
                       }`}>
                         <Wallet size={14} className={paymentMethod === 'HELLOASSO' && totalPrice >= 0.50 ? 'text-white' : 'text-gray-400'} />
                       </div>
-                      <p className="font-bold text-white text-xs">HelloAsso</p>
+                      <p className="font-bold text-white text-xs">En ligne</p>
                       {totalPrice < 0.50 ? (
                         <p className="text-[10px] text-orange-400">Min. 0.50€</p>
                       ) : (
