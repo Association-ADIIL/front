@@ -494,7 +494,7 @@ const AdminCaissePage: React.FC = () => {
         </div>
 
         {/* ── Colonne panier ── */}
-        <div className={`md:w-72 md:flex-shrink-0 flex-col bg-slate-800/30 border border-slate-700/30 rounded-2xl overflow-hidden relative ${mobileTab === 'cart' ? 'flex flex-1' : 'hidden md:flex'}`}>
+        <div className={`md:w-72 md:flex-shrink-0 flex-col bg-slate-800/30 border border-slate-700/30 rounded-2xl overflow-hidden relative ${mobileTab === 'cart' ? 'flex flex-1' : 'hidden md:flex'}`} style={{ maxHeight: 'calc(100dvh - 80px - 56px)' }}>
           {confirmation && (
             <ConfirmationOverlay order={confirmation} onDone={handleConfirmationDone} />
           )}
@@ -516,7 +516,7 @@ const AdminCaissePage: React.FC = () => {
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2 pb-20 md:pb-2" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(100,116,139,0.3) transparent' }}>
+          <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2 pb-2" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(100,116,139,0.3) transparent' }}>
             {cart.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-slate-600 text-xs text-center py-8">
                 <ShoppingCart size={28} className="mb-2 opacity-30" />
