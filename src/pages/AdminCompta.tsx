@@ -335,7 +335,7 @@ function AchatModal({ initial, defaultDate, products, achatCategories, fournisse
         </div>
 
         <div className="p-5 space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Date</label>
               <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputCls} />
@@ -351,7 +351,7 @@ function AchatModal({ initial, defaultDate, products, achatCategories, fournisse
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Catégorie Magasin</label>
               <select value={fournisseurCategorie} onChange={(e) => setFournisseurCategorie(e.target.value)} className={inputCls}>
@@ -380,8 +380,8 @@ function AchatModal({ initial, defaultDate, products, achatCategories, fournisse
                   ).slice(0, 6)
                 : [];
               return (
-                <div key={it.uid} className="flex gap-2 items-start">
-                  <div className="relative flex-1 min-w-[180px]">
+                <div key={it.uid} className="flex flex-col sm:flex-row gap-2 sm:items-start bg-dark-bg/30 sm:bg-transparent rounded-lg p-2 sm:p-0 border border-gray-800/60 sm:border-0">
+                  <div className="relative flex-1 min-w-0 sm:min-w-[140px]">
                     <input
                       type="text"
                       placeholder="Rechercher un produit…"
@@ -407,33 +407,35 @@ function AchatModal({ initial, defaultDate, products, achatCategories, fournisse
                       </div>
                     )}
                   </div>
-                  <input
-                      type="number" min="1" step="1" placeholder="Nb paquets"
-                      value={it.nbPaquets}
-                      disabled={isEdit}
-                      onChange={(e) => updateItem(it.uid, { nbPaquets: e.target.value })}
-                      className={`${inputCls} w-24`}
-                  />
-                  <input
-                      type="number" min="1" step="1" placeholder="Qté/paquet"
-                      value={it.nbParPaquet}
-                      disabled={isEdit}
-                      onChange={(e) => updateItem(it.uid, { nbParPaquet: e.target.value })}
-                      className={`${inputCls} w-24`}
-                  />
-                  <input
-                      type="number" min="0" step="0.01" placeholder="Prix paquet"
-                      value={it.prixPaquet}
-                      disabled={isEdit}
-                      onChange={(e) => updateItem(it.uid, { prixPaquet: e.target.value })}
-                      className={`${inputCls} w-28`}
-                  />
+                  <div className="grid grid-cols-3 gap-2 sm:contents">
+                    <input
+                        type="number" min="1" step="1" placeholder="Nb paquets"
+                        value={it.nbPaquets}
+                        disabled={isEdit}
+                        onChange={(e) => updateItem(it.uid, { nbPaquets: e.target.value })}
+                        className={`${inputCls} sm:w-24`}
+                    />
+                    <input
+                        type="number" min="1" step="1" placeholder="Qté/paquet"
+                        value={it.nbParPaquet}
+                        disabled={isEdit}
+                        onChange={(e) => updateItem(it.uid, { nbParPaquet: e.target.value })}
+                        className={`${inputCls} sm:w-24`}
+                    />
+                    <input
+                        type="number" min="0" step="0.01" placeholder="Prix paquet"
+                        value={it.prixPaquet}
+                        disabled={isEdit}
+                        onChange={(e) => updateItem(it.uid, { prixPaquet: e.target.value })}
+                        className={`${inputCls} sm:w-28`}
+                    />
+                  </div>
                   {!isEdit && (
                     <button
                       type="button"
                       onClick={() => removeItem(it.uid)}
                       disabled={itemsState.length === 1}
-                      className="p-2 text-gray-600 hover:text-red-400 transition-colors rounded-lg hover:bg-red-500/10 disabled:opacity-30"
+                      className="self-end sm:self-start p-2 text-gray-600 hover:text-red-400 transition-colors rounded-lg hover:bg-red-500/10 disabled:opacity-30"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -592,20 +594,20 @@ export default function ComptabilitePage() {
     <div className="space-y-6">
 
     <div className="fixed top-0 left-0 md:left-[300px] right-0 z-30 bg-dark-bg/95 backdrop-blur-sm border-b border-gray-800 px-4 py-3 space-y-3">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Comptabilité</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Suivi financier de la supérette</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-white">Comptabilité</h1>
+          <p className="text-sm text-gray-500 mt-0.5 hidden sm:block">Suivi financier de la supérette</p>
         </div>
 
-        <div className="flex items-center gap-2 bg-dark-bg/60 border border-gray-800 rounded-xl px-3 py-2">
+        <div className="flex items-center gap-2 bg-dark-bg/60 border border-gray-800 rounded-xl px-3 py-2 self-start sm:self-auto">
           <button
             onClick={() => setMonthOffset((o) => o - 1)}
             className="p-1 text-gray-500 hover:text-white transition-colors"
           >
             <ChevronLeft size={16} />
           </button>
-          <span className="text-sm font-medium text-white capitalize min-w-[140px] text-center">
+          <span className="text-sm font-medium text-white capitalize min-w-[110px] sm:min-w-[140px] text-center">
             {periode.label}
           </span>
           <button
@@ -624,7 +626,8 @@ export default function ComptabilitePage() {
           </button>
         </div>
       </div>
-      <div className="flex gap-1 bg-dark-bg/60 border border-gray-800 rounded-xl p-1 w-fit">
+      <div className="-mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-700">
+        <div className="flex gap-1 bg-dark-bg/60 border border-gray-800 rounded-xl p-1 w-max sm:w-fit">
               {([
                 ['dashboard', 'Vue d\'ensemble'],
                 ['achats', 'Achats'],
@@ -635,7 +638,7 @@ export default function ComptabilitePage() {
                 <button
                   key={key}
                   onClick={() => setTab(key)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
+                  className={`px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 whitespace-nowrap ${
                     tab === key
                       ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                       : 'text-gray-500 hover:text-white'
@@ -645,10 +648,11 @@ export default function ComptabilitePage() {
                 </button>
               ))}
             </div>
+          </div>
           </div>{/* fin fixed header */}
 
           {/* Spacer pour compenser le header fixed */}
-          <div className="h-32" />
+          <div className="h-[104px] sm:h-32" />
 
       {error && (
         <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-400 text-sm">
@@ -927,14 +931,14 @@ function AchatsTab({ achats, deletingId, achatCategories, onAdd, onEdit, onDelet
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <p className="text-sm text-gray-500">
           {achats.length} entrée{achats.length !== 1 ? 's' : ''} ·{' '}
           <span className="text-white font-medium">{eur(total)}</span> total
         </p>
         <button
           onClick={onAdd}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-xl text-sm font-medium hover:bg-emerald-500/30 transition-colors"
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-xl text-sm font-medium hover:bg-emerald-500/30 transition-colors"
         >
           <Plus size={15} /> Saisir un achat
         </button>
@@ -952,8 +956,8 @@ function AchatsTab({ achats, deletingId, achatCategories, onAdd, onEdit, onDelet
           </button>
         </div>
       ) : (
-        <div className="bg-dark-bg/60 border border-gray-800 rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-dark-bg/60 border border-gray-800 rounded-xl overflow-x-auto">
+          <table className="w-full text-sm min-w-[640px]">
             <thead>
               <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
                 <th className="text-left px-4 py-3 font-medium">Date</th>
@@ -1201,8 +1205,8 @@ function stockBadge(stock: number) {
               <Loader2 size={28} className="animate-spin text-emerald-400" />
             </div>
           ) : (
-            <div className="bg-dark-bg/60 border border-gray-800 rounded-xl overflow-hidden">
-              <table className="w-full text-sm">
+            <div className="bg-dark-bg/60 border border-gray-800 rounded-xl overflow-x-auto">
+              <table className="w-full text-sm min-w-[760px]">
                 <thead>
                   <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
                     <th className="text-left px-4 py-3 font-medium">Produit</th>
@@ -1602,14 +1606,14 @@ function TresoreriePanel({ mois, annee }: { mois: number; annee: number }) {
 
           {/* Valeur enregistrée */}
           {caisseMode === 'view' && soldeCaisse != null && (
-            <div className="flex items-center justify-between bg-dark-bg border border-gray-800 rounded-xl px-4 py-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-dark-bg border border-gray-800 rounded-xl px-4 py-3">
               <div className="space-y-0.5">
                 <p className="text-xs text-gray-500">Solde saisi ce mois</p>
                 <p className="text-2xl font-bold text-emerald-400">{eur(soldeCaisse)}</p>
               </div>
               <button
                 onClick={() => setCaisseMode('edit')}
-                className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 rounded-lg text-xs transition-colors"
+                className="flex items-center justify-center gap-1.5 px-3 py-1.5 border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 rounded-lg text-xs transition-colors self-start sm:self-auto"
               >
                 <Pencil size={12} /> Modifier
               </button>
@@ -1623,7 +1627,7 @@ function TresoreriePanel({ mois, annee }: { mois: number; annee: number }) {
                 <p className="text-xs text-gray-500">Aucun relevé de caisse ce mois-ci.</p>
               )}
               <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1 w-full sm:w-auto">
                   <label className="text-xs text-gray-500">Solde total constaté (€)</label>
                   <input
                     type="number"
@@ -1633,14 +1637,14 @@ function TresoreriePanel({ mois, annee }: { mois: number; annee: number }) {
                     value={soldeCaisseInput}
                     onChange={(e) => setSoldeCaisseInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') handleCaisseSave(); }}
-                    className={`${inputCls} w-36`}
+                    className={`${inputCls} w-full sm:w-36`}
                     autoFocus={caisseMode === 'edit'}
                   />
                 </div>
                 <button
                   onClick={handleCaisseSave}
                   disabled={caisseSaving || !soldeCaisseInput || parseFloat(soldeCaisseInput) < 0}
-                  className="flex items-center gap-2 px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-lg text-sm font-medium hover:bg-emerald-500/30 transition-colors disabled:opacity-50"
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-lg text-sm font-medium hover:bg-emerald-500/30 transition-colors disabled:opacity-50 w-full sm:w-auto"
                 >
                   {caisseSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                   Enregistrer
@@ -1648,7 +1652,7 @@ function TresoreriePanel({ mois, annee }: { mois: number; annee: number }) {
                 {caisseMode === 'edit' && soldeCaisse != null && (
                   <button
                     onClick={() => { setCaisseMode('view'); setSoldeCaisseInput(String(soldeCaisse)); }}
-                    className="flex items-center gap-1.5 px-3 py-2 border border-gray-700 text-gray-500 hover:text-white rounded-lg text-sm transition-colors"
+                    className="flex items-center justify-center gap-1.5 px-3 py-2 border border-gray-700 text-gray-500 hover:text-white rounded-lg text-sm transition-colors w-full sm:w-auto"
                   >
                     <X size={14} /> Annuler
                   </button>
@@ -1691,7 +1695,7 @@ function TresoreriePanel({ mois, annee }: { mois: number; annee: number }) {
           {/* Formulaire ajout */}
           <div className="space-y-3">
             <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1 w-full sm:w-auto">
                 <label className="text-xs text-gray-500">Montant à déposer (€)</label>
                 <input
                   type="number"
@@ -1701,13 +1705,13 @@ function TresoreriePanel({ mois, annee }: { mois: number; annee: number }) {
                   value={depotMontant}
                   onChange={(e) => setDepotMontant(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleDepotAdd(); }}
-                  className={`${inputCls} w-36`}
+                  className={`${inputCls} w-full sm:w-36`}
                 />
               </div>
               <button
                 onClick={handleDepotAdd}
                 disabled={depotSaving || !depotMontant || parseFloat(depotMontant) <= 0}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-500/20 border border-blue-500/30 text-blue-400 rounded-lg text-sm font-medium hover:bg-blue-500/30 transition-colors disabled:opacity-50"
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-500/20 border border-blue-500/30 text-blue-400 rounded-lg text-sm font-medium hover:bg-blue-500/30 transition-colors disabled:opacity-50 w-full sm:w-auto"
               >
                 {depotSaving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
                 Ajouter un dépôt
@@ -1733,7 +1737,8 @@ function TresoreriePanel({ mois, annee }: { mois: number; annee: number }) {
             {depots.length === 0 ? (
               <p className="text-gray-600 text-sm px-4 py-5">Aucun dépôt ce mois-ci.</p>
             ) : (
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[380px]">
                 <thead>
                   <tr className="border-b border-gray-800">
                     <th className="text-left px-4 py-2 text-xs text-gray-500 font-medium">Date</th>
@@ -1787,7 +1792,7 @@ function TresoreriePanel({ mois, annee }: { mois: number; annee: number }) {
                       {/* Actions */}
                       <td className="px-4 py-3">
                         {editId !== d.id && (
-                          <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex items-center justify-end gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                             <button
                               onClick={() => startEdit(d)}
                               className="text-gray-500 hover:text-white transition-colors"
@@ -1812,6 +1817,7 @@ function TresoreriePanel({ mois, annee }: { mois: number; annee: number }) {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
         </div>
@@ -1890,17 +1896,17 @@ function CategorieListEditor({
               key={c.value}
               className="flex items-center justify-between bg-dark-bg/40 border border-gray-800/60 rounded-lg px-3 py-2"
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0">
                 <span
-                  className="w-2.5 h-2.5 rounded-full"
+                  className="w-2.5 h-2.5 rounded-full shrink-0"
                   style={{ backgroundColor: getCategorieColor(c.value) }}
                 />
-                <span className="text-sm text-gray-200">{c.label}</span>
+                <span className="text-sm text-gray-200 truncate">{c.label}</span>
               </div>
               <button
                 onClick={() => handleRemove(c.value)}
                 disabled={removingValue === c.value}
-                className="p-1.5 text-gray-600 hover:text-red-400 transition-colors rounded-lg hover:bg-red-500/10 disabled:opacity-50"
+                className="p-1.5 text-gray-600 hover:text-red-400 transition-colors rounded-lg hover:bg-red-500/10 disabled:opacity-50 shrink-0"
               >
                 {removingValue === c.value
                   ? <Loader2 size={13} className="animate-spin" />
@@ -1912,7 +1918,7 @@ function CategorieListEditor({
         </div>
       )}
 
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <input
           type="text"
           placeholder="Nouvelle catégorie…"
@@ -1924,7 +1930,7 @@ function CategorieListEditor({
         <button
           onClick={handleAdd}
           disabled={saving || !newLabel.trim()}
-          className="flex items-center gap-1 px-3 py-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-lg text-sm font-medium hover:bg-emerald-500/30 transition-colors disabled:opacity-50"
+          className="flex items-center justify-center gap-1 px-3 py-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-lg text-sm font-medium hover:bg-emerald-500/30 transition-colors disabled:opacity-50"
         >
           {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
         </button>
