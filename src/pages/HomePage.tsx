@@ -182,8 +182,6 @@ const HomePage: React.FC = () => {
             <div className="order-1 lg:order-2 relative">
               {/* Floating cards stack */}
               <div className="relative h-[400px] lg:h-[500px]">
-                {/* Background decorative card */}
-                <div className="absolute top-8 right-0 w-[280px] sm:w-[320px] h-[200px] bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-2xl border border-gray-700/50 transform rotate-6 translate-x-4" />
 
                 {/* Main event preview card */}
                 {nextEvent && (
