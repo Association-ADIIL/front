@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getAllUsers } from '../api/users';
 import { getAllEvents, type Event } from '../api/events';
-import { getAllOrders, updateOrderStatus, type Order } from '../api/orders';
+import { getAllOrders, updateOrderStatus, updatePaymentStatus, type Order } from '../api/orders';
 import { getAllInscriptions, type Inscription } from '../api/inscriptions';
 import { getBalanceStats, type BalanceStats } from '../api/balance';
 import { useNavigate } from 'react-router-dom';
@@ -41,6 +41,7 @@ const AdminDashboardPage: React.FC = () => {
   const handleMarkCollected = async (orderId: number) => {
     setConfirmLoading(true);
     try {
+      await updatePaymentStatus(orderId, 'PAID');
       await updateOrderStatus(orderId, 'COLLECTED');
       setOrdersToCollect(prev => prev.filter(o => o.id !== orderId));
       setConfirmOrderId(null);
