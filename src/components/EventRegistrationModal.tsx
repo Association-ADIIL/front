@@ -7,6 +7,7 @@ import { X, CreditCard, Wallet, Banknote, Users, Minus, Plus, ChevronRight, Aler
 import LegalAcceptance from './LegalAcceptance';
 import { logger } from '../utils/logger';
 import { getErrorMessage } from '../types/errors';
+import { useAuth } from '../context/AuthContext';
 
 interface EventRegistrationModalProps {
   isOpen: boolean;
@@ -25,6 +26,9 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
   const [userBalance, setUserBalance] = useState<number>(0);
   const [legalAccepted, setLegalAccepted] = useState(false);
   const { addNotification } = useNotification();
+  const { user } = useAuth();
+
+  const isOnSitePaymentBlocked = !!event.restrictOnSitePaymentToInfo && user?.filiere !== 'INFO';
 
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -105,7 +109,12 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
     if (paymentMethod === 'BALANCE' && !hasEnoughBalance) {
       setPaymentMethod('HELLOASSO');
     }
-  }, [totalPrice, paymentMethod, hasEnoughBalance]);
+
+    // Auto-switch away from on-site payment methods if restricted to Filière Info
+    if (isOnSitePaymentBlocked && (paymentMethod === 'CASH' || paymentMethod === 'CB')) {
+      setPaymentMethod('HELLOASSO');
+    }
+  }, [totalPrice, paymentMethod, hasEnoughBalance, isOnSitePaymentBlocked]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -447,52 +456,56 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
                     </button>
 
                     {/* CASH */}
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('CASH')}
-                      className={`relative p-3 rounded-xl border-2 transition-all text-left ${
-                        paymentMethod === 'CASH'
-                          ? 'border-indigo-500 bg-indigo-500/10'
-                          : 'border-gray-800 bg-dark-bg hover:border-gray-700'
-                      }`}
-                    >
-                      {paymentMethod === 'CASH' && (
-                        <div className="absolute top-2 right-2 w-4 h-4 bg-indigo-500 rounded-full flex items-center justify-center">
-                          <CheckCircle2 size={10} className="text-white" />
+                    {!isOnSitePaymentBlocked && (
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('CASH')}
+                        className={`relative p-3 rounded-xl border-2 transition-all text-left ${
+                          paymentMethod === 'CASH'
+                            ? 'border-indigo-500 bg-indigo-500/10'
+                            : 'border-gray-800 bg-dark-bg hover:border-gray-700'
+                        }`}
+                      >
+                        {paymentMethod === 'CASH' && (
+                          <div className="absolute top-2 right-2 w-4 h-4 bg-indigo-500 rounded-full flex items-center justify-center">
+                            <CheckCircle2 size={10} className="text-white" />
+                          </div>
+                        )}
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${
+                          paymentMethod === 'CASH' ? 'bg-indigo-500' : 'bg-gray-800'
+                        }`}>
+                          <CreditCard size={14} className={paymentMethod === 'CASH' ? 'text-white' : 'text-gray-400'} />
                         </div>
-                      )}
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${
-                        paymentMethod === 'CASH' ? 'bg-indigo-500' : 'bg-gray-800'
-                      }`}>
-                        <CreditCard size={14} className={paymentMethod === 'CASH' ? 'text-white' : 'text-gray-400'} />
-                      </div>
-                      <p className="font-bold text-white text-xs">Sur place</p>
-                      <p className="text-[10px] text-gray-500">Espèces</p>
-                    </button>
+                        <p className="font-bold text-white text-xs">Sur place</p>
+                        <p className="text-[10px] text-gray-500">Espèces</p>
+                      </button>
+                    )}
 
                     {/*CB */}
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('CB')}
-                      className={`relative p-3 rounded-xl border-2 transition-all text-left ${
-                        paymentMethod === 'CB'
-                          ? 'border-green-500 bg-green-500/10'
-                          : 'border-gray-800 bg-dark-bg hover:border-gray-700'
-                      }`}
-                    >
-                      {paymentMethod === 'CB' && (
-                        <div className="absolute top-2 right-2 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                          <CheckCircle2 size={10} className="text-white" />
+                    {!isOnSitePaymentBlocked && (
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('CB')}
+                        className={`relative p-3 rounded-xl border-2 transition-all text-left ${
+                          paymentMethod === 'CB'
+                            ? 'border-green-500 bg-green-500/10'
+                            : 'border-gray-800 bg-dark-bg hover:border-gray-700'
+                        }`}
+                      >
+                        {paymentMethod === 'CB' && (
+                          <div className="absolute top-2 right-2 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                            <CheckCircle2 size={10} className="text-white" />
+                          </div>
+                        )}
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${
+                          paymentMethod === 'CB' ? 'bg-green-500' : 'bg-gray-800'
+                        }`}>
+                          <Banknote size={14} className={paymentMethod === 'CB' ? 'text-white' : 'text-gray-400'} />
                         </div>
-                      )}
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${
-                        paymentMethod === 'CB' ? 'bg-green-500' : 'bg-gray-800'
-                      }`}>
-                        <Banknote size={14} className={paymentMethod === 'CB' ? 'text-white' : 'text-gray-400'} />
-                      </div>
-                      <p className="font-bold text-white text-xs">Sur place</p>
-                      <p className="text-[10px] text-gray-500">CB</p>
-                    </button>
+                        <p className="font-bold text-white text-xs">Sur place</p>
+                        <p className="text-[10px] text-gray-500">CB</p>
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

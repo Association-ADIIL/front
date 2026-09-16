@@ -47,6 +47,7 @@ const EventManagementPage: React.FC = () => {
     coverImage: '',
     status: 'OPEN',
     visibility: 'PUBLIC',
+    restrictOnSitePaymentToInfo: false,
     formFields: []
   });
 
@@ -97,6 +98,7 @@ const EventManagementPage: React.FC = () => {
       coverImage: '',
       status: 'OPEN',
       visibility: 'PUBLIC',
+      restrictOnSitePaymentToInfo: false,
       formFields: []
     });
     setNewField({
@@ -123,6 +125,7 @@ const EventManagementPage: React.FC = () => {
       coverImage: event.coverImage || '',
       status: event.status,
       visibility: event.visibility,
+      restrictOnSitePaymentToInfo: event.restrictOnSitePaymentToInfo ?? false,
       formFields: event.formFields || []
     });
     setNewField({
@@ -594,6 +597,17 @@ const EventManagementPage: React.FC = () => {
                 <option value="PRIVATE">Privé</option>
                 <option value="DRAFT">Brouillon</option>
               </select>
+            </div>
+            <div className="md:col-span-2 flex items-center">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.restrictOnSitePaymentToInfo || false}
+                  onChange={(e) => setFormData(prev => ({ ...prev, restrictOnSitePaymentToInfo: e.target.checked }))}
+                  className="mr-2 h-4 w-4 accent-purple-400"
+                />
+                <span className="text-sm text-white">Réserver le paiement sur place à la filière Info</span>
+              </label>
             </div>
             <div className="md:col-span-2">
               <ImageUpload

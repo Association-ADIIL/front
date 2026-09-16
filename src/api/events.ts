@@ -26,12 +26,14 @@ export interface Event {
   formFields?: EventFormField[];
   createdAt?: string;
   updatedAt?: string;
+  restrictOnSitePaymentToInfo?: boolean;
 }
 
 export type EventFormData = Omit<Event, 'id' | 'registeredPeople'> & {
   status?: 'OPEN' | 'FULL' | 'CLOSED' | 'FINISHED';
   visibility?: 'PUBLIC' | 'PRIVATE' | 'DRAFT';
   formFields?: EventFormField[];
+  restrictOnSitePaymentToInfo?: boolean;
 };
 
 export const getAllEvents = async (): Promise<Event[]> => {
