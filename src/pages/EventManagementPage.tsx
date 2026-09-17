@@ -48,7 +48,8 @@ const EventManagementPage: React.FC = () => {
     status: 'OPEN',
     visibility: 'PUBLIC',
     restrictOnSitePaymentToInfo: false,
-    formFields: []
+    formFields: [],
+    options: []
   });
 
   const [newField, setNewField] = useState<Omit<EventFormField, 'id'>>({
@@ -99,7 +100,8 @@ const EventManagementPage: React.FC = () => {
       status: 'OPEN',
       visibility: 'PUBLIC',
       restrictOnSitePaymentToInfo: false,
-      formFields: []
+      formFields: [],
+      options: []
     });
     setNewField({
       label: '',
@@ -126,8 +128,14 @@ const EventManagementPage: React.FC = () => {
       status: event.status,
       visibility: event.visibility,
       restrictOnSitePaymentToInfo: event.restrictOnSitePaymentToInfo ?? false,
-      formFields: event.formFields || []
-    });
+      formFields: event.formFields || [],
+      options: (event.options || []).map(o => ({
+        id: o.id,
+        name: o.name,
+        isPaid: o.isPaid ?? false,
+        price: o.price ?? 0
+      }))
+      });
     setNewField({
       label: '',
       type: 'TEXT',
@@ -239,6 +247,13 @@ const EventManagementPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const invalidOption = (formData.options || []).find(o => o.isPaid && (!o.price || o.price <= 0));
+    if (invalidOption) {
+      addNotification('error', `L'option "${invalidOption.name || 'sans nom'}" doit avoir un prix superieur a 0.`);
+      return;
+    }
+
     try {
       // Format dates to ISO strings with time if needed by backend,
       // but usually the datetime-local value is close enough or needs explicit conversion
@@ -378,6 +393,29 @@ const EventManagementPage: React.FC = () => {
 
   const handleRemoveOption = (index: number) => {
     setNewField(prev => ({
+      ...prev,
+      options: (prev.options || []).filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleAddEventOption = () => {
+    setFormData(prev => ({
+      ...prev,
+      options: [...(prev.options || []), { name: '', isPaid: false, price: 0 }]
+    }));
+  };
+
+  const handleUpdateEventOption = (index: number, field: 'name' | 'isPaid' | 'price', value: string | number | boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      options: (prev.options || []).map((opt, i) =>
+        i === index ? { ...opt, [field]: value } : opt
+      )
+    }));
+  };
+
+  const handleRemoveEventOption = (index: number) => {
+    setFormData(prev => ({
       ...prev,
       options: (prev.options || []).filter((_, i) => i !== index)
     }));
@@ -715,17 +753,72 @@ const EventManagementPage: React.FC = () => {
                   )}
                 </div>
                 <button
-                  type="button"
-                  onClick={handleAddFormField}
-                  className="mt-3 bg-purple-400 text-darker-bg font-bold py-2 px-4 rounded hover:bg-white transition-colors text-sm"
-                >
-                  Ajouter ce champ
-                </button>
-              </div>
-            </div>
-          </div>
-        </form>
-      </Modal>
+                                  type="button"
+                                  onClick={handleAddFormField}
+                                  className="mt-3 bg-purple-400 text-darker-bg font-bold py-2 px-4 rounded hover:bg-white transition-colors text-sm"
+                                >
+                                  Ajouter ce champ
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Event Options Section */}
+                            <div className="md:col-span-2 border-t border-gray-700 pt-4 mt-4">
+                              <h3 className="text-lg font-bold text-white mb-3">Options de l'evenement</h3>
+                              <p className="text-sm text-gray-400 mb-4">Ajoutez des options que les participants pourront choisir a l'inscription (gratuites ou payantes, ex: repas, t-shirt...)</p>
+
+                              {formData.options && formData.options.length > 0 && (
+                                <div className="space-y-2 mb-4">
+                                  {formData.options.map((option, index) => (
+                                    <div key={option.id ?? `new-${index}`} className="flex flex-col sm:flex-row sm:items-center gap-2 bg-dark-bg p-3 rounded border border-gray-700">
+                                      <input
+                                        type="text"
+                                        value={option.name}
+                                        onChange={(e) => handleUpdateEventOption(index, 'name', e.target.value)}
+                                        placeholder="Nom de l'option"
+                                        className="flex-grow bg-darker-bg border border-gray-600 rounded p-2 text-white text-sm"
+                                      />
+                                      <label className="flex items-center cursor-pointer whitespace-nowrap">
+                                        <input
+                                          type="checkbox"
+                                          checked={option.isPaid || false}
+                                          onChange={(e) => handleUpdateEventOption(index, 'isPaid', e.target.checked)}
+                                          className="mr-2 h-4 w-4 accent-purple-400"
+                                        />
+                                        <span className="text-sm text-white">Payante</span>
+                                      </label>
+                                      {option.isPaid && (
+                                        <div className="w-full sm:w-28">
+                                          <NumberInput
+                                            value={option.price || 0}
+                                            onChange={(val) => handleUpdateEventOption(index, 'price', parseFloat(val) || 0)}
+                                            className="w-full bg-darker-bg border border-gray-600 rounded p-2 text-white text-sm"
+                                          />
+                                        </div>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveEventOption(index)}
+                                        className="text-red-400 hover:text-red-300 self-start sm:self-center"
+                                      >
+                                        <X size={18} />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={handleAddEventOption}
+                                className="text-xs bg-gray-700 text-white px-3 py-1 rounded hover:bg-gray-600"
+                              >
+                                + Ajouter une option
+                              </button>
+                            </div>
+                          </div>
+                        </form>
+                      </Modal>
 
       {/* Delete Confirmation Modal */}
       <Modal

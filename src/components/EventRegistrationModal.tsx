@@ -99,7 +99,12 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
     });
   };
 
-  const totalPrice = (event.price * quantity);
+  const optionsPrice = Object.entries(selectedOptions).reduce((sum, [id, qty]) => {
+    const option = event.options?.find(o => o.id === parseInt(id));
+    if (!option || !option.isPaid) return sum;
+    return sum + option.price * qty;
+  }, 0);
+  const totalPrice = (event.price * quantity) + optionsPrice;
   const hasEnoughBalance = userBalance >= totalPrice;
 
   // Auto-switch away from HelloAsso if total is below 0.50
@@ -311,7 +316,10 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
                           onChange={(e) => handleOptionChange(option.id, e.target.checked)}
                           className="hidden"
                         />
-                        <span className="text-white text-sm">{option.name}</span>
+                        <span className="text-white text-sm flex-1">{option.name}</span>
+                        {option.isPaid && (
+                          <span className="text-accent-mint text-sm font-bold ml-2">+{option.price.toFixed(2)}€</span>
+                        )}
                       </label>
                     ))}
                   </div>

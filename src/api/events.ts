@@ -22,18 +22,20 @@ export interface Event {
   coverImage?: string;
   status: 'OPEN' | 'FULL' | 'CLOSED' | 'FINISHED';
   visibility: 'PUBLIC' | 'PRIVATE' | 'DRAFT';
-  options?: { id: number; name: string; price?: number }[];
+  options?: { id: number; name: string; isPaid?: boolean; price?: number }[];
   formFields?: EventFormField[];
   createdAt?: string;
   updatedAt?: string;
   restrictOnSitePaymentToInfo?: boolean;
 }
 
-export type EventFormData = Omit<Event, 'id' | 'registeredPeople'> & {
+
+export type EventFormData = Omit<Event, 'id' | 'registeredPeople' | 'options'> & {
   status?: 'OPEN' | 'FULL' | 'CLOSED' | 'FINISHED';
   visibility?: 'PUBLIC' | 'PRIVATE' | 'DRAFT';
   formFields?: EventFormField[];
   restrictOnSitePaymentToInfo?: boolean;
+  options?: { id?: number; name: string; isPaid?: boolean; price?: number }[];
 };
 
 export const getAllEvents = async (): Promise<Event[]> => {
