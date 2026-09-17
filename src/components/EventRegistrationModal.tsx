@@ -102,7 +102,7 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
   const optionsPrice = Object.entries(selectedOptions).reduce((sum, [id, qty]) => {
     const option = event.options?.find(o => o.id === parseInt(id));
     if (!option || !option.isPaid) return sum;
-    return sum + option.price * qty;
+    return sum + (option.price ?? 0) * qty;
   }, 0);
   const totalPrice = (event.price * quantity) + optionsPrice;
   const hasEnoughBalance = userBalance >= totalPrice;
@@ -318,7 +318,7 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
                         />
                         <span className="text-white text-sm flex-1">{option.name}</span>
                         {option.isPaid && (
-                          <span className="text-accent-mint text-sm font-bold ml-2">+{option.price.toFixed(2)}€</span>
+                         <span className="text-accent-mint text-sm font-bold ml-2">+{(option.price ?? 0).toFixed(2)}€</span>
                         )}
                       </label>
                     ))}
