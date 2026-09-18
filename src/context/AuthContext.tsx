@@ -90,7 +90,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       logger.auth('login_google', true);
 
       if (response.isNewUser) {
-        redirectAfterAuth('/complete-profile');
+        navigate('/complete-profile');
       } else {
         redirectAfterAuth('/my-account');
       }
