@@ -1,75 +1,88 @@
-# React + TypeScript + Vite
+# adiil.fr — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Site web et interface d'administration de l'**ADIIL**, association étudiante, développés en React.
 
-Currently, two official plugins are available:
+🔗 Site en production : [adiil.fr](https://adiil.fr)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🎯 À propos du projet
 
-## React Compiler
+Ce dépôt contient le frontend du site vitrine et du panneau d'administration d'ADIIL. Le projet couvre à la fois la partie publique du site et des fonctionnalités d'administration avancées, connectées à une API REST maison.
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+Fonctionnalités notables :
+- **Panneau d'administration** avec authentification JWT, gestion des utilisateurs et des contenus
+- **Système de bannières dynamiques** activables via QR code, avec contrôle d'accès administrateur
+- **Gestion du "Battle Pass"** (Pass de Combat) : suivi des paliers, récompenses et participants, avec des outils d'administration dédiés (révocation premium, gestion des participants)
+- Intégration avec un backend Node.js/Express/Prisma
 
-Note: This will impact Vite dev & build performances.
+## 🛠️ Stack technique
 
-## Expanding the ESLint configuration
+- **React 19** avec le [React Compiler](https://react.dev/learn/react-compiler) activé
+- **TypeScript**
+- **Vite** pour le build et le serveur de développement
+- **TailwindCSS** pour le style
+- **React Router v7** pour la navigation
+- **ESLint** avec règles type-aware pour la qualité du code
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Backend associé : Node.js, Express, Prisma (MySQL), déployé via PM2 et nginx.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## 🚀 Démarrage rapide
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Prérequis
+- Node.js (version LTS recommandée)
+- npm
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Installation
+
+```bash
+git clone https://github.com/Association-ADIIL/adiil-front.git
+cd adiil-front
+npm ci
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Développement
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev
 ```
+
+L'application est alors accessible sur `http://localhost:5173` (port par défaut de Vite).
+
+### Build de production
+
+```bash
+npm run build
+```
+
+### Lint
+
+```bash
+npm run lint
+```
+
+## 📦 Déploiement
+
+Le site est déployé sur un serveur avec nginx en reverse proxy et PM2 pour la gestion des processus. Le build de production (`dist/`) est servi statiquement, pendant que le backend tourne en tâche de fond via PM2.
+
+## 📁 Structure du projet
+
+```
+src/
+├── api/          # Appels et clients API vers le backend
+├── components/   # Composants React réutilisables
+├── context/      # Contextes React (état global, auth, etc.)
+├── hooks/        # Hooks personnalisés
+├── pages/        # Pages / vues de l'application
+├── types/        # Types TypeScript partagés
+├── utils/        # Fonctions utilitaires (dont un logger dédié)
+├── App.tsx       # Composant racine
+└── main.tsx      # Point d'entrée de l'application
+public/           # Assets statiques
+index.html
+vite.config.ts
+tsconfig.json
+eslint.config.js
+```
+
+## 👤 Contribution
+
+Projet développé et maintenu dans le cadre des activités de développement web de l'association **ADIIL**.
