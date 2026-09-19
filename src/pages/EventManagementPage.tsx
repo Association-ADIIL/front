@@ -11,6 +11,12 @@ import { useNotification } from '../context/NotificationContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { useConfirmNavigation } from '../hooks/useConfirmNavigation';
 
+// Convertit une Date en string locale "YYYY-MM-DDTHH:mm" pour <input type="datetime-local">
+const toLocalDatetimeInputValue = (date: Date): string => {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
 const EventManagementPage: React.FC = () => {
   useDocumentTitle('Admin - Events');
   const { addNotification } = useNotification();
@@ -114,16 +120,16 @@ const EventManagementPage: React.FC = () => {
 
   const handleOpenEdit = (event: Event) => {
     setCurrentEvent(event);
-    setDeadlineManuallyEdited(true); // En édition, on considère que la deadline a été définie
+    setDeadlineManuallyEdited(true);
     setFormData({
       title: event.title,
       description: event.description,
-      date: new Date(event.date).toISOString().slice(0, 16), // Format for datetime-local
+      date: toLocalDatetimeInputValue(new Date(event.date)),
       location: event.location,
       price: event.price,
       totalPlaces: event.totalPlaces,
       maxPlacesPerPerson: event.maxPlacesPerPerson,
-      registrationDeadline: new Date(event.registrationDeadline).toISOString().slice(0, 16),
+      registrationDeadline: toLocalDatetimeInputValue(new Date(event.registrationDeadline)),
       coverImage: event.coverImage || '',
       status: event.status,
       visibility: event.visibility,
@@ -135,13 +141,8 @@ const EventManagementPage: React.FC = () => {
         isPaid: o.isPaid ?? false,
         price: o.price ?? 0
       }))
-      });
-    setNewField({
-      label: '',
-      type: 'TEXT',
-      required: false,
-      options: []
     });
+    setNewField({ label: '', type: 'TEXT', required: false, options: [] });
     setIsModalOpen(true);
   };
 
