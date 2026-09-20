@@ -296,7 +296,7 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
                             : 'bg-dark-bg border-gray-800 hover:border-gray-700'
                         }`}
                       >
-                        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center mr-3 transition-colors ${
+                        <div className={`w-5 h-5 flex-shrink-0 rounded-md border-2 flex items-center justify-center mr-3 transition-colors ${
                           selectedPaidFields[field.id]
                             ? 'bg-accent-mint border-accent-mint'
                             : 'border-gray-600'
@@ -310,7 +310,7 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
                           className="hidden"
                         />
                         <span className="text-white text-sm flex-1">{field.label}</span>
-                        <span className="text-accent-mint text-sm font-bold ml-2">+{(field.price ?? 0).toFixed(2)}€</span>
+                        <span className="text-accent-mint text-sm font-bold ml-2 flex-shrink-0">+{(field.price ?? 0).toFixed(2)}€</span>
                       </label>
                     ))}
                   </div>
@@ -367,7 +367,7 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
                               ? 'bg-accent-mint/10 border-accent-mint'
                               : 'bg-dark-bg border-gray-800 hover:border-gray-700'
                           }`}>
-                            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center mr-3 transition-colors ${
+                            <div className={`w-5 h-5 flex-shrink-0 rounded-md border-2 flex items-center justify-center mr-3 transition-colors ${
                               fieldResponses[field.id] === 'true'
                                 ? 'bg-accent-mint border-accent-mint'
                                 : 'border-gray-600'
@@ -380,7 +380,7 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
                               onChange={(e) => setFieldResponses(prev => ({ ...prev, [field.id]: e.target.checked ? 'true' : 'false' }))}
                               className="hidden"
                             />
-                            <span className="text-white text-sm">{field.label}</span>
+                            <span className="text-white text-sm flex-1">{field.label}</span>
                           </label>
                         )}
                       </div>
