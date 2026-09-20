@@ -27,6 +27,7 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
   const [checkingQuota, setCheckingQuota] = useState(false);
   const [userBalance, setUserBalance] = useState<number>(0);
   const [legalAccepted, setLegalAccepted] = useState(false);
+  const [showErrors, setShowErrors] = useState(false);
   const { addNotification } = useNotification();
   const { user } = useAuth();
 
@@ -34,6 +35,13 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
 
   const paidFields = (event.fields || []).filter(f => f.isPaid);
   const answerFields = (event.fields || []).filter(f => !f.isPaid);
+
+  const isFieldMissing = (field: (typeof answerFields)[number]) => {
+    if (!field.required) return false;
+    const value = fieldResponses[field.id];
+    if (field.type === 'CHECKBOX') return value !== 'true';
+    return !value?.trim();
+  };
 
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -44,6 +52,7 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
       setPaymentMethod('HELLOASSO');
       setLoading(false);
       setLegalAccepted(false);
+      setShowErrors(false);
       fetchUserQuota();
       fetchUserBalance();
       document.body.style.overflow = 'hidden';
@@ -125,16 +134,14 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
     if (remainingQuota <= 0) return;
 
     // Validate required answer fields
-        const missingFields = answerFields.filter(field => {
-          if (!field.required) return false;
-          const value = fieldResponses[field.id];
-          if (field.type === 'CHECKBOX') return value !== 'true';
-          return !value?.trim();
-        });
-    if (missingFields.length > 0) {
-      addNotification('error', `Veuillez remplir tous les champs requis`);
-      return;
-    }
+        const missingFields = answerFields.filter(isFieldMissing);
+        if (missingFields.length > 0) {
+          setShowErrors(true);
+          document
+            .getElementById(`field-${missingFields[0].id}`)
+            ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
 
     if (paymentMethod === 'BALANCE' && !hasEnoughBalance) {
       addNotification('error', 'Solde insuffisant');
@@ -325,79 +332,96 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Informations complementaires</label>
                   <div className="space-y-3">
-                    {answerFields.map(field => (
-                      <div key={field.id}>
-                                                {field.type !== 'CHECKBOX' && (
-                                                  <label className="block text-sm text-gray-400 mb-2">
-                                                    {field.label}
-                                                    {field.required && <span className="text-red-400 ml-1">*</span>}
-                                                  </label>
-                                                )}
-                        {field.type === 'TEXT' && (
-                          <input
-                            type="text"
-                            value={fieldResponses[field.id] || ''}
-                            onChange={(e) => setFieldResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
-                            required={field.required}
-                            className="w-full bg-dark-bg border border-gray-800 rounded-xl px-4 py-3 text-white text-sm focus:border-accent-mint focus:outline-none transition-colors"
-                            placeholder={`Entrez ${field.label.toLowerCase()}`}
-                          />
-                        )}
-                        {field.type === 'TEXTAREA' && (
-                          <textarea
-                            value={fieldResponses[field.id] || ''}
-                            onChange={(e) => setFieldResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
-                            required={field.required}
-                            rows={3}
-                            className="w-full bg-dark-bg border border-gray-800 rounded-xl px-4 py-3 text-white text-sm focus:border-accent-mint focus:outline-none transition-colors resize-none"
-                            placeholder={`Entrez ${field.label.toLowerCase()}`}
-                          />
-                        )}
-                        {field.type === 'SELECT' && field.choices && (
-                          <select
-                            value={fieldResponses[field.id] || ''}
-                            onChange={(e) => setFieldResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
-                            required={field.required}
-                            className="w-full bg-dark-bg border border-gray-800 rounded-xl px-4 py-3 text-white text-sm focus:border-accent-mint focus:outline-none transition-colors"
-                          >
-                            <option value="">Choisir une option</option>
-                            {field.choices.map((choice, idx) => (
-                              <option key={idx} value={choice}>{choice}</option>
-                            ))}
-                          </select>
-                        )}
-                        {field.type === 'CHECKBOX' && (
-                          <label className={`flex items-center p-3 rounded-xl border-2 cursor-pointer transition-all ${
-                            fieldResponses[field.id] === 'true'
-                              ? 'bg-accent-mint/10 border-accent-mint'
-                              : 'bg-dark-bg border-gray-800 hover:border-gray-700'
-                          }`}>
-                            <div className={`w-5 h-5 flex-shrink-0 rounded-md border-2 flex items-center justify-center mr-3 transition-colors ${
-                              fieldResponses[field.id] === 'true'
-                                ? 'bg-accent-mint border-accent-mint'
-                                : 'border-gray-600'
-                            }`}>
-                              {fieldResponses[field.id] === 'true' && <Check size={12} className="text-white" />}
-                            </div>
+                    {answerFields.map(field => {
+                      const missing = showErrors && isFieldMissing(field);
+                      return (
+                        <div key={field.id} id={`field-${field.id}`}>
+                          {field.type !== 'CHECKBOX' && (
+                            <label className="block text-sm text-gray-400 mb-2">
+                              {field.label}
+                              {field.required && <span className="text-red-400 ml-1">*</span>}
+                            </label>
+                          )}
+                          {field.type === 'TEXT' && (
                             <input
-                              type="checkbox"
-                              checked={fieldResponses[field.id] === 'true'}
-                                                            onChange={(e) => setFieldResponses(prev => ({ ...prev, [field.id]: e.target.checked ? 'true' : 'false' }))}
-                                                            className="hidden"
-                                                          />
-                                                          <span className="text-white text-sm flex-1">
-                                                            {field.label}
-                                                            {field.required && <span className="text-red-400 ml-1">*</span>}
-                                                          </span>
-                          </label>
-                        )}
-                      </div>
-                    ))}
+                              type="text"
+                              value={fieldResponses[field.id] || ''}
+                              onChange={(e) => setFieldResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
+                              required={field.required}
+                              className={`w-full bg-dark-bg border rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-colors ${
+                                missing ? 'border-red-500' : 'border-gray-800 focus:border-accent-mint'
+                              }`}
+                              placeholder={`Entrez ${field.label.toLowerCase()}`}
+                            />
+                          )}
+                          {field.type === 'TEXTAREA' && (
+                            <textarea
+                              value={fieldResponses[field.id] || ''}
+                              onChange={(e) => setFieldResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
+                              required={field.required}
+                              rows={3}
+                              className={`w-full bg-dark-bg border rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-colors resize-none ${
+                                missing ? 'border-red-500' : 'border-gray-800 focus:border-accent-mint'
+                              }`}
+                              placeholder={`Entrez ${field.label.toLowerCase()}`}
+                            />
+                          )}
+                          {field.type === 'SELECT' && field.choices && (
+                            <select
+                              value={fieldResponses[field.id] || ''}
+                              onChange={(e) => setFieldResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
+                              required={field.required}
+                              className={`w-full bg-dark-bg border rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-colors ${
+                                missing ? 'border-red-500' : 'border-gray-800 focus:border-accent-mint'
+                              }`}
+                            >
+                              <option value="">Choisir une option</option>
+                              {field.choices.map((choice, idx) => (
+                                <option key={idx} value={choice}>{choice}</option>
+                              ))}
+                            </select>
+                          )}
+                          {field.type === 'CHECKBOX' && (
+                            <label className={`flex items-center p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                              fieldResponses[field.id] === 'true'
+                                ? 'bg-accent-mint/10 border-accent-mint'
+                                : missing
+                                  ? 'bg-red-500/10 border-red-500'
+                                  : 'bg-dark-bg border-gray-800 hover:border-gray-700'
+                            }`}>
+                              <div className={`w-5 h-5 flex-shrink-0 rounded-md border-2 flex items-center justify-center mr-3 transition-colors ${
+                                fieldResponses[field.id] === 'true'
+                                  ? 'bg-accent-mint border-accent-mint'
+                                  : missing
+                                    ? 'border-red-500'
+                                    : 'border-gray-600'
+                              }`}>
+                                {fieldResponses[field.id] === 'true' && <Check size={12} className="text-white" />}
+                              </div>
+                              <input
+                                type="checkbox"
+                                checked={fieldResponses[field.id] === 'true'}
+                                onChange={(e) => setFieldResponses(prev => ({ ...prev, [field.id]: e.target.checked ? 'true' : 'false' }))}
+                                className="hidden"
+                              />
+                              <span className="text-white text-sm flex-1">
+                                {field.label}
+                                {field.required && <span className="text-red-400 ml-1">*</span>}
+                              </span>
+                            </label>
+                          )}
+                          {missing && (
+                            <p className="text-red-400 text-xs mt-1.5">
+                              {field.type === 'CHECKBOX' ? 'Vous devez cocher cette case pour continuer' : 'Ce champ est obligatoire'}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
-
-              {/* Payment Method */}
+          {/* Payment Method */}
               {totalPrice > 0 && (
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Mode de paiement</label>
@@ -518,6 +542,12 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
 
         {!checkingQuota && remainingQuota > 0 && (
           <div className="p-5 border-t border-gray-800 bg-dark-bg/50 flex-shrink-0">
+            {showErrors && answerFields.some(isFieldMissing) && (
+              <div className="flex items-center gap-2 mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl">
+                <AlertCircle size={16} className="text-red-400 flex-shrink-0" />
+                <p className="text-red-400 text-sm">Certains champs obligatoires (*) ne sont pas remplis.</p>
+              </div>
+            )}
             <div className="flex items-center justify-between mb-4 p-3 bg-darker-bg rounded-xl border border-gray-800">
               <div>
                 <p className="text-xs text-gray-500">Total a payer</p>
