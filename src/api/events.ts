@@ -27,6 +27,7 @@ export interface Event {
   coverImage?: string;
   status: 'OPEN' | 'FULL' | 'CLOSED' | 'FINISHED';
   visibility: 'PUBLIC' | 'PRIVATE' | 'DRAFT';
+  publishAt?: string | null; // ISO string, vide = publié immédiatement
   fields?: EventField[];
   createdAt?: string;
   updatedAt?: string;

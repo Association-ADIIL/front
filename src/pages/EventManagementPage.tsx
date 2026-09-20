@@ -50,6 +50,7 @@ const EventManagementPage: React.FC = () => {
     coverImage: '',
     status: 'OPEN',
     visibility: 'PUBLIC',
+    publishAt: '',
     restrictOnSitePaymentToInfo: false,
     fields: []
   });
@@ -103,6 +104,7 @@ const EventManagementPage: React.FC = () => {
       coverImage: '',
       status: 'OPEN',
       visibility: 'PUBLIC',
+      publishAt: '',
       restrictOnSitePaymentToInfo: false,
       fields: []
     });
@@ -125,6 +127,7 @@ const EventManagementPage: React.FC = () => {
       coverImage: event.coverImage || '',
       status: event.status,
       visibility: event.visibility,
+      publishAt: event.publishAt ? toLocalDatetimeInputValue(new Date(event.publishAt)) : '',
       restrictOnSitePaymentToInfo: event.restrictOnSitePaymentToInfo ?? false,
       fields: event.fields || []
     });
@@ -241,6 +244,9 @@ const EventManagementPage: React.FC = () => {
           ...formData,
           date: new Date(formData.date).toISOString(),
           registrationDeadline: new Date(formData.registrationDeadline).toISOString(),
+          publishAt: formData.visibility === 'PUBLIC' && formData.publishAt
+            ? new Date(formData.publishAt).toISOString()
+            : null,
       }
 
       if (currentEvent) {
@@ -318,10 +324,11 @@ const EventManagementPage: React.FC = () => {
       return updated;
     });
   };
-
   const isDeadlineAfterEvent = formData.date && formData.registrationDeadline &&
     new Date(formData.registrationDeadline) > new Date(formData.date);
 
+  const isPublishAfterDeadline = formData.visibility === 'PUBLIC' && formData.publishAt && formData.registrationDeadline &&
+    new Date(formData.publishAt) > new Date(formData.registrationDeadline);
   const handleAddField = () => {
     if (!newField.label.trim()) {
       alert('Le label du champ est requis');
@@ -479,6 +486,13 @@ const EventManagementPage: React.FC = () => {
               </div>
             )}
 
+            {event.visibility === 'PUBLIC' && event.publishAt && new Date(event.publishAt) > new Date() && (
+              <div className="mb-2">
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-900/50 text-blue-300 border border-blue-700/50">
+                  Programmé le {new Date(event.publishAt).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+            )}
             <div className="text-sm text-gray-400 mb-1 flex items-center">
                 <Calendar size={14} className="mr-2" />
                 {new Date(event.date).toLocaleDateString()}
@@ -589,6 +603,38 @@ const EventManagementPage: React.FC = () => {
                 <option value="DRAFT">Brouillon</option>
               </select>
             </div>
+            {formData.visibility === 'PUBLIC' && (
+              <div className="md:col-span-2">
+                <label className="block text-gray-400 mb-1">Publier automatiquement le (optionnel)</label>
+                <div className="flex gap-2">
+                  <input
+                    type="datetime-local"
+                    name="publishAt"
+                    value={formData.publishAt || ''}
+                    onChange={handleChange}
+                    max="9999-12-31T23:59"
+                    className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white"
+                  />
+                  {formData.publishAt && (
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, publishAt: '' }))}
+                      className="px-3 text-sm text-gray-300 hover:text-white bg-gray-700 rounded"
+                    >
+                      Effacer
+                    </button>
+                  )}
+                </div>
+                <p className="text-gray-500 text-xs mt-1">
+                  Vide = visible immédiatement. Avant cette date, l'événement reste invisible du public.
+                </p>
+                {isPublishAfterDeadline && (
+                  <p className="text-orange-400 text-xs mt-1">
+                    La publication est après la date limite d'inscription : personne ne pourra s'inscrire.
+                  </p>
+                )}
+              </div>
+            )}
             <div className="md:col-span-2 flex items-center">
               <label className="flex items-center cursor-pointer">
                 <input
