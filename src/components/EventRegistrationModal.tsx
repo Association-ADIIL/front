@@ -125,9 +125,12 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
     if (remainingQuota <= 0) return;
 
     // Validate required answer fields
-    const missingFields = answerFields.filter(
-      field => field.required && !fieldResponses[field.id]?.trim()
-    );
+        const missingFields = answerFields.filter(field => {
+          if (!field.required) return false;
+          const value = fieldResponses[field.id];
+          if (field.type === 'CHECKBOX') return value !== 'true';
+          return !value?.trim();
+        });
     if (missingFields.length > 0) {
       addNotification('error', `Veuillez remplir tous les champs requis`);
       return;
@@ -324,10 +327,12 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
                   <div className="space-y-3">
                     {answerFields.map(field => (
                       <div key={field.id}>
-                        <label className="block text-sm text-gray-400 mb-2">
-                          {field.label}
-                          {field.required && <span className="text-red-400 ml-1">*</span>}
-                        </label>
+                                                {field.type !== 'CHECKBOX' && (
+                                                  <label className="block text-sm text-gray-400 mb-2">
+                                                    {field.label}
+                                                    {field.required && <span className="text-red-400 ml-1">*</span>}
+                                                  </label>
+                                                )}
                         {field.type === 'TEXT' && (
                           <input
                             type="text"
@@ -377,10 +382,13 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
                             <input
                               type="checkbox"
                               checked={fieldResponses[field.id] === 'true'}
-                              onChange={(e) => setFieldResponses(prev => ({ ...prev, [field.id]: e.target.checked ? 'true' : 'false' }))}
-                              className="hidden"
-                            />
-                            <span className="text-white text-sm flex-1">{field.label}</span>
+                                                            onChange={(e) => setFieldResponses(prev => ({ ...prev, [field.id]: e.target.checked ? 'true' : 'false' }))}
+                                                            className="hidden"
+                                                          />
+                                                          <span className="text-white text-sm flex-1">
+                                                            {field.label}
+                                                            {field.required && <span className="text-red-400 ml-1">*</span>}
+                                                          </span>
                           </label>
                         )}
                       </div>
