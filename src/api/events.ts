@@ -1,11 +1,16 @@
 import { fetchJson } from './client';
 
-export interface EventFormField {
+export type EventFieldType = 'TEXT' | 'TEXTAREA' | 'SELECT' | 'CHECKBOX' | 'PAID_OPTION';
+
+export interface EventField {
   id: number;
   label: string;
-  type: 'TEXT' | 'TEXTAREA' | 'SELECT' | 'CHECKBOX';
+  type: EventFieldType;
   required: boolean;
-  options?: string[]; // For SELECT type
+  order?: number;
+  choices?: string[]; // Pour SELECT/CHECKBOX
+  isPaid?: boolean;
+  price?: number;
 }
 
 export interface Event {
@@ -22,20 +27,17 @@ export interface Event {
   coverImage?: string;
   status: 'OPEN' | 'FULL' | 'CLOSED' | 'FINISHED';
   visibility: 'PUBLIC' | 'PRIVATE' | 'DRAFT';
-  options?: { id: number; name: string; isPaid?: boolean; price?: number }[];
-  formFields?: EventFormField[];
+  fields?: EventField[];
   createdAt?: string;
   updatedAt?: string;
   restrictOnSitePaymentToInfo?: boolean;
 }
 
-
-export type EventFormData = Omit<Event, 'id' | 'registeredPeople' | 'options'> & {
+export type EventFormData = Omit<Event, 'id' | 'registeredPeople' | 'fields'> & {
   status?: 'OPEN' | 'FULL' | 'CLOSED' | 'FINISHED';
   visibility?: 'PUBLIC' | 'PRIVATE' | 'DRAFT';
-  formFields?: EventFormField[];
   restrictOnSitePaymentToInfo?: boolean;
-  options?: { id?: number; name: string; isPaid?: boolean; price?: number }[];
+  fields?: EventField[];
 };
 
 export const getAllEvents = async (): Promise<Event[]> => {

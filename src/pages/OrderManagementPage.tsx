@@ -1260,83 +1260,65 @@ const OrderManagementPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* Display selected options and form responses */}
-            {((currentInscription.options && (currentInscription.options as any[]).length > 0) ||
-              currentInscription.formResponses) && (
-              <div className="border-t border-gray-700 pt-4 mt-4">
-                <h3 className="text-lg font-bold mb-3 text-gray-300">Détails de l'inscription</h3>
+                        {/* Display field values (paid fields + answers) */}
+                        {currentInscription.fieldValues && currentInscription.fieldValues.length > 0 && (
+                          <div className="border-t border-gray-700 pt-4 mt-4">
+                            <h3 className="text-lg font-bold mb-3 text-gray-300">Détails de l'inscription</h3>
 
-                {/* Display selected options */}
-                {currentInscription.options && (currentInscription.options as any[]).length > 0 && (
-                  <div className="mb-4">
-                    <h4 className="text-sm font-bold text-gray-400 mb-2">Options sélectionnées:</h4>
-                    <div className="space-y-2">
-                      {(currentInscription.options as any[]).map((option: any, index: number) => {
-                        // Find the option details from the event
-                        const eventOption = currentInscription.event?.options?.find(
-                          (opt: any) => opt.id === option.id
-                        );
+                            {/* Paid fields (ex-options) */}
+                            {currentInscription.fieldValues.filter(fv => fv.field?.isPaid).length > 0 && (
+                              <div className="mb-4">
+                                <h4 className="text-sm font-bold text-gray-400 mb-2">Options sélectionnées:</h4>
+                                <div className="space-y-2">
+                                  {currentInscription.fieldValues
+                                    .filter(fv => fv.field?.isPaid)
+                                    .map((fv) => (
+                                      <div
+                                        key={fv.id}
+                                        className="bg-darker-bg border border-gray-700 rounded p-3"
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-white font-medium">
+                                            {fv.field?.label || `Champ #${fv.fieldId}`}
+                                            {fv.quantity > 1 && <span className="text-gray-400 ml-1">x{fv.quantity}</span>}
+                                          </span>
+                                          <span className="text-green-400 font-bold">
+                                            {(fv.field?.price ?? 0) > 0 ? `+${((fv.field?.price ?? 0) * fv.quantity).toFixed(2)} €` : 'Gratuit'}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    ))}
+                                </div>
+                              </div>
+                            )}
 
-                        return (
-                          <div
-                            key={index}
-                            className="bg-darker-bg border border-gray-700 rounded p-3"
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="text-white font-medium">
-                                {eventOption?.name || option.name || 'Option'}
-                              </span>
-                              <span className="text-green-400 font-bold">
-                                {option.price > 0 ? `+${option.price} €` : 'Gratuit'}
-                              </span>
-                            </div>
+                            {/* Answer fields */}
+                            {currentInscription.fieldValues.filter(fv => !fv.field?.isPaid).length > 0 && (
+                              <div>
+                                <h4 className="text-sm font-bold text-gray-400 mb-2">Réponses au formulaire:</h4>
+                                <div className="space-y-2">
+                                  {currentInscription.fieldValues
+                                    .filter(fv => !fv.field?.isPaid)
+                                    .map((fv) => (
+                                      <div
+                                        key={fv.id}
+                                        className="bg-darker-bg border border-gray-700 rounded p-3"
+                                      >
+                                        <div className="text-xs text-gray-400 mb-1">
+                                          {fv.field?.label || `Question #${fv.fieldId}`}
+                                        </div>
+                                        <div className="text-white">
+                                          {fv.value === 'true' ? 'Oui' :
+                                           fv.value === 'false' ? 'Non' :
+                                           fv.value || 'N/A'}
+                                        </div>
+                                      </div>
+                                    ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Display form responses */}
-                {currentInscription.formResponses && Object.keys(currentInscription.formResponses as any).length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-bold text-gray-400 mb-2">Réponses au formulaire:</h4>
-                    <div className="space-y-2">
-                      {Object.entries(currentInscription.formResponses as any).map(([fieldId, response]: [string, any]) => {
-                        // Find the field details from the event
-                        // Try both string comparison and number comparison
-                        const formField = currentInscription.event?.formFields?.find(
-                          (field: any) => String(field.id) === String(fieldId)
-                        );
-
-                        // Extract value from response (handle both object and primitive values)
-                        let displayValue = response;
-                        if (response && typeof response === 'object' && !Array.isArray(response)) {
-                          displayValue = response.value !== undefined ? response.value : JSON.stringify(response);
-                        }
-
-                        return (
-                          <div
-                            key={fieldId}
-                            className="bg-darker-bg border border-gray-700 rounded p-3"
-                          >
-                            <div className="text-xs text-gray-400 mb-1">
-                              {formField?.label || `Question #${fieldId}`}
-                              {formField?.required && <span className="text-red-400 ml-1">*</span>}
-                            </div>
-                            <div className="text-white">
-                              {typeof displayValue === 'boolean'
-                                ? (displayValue ? 'Oui' : 'Non')
-                                : (displayValue || 'N/A')}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+                        )}
 
             {/* Refund Button - Only for PAID inscriptions with PAYPAL or HELLOASSO */}
             {currentInscription.paymentStatus === 'PAID' &&

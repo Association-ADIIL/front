@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { logger } from '../utils/logger';
-import { getAllEvents, deleteEvent, createEvent, updateEvent, type Event, type EventFormData, type EventFormField } from '../api/events';
+import { getAllEvents, deleteEvent, createEvent, updateEvent, type Event, type EventFormData, type EventField, type EventFieldType } from '../api/events';
 import { Edit2, Trash2, Plus, Calendar, MapPin, Download, X, Search, Users, ChevronDown, ChevronUp, UserMinus } from 'lucide-react';
 import Modal from '../components/Modal';
-import { exportEventInscriptionsCsv, getAllInscriptions, adminUnregisterInscription, type Inscription } from '../api/inscriptions';
+import { exportEventInscriptionsToExcel, getAllInscriptions, adminUnregisterInscription, type Inscription } from '../api/inscriptions';
 import ImageUpload from '../components/ImageUpload';
 import NumberInput from '../components/NumberInput';
 import { deleteImage } from '../api/upload';
@@ -11,7 +11,6 @@ import { useNotification } from '../context/NotificationContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { useConfirmNavigation } from '../hooks/useConfirmNavigation';
 
-// Convertit une Date en string locale "YYYY-MM-DDTHH:mm" pour <input type="datetime-local">
 const toLocalDatetimeInputValue = (date: Date): string => {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
@@ -29,14 +28,12 @@ const EventManagementPage: React.FC = () => {
   const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
   const uploadedImagesRef = useRef<string[]>([]);
 
-  // Inscriptions modal state
   const [isInscriptionsModalOpen, setIsInscriptionsModalOpen] = useState(false);
   const [selectedEventForInscriptions, setSelectedEventForInscriptions] = useState<Event | null>(null);
   const [inscriptions, setInscriptions] = useState<Inscription[]>([]);
   const [loadingInscriptions, setLoadingInscriptions] = useState(false);
   const [expandedInscriptions, setExpandedInscriptions] = useState<Set<number>>(new Set());
 
-  // Unregister modal state
   const [isUnregisterModalOpen, setIsUnregisterModalOpen] = useState(false);
   const [inscriptionToUnregister, setInscriptionToUnregister] = useState<Inscription | null>(null);
   const [unregisterLoading, setUnregisterLoading] = useState(false);
@@ -54,23 +51,20 @@ const EventManagementPage: React.FC = () => {
     status: 'OPEN',
     visibility: 'PUBLIC',
     restrictOnSitePaymentToInfo: false,
-    formFields: [],
-    options: []
+    fields: []
   });
 
-  const [newField, setNewField] = useState<Omit<EventFormField, 'id'>>({
+  const [newField, setNewField] = useState<Omit<EventField, 'id'>>({
     label: '',
     type: 'TEXT',
     required: false,
-    options: []
+    choices: [],
+    isPaid: false,
+    price: 0
   });
 
-  // Track if user manually edited the registration deadline
   const [deadlineManuallyEdited, setDeadlineManuallyEdited] = useState(false);
 
-  // L'événement-modal est "dirty" dès que des champs significatifs sont remplis.
-  // Le Modal gère déjà beforeunload + confirm() sur la croix/overlay ;
-  // ce hook couvre en plus la navigation interne (liens) et le bouton précédent.
   const isEventFormDirty = !!(formData.title || formData.description || formData.location || formData.date);
   useConfirmNavigation(isModalOpen && isEventFormDirty);
 
@@ -89,6 +83,10 @@ const EventManagementPage: React.FC = () => {
     fetchEvents();
   }, []);
 
+  const resetNewField = () => {
+    setNewField({ label: '', type: 'TEXT', required: false, choices: [], isPaid: false, price: 0 });
+  };
+
   const handleOpenCreate = () => {
     setCurrentEvent(null);
     uploadedImagesRef.current = [];
@@ -106,15 +104,9 @@ const EventManagementPage: React.FC = () => {
       status: 'OPEN',
       visibility: 'PUBLIC',
       restrictOnSitePaymentToInfo: false,
-      formFields: [],
-      options: []
+      fields: []
     });
-    setNewField({
-      label: '',
-      type: 'TEXT',
-      required: false,
-      options: []
-    });
+    resetNewField();
     setIsModalOpen(true);
   };
 
@@ -134,15 +126,9 @@ const EventManagementPage: React.FC = () => {
       status: event.status,
       visibility: event.visibility,
       restrictOnSitePaymentToInfo: event.restrictOnSitePaymentToInfo ?? false,
-      formFields: event.formFields || [],
-      options: (event.options || []).map(o => ({
-        id: o.id,
-        name: o.name,
-        isPaid: o.isPaid ?? false,
-        price: o.price ?? 0
-      }))
+      fields: event.fields || []
     });
-    setNewField({ label: '', type: 'TEXT', required: false, options: [] });
+    resetNewField();
     setIsModalOpen(true);
   };
 
@@ -195,11 +181,9 @@ const EventManagementPage: React.FC = () => {
       setIsUnregisterModalOpen(false);
       setInscriptionToUnregister(null);
 
-      // Refresh inscriptions list
       const data = await getAllInscriptions({ eventId: selectedEventForInscriptions.id });
       setInscriptions(data);
 
-      // Refresh events to update registered count
       fetchEvents();
     } catch (error) {
       logger.error('Failed to unregister', error);
@@ -209,10 +193,8 @@ const EventManagementPage: React.FC = () => {
     }
   };
 
-  const getFormFieldLabel = (fieldId: number): string => {
-    if (!selectedEventForInscriptions?.formFields) return `Champ #${fieldId}`;
-    const fields = selectedEventForInscriptions.formFields as EventFormField[];
-    const field = fields.find(f => f.id === fieldId);
+  const getFieldLabel = (fieldId: number): string => {
+    const field = selectedEventForInscriptions?.fields?.find(f => f.id === fieldId);
     return field?.label || `Champ #${fieldId}`;
   };
 
@@ -230,7 +212,6 @@ const EventManagementPage: React.FC = () => {
   };
 
   const handleCloseModal = async () => {
-    // Clean up uploaded images if modal is closed without saving
     for (const imageUrl of uploadedImagesRef.current) {
       try {
         await deleteImage(imageUrl);
@@ -249,15 +230,13 @@ const EventManagementPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const invalidOption = (formData.options || []).find(o => o.isPaid && (!o.price || o.price <= 0));
-    if (invalidOption) {
-      addNotification('error', `L'option "${invalidOption.name || 'sans nom'}" doit avoir un prix superieur a 0.`);
+    const invalidField = (formData.fields || []).find(f => f.isPaid && (!f.price || f.price <= 0));
+    if (invalidField) {
+      addNotification('error', `Le champ "${invalidField.label || 'sans nom'}" doit avoir un prix superieur a 0.`);
       return;
     }
 
     try {
-      // Format dates to ISO strings with time if needed by backend,
-      // but usually the datetime-local value is close enough or needs explicit conversion
       const payload: EventFormData = {
           ...formData,
           date: new Date(formData.date).toISOString(),
@@ -272,7 +251,6 @@ const EventManagementPage: React.FC = () => {
         addNotification('success', 'Événement créé avec succès !');
       }
 
-      // Clear uploaded images list since they're now saved
       uploadedImagesRef.current = [];
       setIsModalOpen(false);
       fetchEvents();
@@ -296,35 +274,33 @@ const EventManagementPage: React.FC = () => {
     }
   };
 
-  const handleExportCsv = async (eventId: number, eventTitle: string) => {
+  const handleExportExcel = async (eventId: number, eventTitle: string) => {
     try {
-      const blob = await exportEventInscriptionsCsv(eventId);
+      const blob = await exportEventInscriptionsToExcel(eventId);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       const sanitizedTitle = eventTitle.replace(/[^a-z0-9]/gi, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
       const currentDate = new Date().toISOString().split('T')[0];
-      a.download = `participants-${sanitizedTitle}-${currentDate}.csv`;
+      a.download = `participants-${sanitizedTitle}-${currentDate}.xlsx`;
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      logger.error('Failed to export CSV', error);
-      alert('Erreur lors de l\'export CSV');
+      logger.error('Failed to export Excel', error);
+      alert("Erreur lors de l'export Excel");
     }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
 
-    // Limit year to 4 digits for date fields
     if (type === 'datetime-local' && value) {
       const year = value.split('-')[0];
       if (year && year.length > 4) {
-        return; // Don't update if year is more than 4 digits
+        return;
       }
     }
 
-    // Track if user manually edits the deadline
     if (name === 'registrationDeadline') {
       setDeadlineManuallyEdited(true);
     }
@@ -335,7 +311,6 @@ const EventManagementPage: React.FC = () => {
         [name]: type === 'number' ? parseFloat(value) : value
       };
 
-      // Sync registration deadline with event date if not manually edited (even partial values)
       if (name === 'date' && !deadlineManuallyEdited) {
         updated.registrationDeadline = value;
       }
@@ -344,81 +319,56 @@ const EventManagementPage: React.FC = () => {
     });
   };
 
-  // Check if registration deadline is after event date
   const isDeadlineAfterEvent = formData.date && formData.registrationDeadline &&
     new Date(formData.registrationDeadline) > new Date(formData.date);
 
-  const handleAddFormField = () => {
+  const handleAddField = () => {
     if (!newField.label.trim()) {
       alert('Le label du champ est requis');
       return;
     }
+    if (newField.isPaid && (!newField.price || newField.price <= 0)) {
+      alert('Un champ payant doit avoir un prix superieur a 0');
+      return;
+    }
 
-    const field: EventFormField = {
-      id: Date.now(), // Temporary ID for frontend
+    const field: EventField = {
+      id: Date.now(), // ID temporaire cote front
       ...newField
     };
 
     setFormData(prev => ({
       ...prev,
-      formFields: [...(prev.formFields || []), field]
+      fields: [...(prev.fields || []), field]
     }));
 
-    // Reset new field
-    setNewField({
-      label: '',
-      type: 'TEXT',
-      required: false,
-      options: []
-    });
+    resetNewField();
   };
 
-  const handleRemoveFormField = (fieldId: number) => {
+
+  const handleRemoveField = (fieldId: number) => {
     setFormData(prev => ({
       ...prev,
-      formFields: (prev.formFields || []).filter(f => f.id !== fieldId)
+      fields: (prev.fields || []).filter(f => f.id !== fieldId)
     }));
   };
 
-  const handleAddOption = () => {
-    if (newField.type === 'SELECT') {
-      const option = prompt('Entrez une option :');
-      if (option) {
+  const handleAddChoice = () => {
+    if (newField.type === 'SELECT' || newField.type === 'CHECKBOX') {
+      const choice = prompt('Entrez un choix :');
+      if (choice) {
         setNewField(prev => ({
           ...prev,
-          options: [...(prev.options || []), option]
+          choices: [...(prev.choices || []), choice]
         }));
       }
     }
   };
 
-  const handleRemoveOption = (index: number) => {
+  const handleRemoveChoice = (index: number) => {
     setNewField(prev => ({
       ...prev,
-      options: (prev.options || []).filter((_, i) => i !== index)
-    }));
-  };
-
-  const handleAddEventOption = () => {
-    setFormData(prev => ({
-      ...prev,
-      options: [...(prev.options || []), { name: '', isPaid: false, price: 0 }]
-    }));
-  };
-
-  const handleUpdateEventOption = (index: number, field: 'name' | 'isPaid' | 'price', value: string | number | boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      options: (prev.options || []).map((opt, i) =>
-        i === index ? { ...opt, [field]: value } : opt
-      )
-    }));
-  };
-
-  const handleRemoveEventOption = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      options: (prev.options || []).filter((_, i) => i !== index)
+      choices: (prev.choices || []).filter((_, i) => i !== index)
     }));
   };
 
@@ -429,6 +379,14 @@ const EventManagementPage: React.FC = () => {
     event.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     event.location?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const fieldTypeLabels: Record<EventFieldType, string> = {
+    TEXT: 'Texte court',
+    TEXTAREA: 'Texte long',
+    SELECT: 'Liste deroulante',
+    CHECKBOX: 'Case a cocher',
+    PAID_OPTION: 'Option payante',
+  };
 
   return (
     <div>
@@ -493,9 +451,9 @@ const EventManagementPage: React.FC = () => {
                       <Users size={18} />
                     </button>
                     <button
-                      onClick={() => handleExportCsv(event.id, event.title)}
+                      onClick={() => handleExportExcel(event.id, event.title)}
                       className="p-2 text-purple-400 hover:bg-green-900/20 rounded"
-                      title="Exporter les participants (CSV)"
+                      title="Exporter les participants (Excel)"
                     >
                       <Download size={18} />
                     </button>
@@ -506,7 +464,6 @@ const EventManagementPage: React.FC = () => {
 
             <h3 className="text-xl font-bold mb-1 pr-2 line-clamp-1">{event.title}</h3>
 
-            {/* Visibility badges */}
             {event.visibility !== 'PUBLIC' && (
               <div className="mb-2">
                 {event.visibility === 'DRAFT' && (
@@ -541,14 +498,9 @@ const EventManagementPage: React.FC = () => {
                     {event.status === 'OPEN' && !isFull ? 'Ouvert' : 'Complet/Ferme'}
                 </span>
               </div>
-              {event.formFields && (event.formFields as any[]).length > 0 && (
+              {event.fields && event.fields.length > 0 && (
                 <div className="text-xs text-purple-400 flex items-center gap-1">
-                  <span className="font-bold">{(event.formFields as any[]).length}</span> champ(s) personnalisé(s)
-                </div>
-              )}
-              {event.options && event.options.length > 0 && (
-                <div className="text-xs text-blue-400 flex items-center gap-1">
-                  <span className="font-bold">{event.options.length}</span> option(s)
+                  <span className="font-bold">{event.fields.length}</span> champ(s) personnalisé(s)
                 </div>
               )}
             </div>
@@ -660,25 +612,26 @@ const EventManagementPage: React.FC = () => {
               />
             </div>
 
-            {/* Custom Form Fields Section */}
+            {/* Unified Fields Section (form fields + paid options) */}
             <div className="md:col-span-2 border-t border-gray-700 pt-4 mt-4">
-              <h3 className="text-lg font-bold text-white mb-3">Champs personnalises pour l'inscription</h3>
-              <p className="text-sm text-gray-400 mb-4">Ajoutez des questions personnalisees pour les participants (ex: preferences alimentaires, taille de t-shirt, etc.)</p>
+              <h3 className="text-lg font-bold text-white mb-3">Champs de l'inscription</h3>
+              <p className="text-sm text-gray-400 mb-4">Ajoutez des questions pour les participants (preferences, taille de t-shirt...) ou des options payantes (repas, t-shirt payant...)</p>
 
-              {formData.formFields && formData.formFields.length > 0 && (
+              {formData.fields && formData.fields.length > 0 && (
                 <div className="space-y-2 mb-4">
-                  {formData.formFields.map((field) => (
+                  {formData.fields.map((field) => (
                     <div key={field.id} className="flex items-center justify-between bg-dark-bg p-3 rounded border border-gray-700">
                       <div className="flex-grow">
                         <p className="text-white font-medium">{field.label}</p>
                         <p className="text-xs text-gray-400">
-                          Type: {field.type} • {field.required ? 'Requis' : 'Optionnel'}
-                          {field.options && field.options.length > 0 && ` • ${field.options.length} options`}
+                          Type: {fieldTypeLabels[field.type]} • {field.required ? 'Requis' : 'Optionnel'}
+                          {field.choices && field.choices.length > 0 && ` • ${field.choices.length} choix`}
+                          {field.isPaid && ` • Payant: ${(field.price ?? 0).toFixed(2)}€`}
                         </p>
                       </div>
                       <button
                         type="button"
-                        onClick={() => handleRemoveFormField(field.id)}
+                        onClick={() => handleRemoveField(field.id)}
                         className="text-red-400 hover:text-red-300 ml-2"
                       >
                         <X size={18} />
@@ -697,7 +650,7 @@ const EventManagementPage: React.FC = () => {
                       type="text"
                       value={newField.label}
                       onChange={(e) => setNewField(prev => ({ ...prev, label: e.target.value }))}
-                      placeholder="Ex: Preferences alimentaires"
+                      placeholder="Ex: Preferences alimentaires, Repas..."
                       className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white text-sm"
                     />
                   </div>
@@ -705,13 +658,22 @@ const EventManagementPage: React.FC = () => {
                     <label className="block text-xs text-gray-400 mb-1">Type de champ</label>
                     <select
                       value={newField.type}
-                      onChange={(e) => setNewField(prev => ({ ...prev, type: e.target.value as any, options: e.target.value === 'SELECT' ? [] : undefined }))}
+                      onChange={(e) => {
+                        const type = e.target.value as EventFieldType;
+                        setNewField(prev => ({
+                          ...prev,
+                          type,
+                          choices: (type === 'SELECT' || type === 'CHECKBOX') ? [] : undefined,
+                          isPaid: type === 'PAID_OPTION' ? true : false,
+                        }));
+                      }}
                       className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white text-sm"
                     >
                       <option value="TEXT">Texte court</option>
                       <option value="TEXTAREA">Texte long</option>
                       <option value="SELECT">Liste deroulante</option>
                       <option value="CHECKBOX">Case a cocher</option>
+                      <option value="PAID_OPTION">Option payante</option>
                     </select>
                   </div>
                   <div className="flex items-center">
@@ -726,16 +688,41 @@ const EventManagementPage: React.FC = () => {
                     </label>
                   </div>
 
-                  {newField.type === 'SELECT' && (
+                  {newField.type !== 'PAID_OPTION' && (
+                    <div className="flex items-center">
+                      <label className="flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={newField.isPaid || false}
+                          onChange={(e) => setNewField(prev => ({ ...prev, isPaid: e.target.checked }))}
+                          className="mr-2 h-4 w-4 accent-purple-400"
+                        />
+                        <span className="text-sm text-white">Payant</span>
+                      </label>
+                    </div>
+                  )}
+
+                  {newField.isPaid && (
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Prix (€)</label>
+                      <NumberInput
+                        value={newField.price || 0}
+                        onChange={(val) => setNewField(prev => ({ ...prev, price: parseFloat(val) || 0 }))}
+                        className="w-full bg-dark-bg border border-gray-600 rounded p-2 text-white text-sm"
+                      />
+                    </div>
+                  )}
+
+                  {(newField.type === 'SELECT' || newField.type === 'CHECKBOX') && (
                     <div className="md:col-span-2">
-                      <label className="block text-xs text-gray-400 mb-1">Options</label>
+                      <label className="block text-xs text-gray-400 mb-1">Choix</label>
                       <div className="flex flex-wrap gap-2 mb-2">
-                        {newField.options?.map((option, index) => (
+                        {newField.choices?.map((choice, index) => (
                           <span key={index} className="bg-dark-bg px-2 py-1 rounded text-xs text-white flex items-center gap-1">
-                            {option}
+                            {choice}
                             <button
                               type="button"
-                              onClick={() => handleRemoveOption(index)}
+                              onClick={() => handleRemoveChoice(index)}
                               className="text-red-400 hover:text-red-300"
                             >
                               <X size={12} />
@@ -745,81 +732,26 @@ const EventManagementPage: React.FC = () => {
                       </div>
                       <button
                         type="button"
-                        onClick={handleAddOption}
+                        onClick={handleAddChoice}
                         className="text-xs bg-gray-700 text-white px-3 py-1 rounded hover:bg-gray-600"
                       >
-                        + Ajouter une option
+                        + Ajouter un choix
                       </button>
                     </div>
                   )}
                 </div>
                 <button
-                                  type="button"
-                                  onClick={handleAddFormField}
-                                  className="mt-3 bg-purple-400 text-darker-bg font-bold py-2 px-4 rounded hover:bg-white transition-colors text-sm"
-                                >
-                                  Ajouter ce champ
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* Event Options Section */}
-                            <div className="md:col-span-2 border-t border-gray-700 pt-4 mt-4">
-                              <h3 className="text-lg font-bold text-white mb-3">Options de l'evenement</h3>
-                              <p className="text-sm text-gray-400 mb-4">Ajoutez des options que les participants pourront choisir a l'inscription (gratuites ou payantes, ex: repas, t-shirt...)</p>
-
-                              {formData.options && formData.options.length > 0 && (
-                                <div className="space-y-2 mb-4">
-                                  {formData.options.map((option, index) => (
-                                    <div key={option.id ?? `new-${index}`} className="flex flex-col sm:flex-row sm:items-center gap-2 bg-dark-bg p-3 rounded border border-gray-700">
-                                      <input
-                                        type="text"
-                                        value={option.name}
-                                        onChange={(e) => handleUpdateEventOption(index, 'name', e.target.value)}
-                                        placeholder="Nom de l'option"
-                                        className="flex-grow bg-darker-bg border border-gray-600 rounded p-2 text-white text-sm"
-                                      />
-                                      <label className="flex items-center cursor-pointer whitespace-nowrap">
-                                        <input
-                                          type="checkbox"
-                                          checked={option.isPaid || false}
-                                          onChange={(e) => handleUpdateEventOption(index, 'isPaid', e.target.checked)}
-                                          className="mr-2 h-4 w-4 accent-purple-400"
-                                        />
-                                        <span className="text-sm text-white">Payante</span>
-                                      </label>
-                                      {option.isPaid && (
-                                        <div className="w-full sm:w-28">
-                                          <NumberInput
-                                            value={option.price || 0}
-                                            onChange={(val) => handleUpdateEventOption(index, 'price', parseFloat(val) || 0)}
-                                            className="w-full bg-darker-bg border border-gray-600 rounded p-2 text-white text-sm"
-                                          />
-                                        </div>
-                                      )}
-                                      <button
-                                        type="button"
-                                        onClick={() => handleRemoveEventOption(index)}
-                                        className="text-red-400 hover:text-red-300 self-start sm:self-center"
-                                      >
-                                        <X size={18} />
-                                      </button>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-
-                              <button
-                                type="button"
-                                onClick={handleAddEventOption}
-                                className="text-xs bg-gray-700 text-white px-3 py-1 rounded hover:bg-gray-600"
-                              >
-                                + Ajouter une option
-                              </button>
-                            </div>
-                          </div>
-                        </form>
-                      </Modal>
+                  type="button"
+                  onClick={handleAddField}
+                  className="mt-3 bg-purple-400 text-darker-bg font-bold py-2 px-4 rounded hover:bg-white transition-colors text-sm"
+                >
+                  Ajouter ce champ
+                </button>
+              </div>
+            </div>
+          </div>
+        </form>
+      </Modal>
 
       {/* Delete Confirmation Modal */}
       <Modal
@@ -926,7 +858,6 @@ const EventManagementPage: React.FC = () => {
             <div className="text-center py-8 text-gray-400">Aucune inscription pour cet evenement</div>
           ) : (
             <div className="space-y-3">
-              {/* Stats summary */}
               <div className="grid grid-cols-3 gap-3 mb-4">
                 <div className="bg-dark-bg rounded-lg p-3 text-center">
                   <p className="text-2xl font-bold text-white">{inscriptions.length}</p>
@@ -946,11 +877,9 @@ const EventManagementPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Inscriptions list */}
               {inscriptions.map((inscription) => {
                 const isExpanded = expandedInscriptions.has(inscription.id);
-                const hasDetails = (inscription.formResponses && inscription.formResponses.length > 0) ||
-                                   (inscription.options && inscription.options.length > 0);
+                const hasDetails = !!(inscription.fieldValues && inscription.fieldValues.length > 0);
 
                 return (
                   <div key={inscription.id} className="bg-dark-bg rounded-lg border border-gray-700 overflow-hidden">
@@ -990,42 +919,21 @@ const EventManagementPage: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Expanded details */}
                     {isExpanded && hasDetails && (
-                      <div className="border-t border-gray-700 p-4 bg-darker-bg space-y-3">
-                        {/* Options */}
-                        {inscription.options && inscription.options.length > 0 && (
-                          <div>
-                            <p className="text-xs font-bold text-gray-400 uppercase mb-2">Options choisies</p>
-                            <div className="space-y-1">
-                              {inscription.options.map((opt, idx) => (
-                                <div key={idx} className="flex items-center justify-between text-sm">
-                                  <span className="text-white">{opt.eventOption?.name || `Option #${opt.eventOptionId}`}</span>
-                                  <span className="text-gray-400">x{opt.quantity}</span>
-                                </div>
-                              ))}
-                            </div>
+                      <div className="border-t border-gray-700 p-4 bg-darker-bg space-y-2">
+                        <p className="text-xs font-bold text-gray-400 uppercase mb-2">Details du formulaire</p>
+                        {inscription.fieldValues!.map((fv, idx) => (
+                          <div key={idx} className="bg-dark-bg rounded p-2">
+                            <p className="text-xs text-gray-500">{fv.field?.label || getFieldLabel(fv.fieldId)}</p>
+                            <p className="text-sm text-white mt-0.5">
+                              {fv.field?.isPaid
+                                ? `${fv.value ?? fv.field.label} (x${fv.quantity})`
+                                : fv.value === 'true' ? 'Oui'
+                                : fv.value === 'false' ? 'Non'
+                                : fv.value || <span className="text-gray-500 italic">Non renseigne</span>}
+                            </p>
                           </div>
-                        )}
-
-                        {/* Form responses */}
-                        {inscription.formResponses && inscription.formResponses.length > 0 && (
-                          <div>
-                            <p className="text-xs font-bold text-gray-400 uppercase mb-2">Reponses au formulaire</p>
-                            <div className="space-y-2">
-                              {inscription.formResponses.map((response, idx) => (
-                                <div key={idx} className="bg-dark-bg rounded p-2">
-                                  <p className="text-xs text-gray-500">{getFormFieldLabel(response.fieldId)}</p>
-                                  <p className="text-sm text-white mt-0.5">
-                                    {response.value === 'true' ? 'Oui' :
-                                     response.value === 'false' ? 'Non' :
-                                     response.value || <span className="text-gray-500 italic">Non renseigne</span>}
-                                  </p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                        ))}
                       </div>
                     )}
                   </div>

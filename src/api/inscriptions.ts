@@ -2,22 +2,17 @@ import { fetchJson, API_BASE_URL } from './client';
 
 export type PaymentMethod = 'HELLOASSO' | 'CASH' | 'CB' | 'FREE' | 'BALANCE';
 
-export interface InscriptionOption {
-  eventOptionId: number;
-  quantity: number;
-}
-
-export interface FormFieldResponse {
+export interface InscriptionFieldInput {
   fieldId: number;
-  value: string;
+  value?: string;
+  quantity?: number; // utile seulement pour les champs payants
 }
 
 export interface CreateInscriptionData {
   eventId: number;
   quantity: number;
   paymentMethod: PaymentMethod;
-  options?: InscriptionOption[];
-  formResponses?: FormFieldResponse[];
+  fields?: InscriptionFieldInput[];
   returnUrl?: string;
   cancelUrl?: string;
 }
@@ -38,7 +33,7 @@ export interface InscriptionResponse {
   description?: string;
   returnUrl?: string;
   cancelUrl?: string;
-  paymentUrl?: string; // Some backends might return this directly
+  paymentUrl?: string;
   payment?: {
     approvalUrl?: string;
     orderId?: string;
@@ -54,22 +49,19 @@ export interface Inscription {
   paymentMethod: PaymentMethod;
   paymentStatus: 'PENDING' | 'PAID' | 'REFUNDED';
   createdAt: string;
-  options?: Array<{
-    id: number;
-    inscriptionId: number;
-    eventOptionId: number;
-    quantity: number;
-    eventOption?: {
-      id: number;
-      name: string;
-      price?: number;
-    };
-  }>;
-  formResponses?: Array<{
+  fieldValues?: Array<{
     id: number;
     inscriptionId: number;
     fieldId: number;
-    value: string;
+    value?: string;
+    quantity: number;
+    field?: {
+      id: number;
+      label: string;
+      type: string;
+      isPaid?: boolean;
+      price?: number;
+    };
   }>;
   event?: {
     id: number;
@@ -77,13 +69,14 @@ export interface Inscription {
     date: string;
     location: string;
     price: number;
-    options?: Array<{ id: number; name: string; price?: number }>;
-    formFields?: Array<{
+    fields?: Array<{
       id: number;
       label: string;
       type: string;
       required: boolean;
-      options?: string[];
+      choices?: string[];
+      isPaid?: boolean;
+      price?: number;
     }>;
   };
   user?: {
@@ -128,13 +121,6 @@ export const updateInscriptionPaymentStatus = async (id: number, paymentStatus: 
   });
 };
 
-/*export const confirmPayPalPayment = async (inscriptionId: number, orderId: string): Promise<any> => {
-  return fetchJson(`/inscriptions/${inscriptionId}/payment/paypal/confirm`, {
-    method: 'POST',
-    body: JSON.stringify({ orderId }),
-  });
-};*/
-
 export const confirmHelloAssoPayment = async (inscriptionId: number, checkoutIntentId: string): Promise<any> => {
   return fetchJson(`/inscriptions/${inscriptionId}/payment/helloasso/confirm`, {
     method: 'POST',
@@ -155,10 +141,10 @@ export const adminUnregisterInscription = async (id: number, withRefund: boolean
   });
 };
 
-export const exportEventInscriptionsCsv = async (eventId: number): Promise<Blob> => {
+export const exportEventInscriptionsToExcel = async (eventId: number): Promise<Blob> => {
   const token = localStorage.getItem('token');
 
-  const response = await fetch(`${API_BASE_URL}/inscriptions/event/${eventId}/export/csv`, {
+  const response = await fetch(`${API_BASE_URL}/inscriptions/event/${eventId}/export/excel`, {
     headers: {
       'Authorization': `Bearer ${token}`,
     },

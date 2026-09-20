@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { type Event } from '../api/events';
-import { createInscription, type PaymentMethod, getMyInscriptions } from '../api/inscriptions';
+import { createInscription, type PaymentMethod, type InscriptionFieldInput, getMyInscriptions } from '../api/inscriptions';
 import { getMyBalance } from '../api/balance';
 import { useNotification } from '../context/NotificationContext';
 import { X, CreditCard, Wallet, Banknote, Users, Minus, Plus, ChevronRight, AlertCircle, Check, CheckCircle2, Ticket } from 'lucide-react';
@@ -17,8 +17,10 @@ interface EventRegistrationModalProps {
 
 const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen, onClose, event }) => {
   const [quantity, setQuantity] = useState(1);
-  const [selectedOptions, setSelectedOptions] = useState<Record<number, number>>({});
-  const [formResponses, setFormResponses] = useState<Record<number, string>>({});
+  // Champs payants sélectionnés (isPaid: true) : fieldId -> quantité
+  const [selectedPaidFields, setSelectedPaidFields] = useState<Record<number, number>>({});
+  // Réponses aux champs non payants (TEXT / TEXTAREA / SELECT / CHECKBOX informatif) : fieldId -> valeur
+  const [fieldResponses, setFieldResponses] = useState<Record<number, string>>({});
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('HELLOASSO');
   const [loading, setLoading] = useState(false);
   const [remainingQuota, setRemainingQuota] = useState<number>(event.maxPlacesPerPerson);
@@ -30,18 +32,20 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
 
   const isOnSitePaymentBlocked = !!event.restrictOnSitePaymentToInfo && user?.filiere !== 'INFO';
 
+  const paidFields = (event.fields || []).filter(f => f.isPaid);
+  const answerFields = (event.fields || []).filter(f => !f.isPaid);
+
   // Reset state when modal opens/closes
   useEffect(() => {
     if (isOpen) {
       setQuantity(1);
-      setSelectedOptions({});
-      setFormResponses({});
+      setSelectedPaidFields({});
+      setFieldResponses({});
       setPaymentMethod('HELLOASSO');
       setLoading(false);
       setLegalAccepted(false);
       fetchUserQuota();
       fetchUserBalance();
-      // Prevent body scroll
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
@@ -87,35 +91,30 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
     }
   };
 
-  const handleOptionChange = (optionId: number, checked: boolean) => {
-    setSelectedOptions(prev => {
-      const newOptions = { ...prev };
+  const handlePaidFieldChange = (fieldId: number, checked: boolean) => {
+    setSelectedPaidFields(prev => {
+      const next = { ...prev };
       if (checked) {
-        newOptions[optionId] = 1;
+        next[fieldId] = 1;
       } else {
-        delete newOptions[optionId];
+        delete next[fieldId];
       }
-      return newOptions;
+      return next;
     });
   };
 
-  const optionsPrice = Object.entries(selectedOptions).reduce((sum, [id, qty]) => {
-    const option = event.options?.find(o => o.id === parseInt(id));
-    if (!option || !option.isPaid) return sum;
-    return sum + (option.price ?? 0) * qty;
+  const paidFieldsPrice = Object.entries(selectedPaidFields).reduce((sum, [id, qty]) => {
+    const field = paidFields.find(f => f.id === parseInt(id));
+    if (!field) return sum;
+    return sum + (field.price ?? 0) * qty;
   }, 0);
-  const totalPrice = (event.price * quantity) + optionsPrice;
+  const totalPrice = (event.price * quantity) + paidFieldsPrice;
   const hasEnoughBalance = userBalance >= totalPrice;
 
-  // Auto-switch away from HelloAsso if total is below 0.50
   useEffect(() => {
-
-    // Auto-switch away from BALANCE if not enough balance
     if (paymentMethod === 'BALANCE' && !hasEnoughBalance) {
       setPaymentMethod('HELLOASSO');
     }
-
-    // Auto-switch away from on-site payment methods if restricted to Filière Info
     if (isOnSitePaymentBlocked && (paymentMethod === 'CASH' || paymentMethod === 'CB')) {
       setPaymentMethod('HELLOASSO');
     }
@@ -125,18 +124,15 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
     e.preventDefault();
     if (remainingQuota <= 0) return;
 
-    // Validate required form fields
-    if (event.formFields) {
-      const missingFields = event.formFields.filter(
-        field => field.required && !formResponses[field.id]?.trim()
-      );
-      if (missingFields.length > 0) {
-        addNotification('error', `Veuillez remplir tous les champs requis`);
-        return;
-      }
+    // Validate required answer fields
+    const missingFields = answerFields.filter(
+      field => field.required && !fieldResponses[field.id]?.trim()
+    );
+    if (missingFields.length > 0) {
+      addNotification('error', `Veuillez remplir tous les champs requis`);
+      return;
     }
 
-    // Check balance if paying with BALANCE
     if (paymentMethod === 'BALANCE' && !hasEnoughBalance) {
       addNotification('error', 'Solde insuffisant');
       return;
@@ -145,15 +141,19 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
     setLoading(true);
 
     try {
-      const optionsArray = Object.entries(selectedOptions).map(([id, qty]) => ({
-        eventOptionId: parseInt(id),
+      const paidFieldsArray: InscriptionFieldInput[] = Object.entries(selectedPaidFields).map(([id, qty]) => ({
+        fieldId: parseInt(id),
         quantity: qty
       }));
 
-      const formResponsesArray = Object.entries(formResponses).map(([fieldId, value]) => ({
-        fieldId: parseInt(fieldId),
-        value
-      }));
+      const answerFieldsArray: InscriptionFieldInput[] = Object.entries(fieldResponses)
+        .filter(([, value]) => value !== '')
+        .map(([fieldId, value]) => ({
+          fieldId: parseInt(fieldId),
+          value
+        }));
+
+      const fieldsArray = [...paidFieldsArray, ...answerFieldsArray];
 
       const returnUrl = `${window.location.origin}/payment/callback`;
       const cancelUrl = `${window.location.origin}/events/${event.id}`;
@@ -162,22 +162,20 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
         eventId: event.id,
         quantity,
         paymentMethod: totalPrice === 0 ? 'FREE' : paymentMethod,
-        options: optionsArray,
-        formResponses: formResponsesArray.length > 0 ? formResponsesArray : undefined,
+        fields: fieldsArray.length > 0 ? fieldsArray : undefined,
         returnUrl,
         cancelUrl
       });
 
       addNotification('success', response.message);
 
-      // Handle payment redirect (only for external payment methods)
       if (response.paymentUrl) {
-              sessionStorage.setItem('helloasso_inscription_id', response.inscription.id.toString());
-              window.location.href = response.paymentUrl;
-            } else {
-              onClose();
-              window.location.reload();
-            }
+        sessionStorage.setItem('helloasso_inscription_id', response.inscription.id.toString());
+        window.location.href = response.paymentUrl;
+      } else {
+        onClose();
+        window.location.reload();
+      }
 
     } catch (error) {
       logger.error('Registration failed', error);
@@ -187,7 +185,6 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
     }
   };
 
-  // Lock body scroll when modal is open
   React.useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -203,15 +200,12 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
 
   return (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
-      {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/80 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      {/* Modal */}
       <div className="relative w-full max-w-lg bg-darker-bg rounded-2xl border border-gray-800 shadow-2xl flex flex-col max-h-[90vh] animate-fadeIn">
-        {/* Header */}
         <div className="relative p-5 border-b border-gray-800 flex-shrink-0">
           <button
             onClick={onClose}
@@ -230,7 +224,6 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
           </div>
         </div>
 
-        {/* Content */}
         <div className="overflow-y-auto flex-1 p-5 custom-scrollbar">
           {checkingQuota ? (
             <div className="text-center py-12">
@@ -289,49 +282,47 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
                 </div>
               </div>
 
-              {/* Options */}
-              {event.options && event.options.length > 0 && (
+              {/* Paid fields (ex-options) */}
+              {paidFields.length > 0 && (
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Options</label>
                   <div className="space-y-2">
-                    {event.options.map(option => (
+                    {paidFields.map(field => (
                       <label
-                        key={option.id}
+                        key={field.id}
                         className={`flex items-center p-3 rounded-xl border-2 cursor-pointer transition-all ${
-                          selectedOptions[option.id]
+                          selectedPaidFields[field.id]
                             ? 'bg-accent-mint/10 border-accent-mint'
                             : 'bg-dark-bg border-gray-800 hover:border-gray-700'
                         }`}
                       >
                         <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center mr-3 transition-colors ${
-                          selectedOptions[option.id]
+                          selectedPaidFields[field.id]
                             ? 'bg-accent-mint border-accent-mint'
                             : 'border-gray-600'
                         }`}>
-                          {selectedOptions[option.id] && <Check size={12} className="text-white" />}
+                          {selectedPaidFields[field.id] && <Check size={12} className="text-white" />}
                         </div>
                         <input
                           type="checkbox"
-                          checked={!!selectedOptions[option.id]}
-                          onChange={(e) => handleOptionChange(option.id, e.target.checked)}
+                          checked={!!selectedPaidFields[field.id]}
+                          onChange={(e) => handlePaidFieldChange(field.id, e.target.checked)}
                           className="hidden"
                         />
-                        <span className="text-white text-sm flex-1">{option.name}</span>
-                        {option.isPaid && (
-                         <span className="text-accent-mint text-sm font-bold ml-2">+{(option.price ?? 0).toFixed(2)}€</span>
-                        )}
+                        <span className="text-white text-sm flex-1">{field.label}</span>
+                        <span className="text-accent-mint text-sm font-bold ml-2">+{(field.price ?? 0).toFixed(2)}€</span>
                       </label>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Custom Form Fields */}
-              {event.formFields && event.formFields.length > 0 && (
+              {/* Answer fields (informational) */}
+              {answerFields.length > 0 && (
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Informations complementaires</label>
                   <div className="space-y-3">
-                    {event.formFields.map(field => (
+                    {answerFields.map(field => (
                       <div key={field.id}>
                         <label className="block text-sm text-gray-400 mb-2">
                           {field.label}
@@ -340,8 +331,8 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
                         {field.type === 'TEXT' && (
                           <input
                             type="text"
-                            value={formResponses[field.id] || ''}
-                            onChange={(e) => setFormResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
+                            value={fieldResponses[field.id] || ''}
+                            onChange={(e) => setFieldResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
                             required={field.required}
                             className="w-full bg-dark-bg border border-gray-800 rounded-xl px-4 py-3 text-white text-sm focus:border-accent-mint focus:outline-none transition-colors"
                             placeholder={`Entrez ${field.label.toLowerCase()}`}
@@ -349,44 +340,44 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
                         )}
                         {field.type === 'TEXTAREA' && (
                           <textarea
-                            value={formResponses[field.id] || ''}
-                            onChange={(e) => setFormResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
+                            value={fieldResponses[field.id] || ''}
+                            onChange={(e) => setFieldResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
                             required={field.required}
                             rows={3}
                             className="w-full bg-dark-bg border border-gray-800 rounded-xl px-4 py-3 text-white text-sm focus:border-accent-mint focus:outline-none transition-colors resize-none"
                             placeholder={`Entrez ${field.label.toLowerCase()}`}
                           />
                         )}
-                        {field.type === 'SELECT' && field.options && (
+                        {field.type === 'SELECT' && field.choices && (
                           <select
-                            value={formResponses[field.id] || ''}
-                            onChange={(e) => setFormResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
+                            value={fieldResponses[field.id] || ''}
+                            onChange={(e) => setFieldResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
                             required={field.required}
                             className="w-full bg-dark-bg border border-gray-800 rounded-xl px-4 py-3 text-white text-sm focus:border-accent-mint focus:outline-none transition-colors"
                           >
                             <option value="">Choisir une option</option>
-                            {field.options.map((option, idx) => (
-                              <option key={idx} value={option}>{option}</option>
+                            {field.choices.map((choice, idx) => (
+                              <option key={idx} value={choice}>{choice}</option>
                             ))}
                           </select>
                         )}
                         {field.type === 'CHECKBOX' && (
                           <label className={`flex items-center p-3 rounded-xl border-2 cursor-pointer transition-all ${
-                            formResponses[field.id] === 'true'
+                            fieldResponses[field.id] === 'true'
                               ? 'bg-accent-mint/10 border-accent-mint'
                               : 'bg-dark-bg border-gray-800 hover:border-gray-700'
                           }`}>
                             <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center mr-3 transition-colors ${
-                              formResponses[field.id] === 'true'
+                              fieldResponses[field.id] === 'true'
                                 ? 'bg-accent-mint border-accent-mint'
                                 : 'border-gray-600'
                             }`}>
-                              {formResponses[field.id] === 'true' && <Check size={12} className="text-white" />}
+                              {fieldResponses[field.id] === 'true' && <Check size={12} className="text-white" />}
                             </div>
                             <input
                               type="checkbox"
-                              checked={formResponses[field.id] === 'true'}
-                              onChange={(e) => setFormResponses(prev => ({ ...prev, [field.id]: e.target.checked ? 'true' : 'false' }))}
+                              checked={fieldResponses[field.id] === 'true'}
+                              onChange={(e) => setFieldResponses(prev => ({ ...prev, [field.id]: e.target.checked ? 'true' : 'false' }))}
                               className="hidden"
                             />
                             <span className="text-white text-sm">{field.label}</span>
@@ -403,7 +394,6 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Mode de paiement</label>
                   <div className="grid grid-cols-2 gap-2">
-                    {/* BALANCE - Solde ADIIL */}
                     <button
                       type="button"
                       onClick={() => hasEnoughBalance && setPaymentMethod('BALANCE')}
@@ -432,7 +422,6 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
                       </p>
                     </button>
 
-                    {/* HelloAsso */}
                     <button
                       type="button"
                       onClick={() => totalPrice >= 0.50 && setPaymentMethod('HELLOASSO')}
@@ -463,7 +452,6 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
                       )}
                     </button>
 
-                    {/* CASH */}
                     {!isOnSitePaymentBlocked && (
                       <button
                         type="button"
@@ -489,7 +477,6 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
                       </button>
                     )}
 
-                    {/*CB */}
                     {!isOnSitePaymentBlocked && (
                       <button
                         type="button"
@@ -521,10 +508,8 @@ const EventRegistrationModal: React.FC<EventRegistrationModalProps> = ({ isOpen,
           )}
         </div>
 
-        {/* Footer */}
         {!checkingQuota && remainingQuota > 0 && (
           <div className="p-5 border-t border-gray-800 bg-dark-bg/50 flex-shrink-0">
-            {/* Price summary */}
             <div className="flex items-center justify-between mb-4 p-3 bg-darker-bg rounded-xl border border-gray-800">
               <div>
                 <p className="text-xs text-gray-500">Total a payer</p>
