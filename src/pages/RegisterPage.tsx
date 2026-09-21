@@ -38,6 +38,11 @@ const RegisterPage: React.FC = () => {
       return;
     }
 
+    if (formData.firstName.trim().toLowerCase() === formData.lastName.trim().toLowerCase()) {
+      setError("Le prénom et le nom ne peuvent pas être identiques.");
+      return;
+    }
+
     setIsLoading(true);
     try {
       await register({
