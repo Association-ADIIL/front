@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { type User, type LoginCredentials, login as apiLogin, register as apiRegister, getMe, logout as apiLogout, type RegisterData, loginWithGoogle as apiLoginWithGoogle } from '../api/auth';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { logger } from '../utils/logger';
 import { isUnauthorizedError } from '../types/errors';
 
@@ -29,6 +29,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [token, setToken] = useState<string | null>(TokenStorage.get());
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Redirige vers la dernière page visitée (hors pages d'auth), sinon vers `fallback`.
   // `consume: false` permet de garder l'info pour une étape suivante du parcours
@@ -65,6 +66,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     initializeAuth();
   }, []);
+
+  // Tout utilisateur connecté sans filière est redirigé vers /complete-profile
+  // tant qu'il n'en a pas choisi une (comptes existants inclus).
+  useEffect(() => {
+    if (loading || !user) return;
+
+    if (!user.filiere && location.pathname !== '/complete-profile') {
+      navigate('/complete-profile', { replace: true });
+    }
+  }, [loading, user, location.pathname, navigate]);
 
   const login = async (credentials: LoginCredentials) => {
     try {

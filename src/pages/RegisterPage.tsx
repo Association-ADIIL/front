@@ -1,14 +1,22 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { type Filiere } from '../api/auth';
 import { Mail, Lock, User, Users, UserPlus, ArrowRight, GraduationCap } from 'lucide-react';
 import SEO from '../components/SEO';
-
 
 const ACCOUNT_TYPES = [
   { value: 'STUDENT', label: 'Etudiant', icon: GraduationCap },
   { value: 'PROFESSOR', label: 'Professeur', icon: User },
   { value: 'EXTERNAL', label: 'Externe', icon: Users },
+];
+
+const FILIERE_OPTIONS: { value: Filiere; label: string }[] = [
+  { value: 'INFO', label: 'INFO' },
+  { value: 'MMI', label: 'MMI' },
+  { value: 'TC', label: 'TC' },
+  { value: 'BIO', label: 'BIO' },
+  { value: 'AUTRES', label: 'Autre' },
 ];
 
 const RegisterPage: React.FC = () => {
@@ -21,6 +29,7 @@ const RegisterPage: React.FC = () => {
     confirmPassword: '',
     type: 'STUDENT'
   });
+  const [filiere, setFiliere] = useState<Filiere | ''>('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -43,6 +52,11 @@ const RegisterPage: React.FC = () => {
       return;
     }
 
+    if (!filiere) {
+      setError("Merci de sélectionner votre filière.");
+      return;
+    }
+
     setIsLoading(true);
     try {
       await register({
@@ -51,6 +65,7 @@ const RegisterPage: React.FC = () => {
         firstName: formData.firstName,
         lastName: formData.lastName,
         type: formData.type,
+        filiere,
       });
     } catch (err: any) {
       if (err.code === 'EMAIL_EXISTS' || err.message?.includes('existe déjà')) {
@@ -189,26 +204,45 @@ const RegisterPage: React.FC = () => {
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {ACCOUNT_TYPES.map(({ value, label, icon: Icon }) => (
-                                  <button
-                                    key={value}
-                                    type="button"
-                                    onClick={() => setFormData(prev => ({ ...prev, type: value }))}
-                                    className={`p-3 rounded-xl border transition-all flex flex-col items-center gap-1.5 ${
-                                      formData.type === value
-                                        ? 'bg-accent-mint/10 border-accent-mint text-accent-mint'
-                                        : 'bg-dark-bg border-gray-700 text-gray-400 hover:border-gray-600'
-                                    }`}
-                                  >
-                                    <Icon size={20} />
-                                    <span className="text-xs font-semibold">{label}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, type: value }))}
+                    className={`p-3 rounded-xl border transition-all flex flex-col items-center gap-1.5 ${
+                      formData.type === value
+                        ? 'bg-accent-mint/10 border-accent-mint text-accent-mint'
+                        : 'bg-dark-bg border-gray-700 text-gray-400 hover:border-gray-600'
+                    }`}
+                  >
+                    <Icon size={20} />
+                    <span className="text-xs font-semibold">{label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
 
-
-
-
+            {/* Filière */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wide">
+                Filière
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {FILIERE_OPTIONS.map(({ value, label }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setFiliere(value)}
+                    className={`p-3 rounded-xl border transition-all text-sm font-semibold ${
+                      filiere === value
+                        ? 'bg-accent-mint/10 border-accent-mint text-accent-mint'
+                        : 'bg-dark-bg border-gray-700 text-gray-400 hover:border-gray-600'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             {/* Legal notice */}
             <p className="text-xs text-gray-500 text-center mt-4">

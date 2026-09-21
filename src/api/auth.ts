@@ -1,12 +1,14 @@
 import { fetchJson } from './client';
 
+export type Filiere = 'INFO' | 'MMI' | 'TC' | 'BIO' | 'AUTRES';
+
 export interface User {
   id: string;
   email: string;
   firstName: string;
   lastName: string;
   type: 'STUDENT' | 'PROFESSOR' | 'EXTERNAL' | 'ADMIN_BDE' | 'ADMIN_PROF';
-  filiere?: 'INFO' | 'MMI' | 'TC' | 'BIO' | 'AUTRES' | null;
+  filiere?: Filiere | null;
   emailOnOrder?: boolean;
   emailOnRecharge?: boolean;
   deletedAt?: string | null;
@@ -34,6 +36,7 @@ export interface RegisterData {
   lastName: string;
   type: string;
   studentGroup?: string;
+  filiere: Filiere;
 }
 
 export const login = async (credentials: LoginCredentials): Promise<AuthResponse> => {
