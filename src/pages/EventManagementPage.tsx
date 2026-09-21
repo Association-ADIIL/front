@@ -407,11 +407,22 @@ const EventManagementPage: React.FC = () => {
   };
 
   const handleRemoveChoice = (index: number) => {
+  setNewField(prev => ({
+    ...prev,
+    choices: (prev.choices || []).filter((_, i) => i !== index)
+  }));
+};
+
+const handleEditChoice = (index: number) => {
+  const current = newField.choices?.[index] || '';
+  const updated = prompt('Modifier ce choix :', current);
+  if (updated !== null && updated.trim()) {
     setNewField(prev => ({
       ...prev,
-      choices: (prev.choices || []).filter((_, i) => i !== index)
+      choices: (prev.choices || []).map((c, i) => (i === index ? updated.trim() : c))
     }));
-  };
+  }
+};
 
   if (loading) return <div className="text-center p-8">Chargement...</div>;
 
@@ -813,18 +824,25 @@ const EventManagementPage: React.FC = () => {
                     <div className="md:col-span-2">
                       <label className="block text-xs text-gray-400 mb-1">Choix</label>
                       <div className="flex flex-wrap gap-2 mb-2">
-                        {newField.choices?.map((choice, index) => (
-                          <span key={index} className="bg-dark-bg px-2 py-1 rounded text-xs text-white flex items-center gap-1">
-                            {choice}
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveChoice(index)}
-                              className="text-red-400 hover:text-red-300"
-                            >
-                              <X size={12} />
-                            </button>
-                          </span>
-                        ))}
+{newField.choices?.map((choice, index) => (
+  <span key={index} className="bg-dark-bg px-2 py-1 rounded text-xs text-white flex items-center gap-1">
+    <button
+      type="button"
+      onClick={() => handleEditChoice(index)}
+      className="hover:underline"
+      title="Cliquer pour renommer"
+    >
+      {choice}
+    </button>
+    <button
+      type="button"
+      onClick={() => handleRemoveChoice(index)}
+      className="text-red-400 hover:text-red-300"
+    >
+      <X size={12} />
+    </button>
+  </span>
+))}
                       </div>
                       <button
                         type="button"
