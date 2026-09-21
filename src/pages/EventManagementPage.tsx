@@ -64,6 +64,9 @@ const EventManagementPage: React.FC = () => {
     price: 0
   });
 
+  // ID du champ en cours d'édition (null = mode ajout)
+  const [editingFieldId, setEditingFieldId] = useState<number | null>(null);
+
   const [deadlineManuallyEdited, setDeadlineManuallyEdited] = useState(false);
 
   const isEventFormDirty = !!(formData.title || formData.description || formData.location || formData.date);
@@ -109,6 +112,7 @@ const EventManagementPage: React.FC = () => {
       fields: []
     });
     resetNewField();
+    setEditingFieldId(null);
     setIsModalOpen(true);
   };
 
@@ -132,6 +136,7 @@ const EventManagementPage: React.FC = () => {
       fields: event.fields || []
     });
     resetNewField();
+    setEditingFieldId(null);
     setIsModalOpen(true);
   };
 
@@ -223,6 +228,7 @@ const EventManagementPage: React.FC = () => {
       }
     }
     uploadedImagesRef.current = [];
+    setEditingFieldId(null);
     setIsModalOpen(false);
   };
 
@@ -329,6 +335,7 @@ const EventManagementPage: React.FC = () => {
 
   const isPublishAfterDeadline = formData.visibility === 'PUBLIC' && formData.publishAt && formData.registrationDeadline &&
     new Date(formData.publishAt) > new Date(formData.registrationDeadline);
+
   const handleAddField = () => {
     if (!newField.label.trim()) {
       alert('Le label du champ est requis');
@@ -339,25 +346,52 @@ const EventManagementPage: React.FC = () => {
       return;
     }
 
-    const field: EventField = {
-      id: Date.now(), // ID temporaire cote front
-      ...newField
-    };
+    if (editingFieldId !== null) {
+      // Mise a jour d'un champ existant : on conserve son id d'origine
+      // (temporaire cote front pour un champ pas encore sauvegarde, ou
+      // reel pour un champ existant en base) afin que le backend fasse
+      // un update en place plutot que de creer un doublon.
+      setFormData(prev => ({
+        ...prev,
+        fields: (prev.fields || []).map(f =>
+          f.id === editingFieldId ? { ...newField, id: editingFieldId } : f
+        )
+      }));
+      setEditingFieldId(null);
+    } else {
+      const field: EventField = {
+        id: Date.now(), // ID temporaire cote front, ignore par le backend a la creation
+        ...newField
+      };
 
-    setFormData(prev => ({
-      ...prev,
-      fields: [...(prev.fields || []), field]
-    }));
+      setFormData(prev => ({
+        ...prev,
+        fields: [...(prev.fields || []), field]
+      }));
+    }
 
     resetNewField();
   };
 
+  const handleEditField = (field: EventField) => {
+    const { id, ...rest } = field;
+    setNewField(rest);
+    setEditingFieldId(id);
+  };
+
+  const handleCancelEditField = () => {
+    resetNewField();
+    setEditingFieldId(null);
+  };
 
   const handleRemoveField = (fieldId: number) => {
     setFormData(prev => ({
       ...prev,
       fields: (prev.fields || []).filter(f => f.id !== fieldId)
     }));
+    if (editingFieldId === fieldId) {
+      handleCancelEditField();
+    }
   };
 
   const handleAddChoice = () => {
@@ -666,7 +700,10 @@ const EventManagementPage: React.FC = () => {
               {formData.fields && formData.fields.length > 0 && (
                 <div className="space-y-2 mb-4">
                   {formData.fields.map((field) => (
-                    <div key={field.id} className="flex items-center justify-between bg-dark-bg p-3 rounded border border-gray-700">
+                    <div
+                      key={field.id}
+                      className={`flex items-center justify-between bg-dark-bg p-3 rounded border ${editingFieldId === field.id ? 'border-purple-500' : 'border-gray-700'}`}
+                    >
                       <div className="flex-grow">
                         <p className="text-white font-medium">{field.label}</p>
                         <p className="text-xs text-gray-400">
@@ -675,20 +712,33 @@ const EventManagementPage: React.FC = () => {
                           {field.isPaid && ` • Payant: ${(field.price ?? 0).toFixed(2)}€`}
                         </p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveField(field.id)}
-                        className="text-red-400 hover:text-red-300 ml-2"
-                      >
-                        <X size={18} />
-                      </button>
+                      <div className="flex items-center gap-1 ml-2">
+                        <button
+                          type="button"
+                          onClick={() => handleEditField(field)}
+                          className="text-blue-400 hover:text-blue-300"
+                          title="Modifier ce champ"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveField(field.id)}
+                          className="text-red-400 hover:text-red-300"
+                          title="Supprimer ce champ"
+                        >
+                          <X size={18} />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
 
               <div className="bg-darker-bg p-4 rounded border border-gray-700">
-                <p className="text-sm font-bold text-white mb-3">Ajouter un nouveau champ</p>
+                <p className="text-sm font-bold text-white mb-3">
+                  {editingFieldId !== null ? 'Modifier le champ' : 'Ajouter un nouveau champ'}
+                </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs text-gray-400 mb-1">Label du champ</label>
@@ -786,13 +836,24 @@ const EventManagementPage: React.FC = () => {
                     </div>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={handleAddField}
-                  className="mt-3 bg-purple-400 text-darker-bg font-bold py-2 px-4 rounded hover:bg-white transition-colors text-sm"
-                >
-                  Ajouter ce champ
-                </button>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleAddField}
+                    className="bg-purple-400 text-darker-bg font-bold py-2 px-4 rounded hover:bg-white transition-colors text-sm"
+                  >
+                    {editingFieldId !== null ? 'Mettre à jour ce champ' : 'Ajouter ce champ'}
+                  </button>
+                  {editingFieldId !== null && (
+                    <button
+                      type="button"
+                      onClick={handleCancelEditField}
+                      className="text-sm text-gray-300 hover:text-white px-3 py-2"
+                    >
+                      Annuler
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
