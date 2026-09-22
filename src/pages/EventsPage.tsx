@@ -173,7 +173,7 @@ const EventsPage: React.FC = () => {
                   const eventDate = new Date(event.date);
                   const isPassed = eventDate < new Date();
                   const isUnlimited = event.totalPlaces === 0;
-                  const isFull = !isUnlimited && event.registeredPeople >= event.totalPlaces;
+                  const isFull = !isUnlimited && event.registeredPeople !== null && event.registeredPeople >= event.totalPlaces;
 
                   return (
                     <Link
@@ -244,12 +244,14 @@ const EventsPage: React.FC = () => {
                           </p>
 
                           <div className="flex items-center justify-between pt-4 border-t border-gray-800/50">
-                            <div className="flex items-center gap-2 px-2.5 py-1.5 bg-dark-bg rounded-lg">
-                              <Users size={14} className={isFull ? "text-red-400" : "text-accent-mint"} />
-                              <span className={`text-xs font-medium ${isFull ? 'text-red-400' : 'text-gray-400'}`}>
-                                {isUnlimited ? `${event.registeredPeople} inscrits` : `${event.registeredPeople}/${event.totalPlaces}`}
-                              </span>
-                            </div>
+                            {event.registeredPeople !== null && (
+                              <div className="flex items-center gap-2 px-2.5 py-1.5 bg-dark-bg rounded-lg">
+                                <Users size={14} className={isFull ? "text-red-400" : "text-accent-mint"} />
+                                <span className={`text-xs font-medium ${isFull ? 'text-red-400' : 'text-gray-400'}`}>
+                                  {isUnlimited ? `${event.registeredPeople} inscrits` : `${event.registeredPeople}/${event.totalPlaces}`}
+                                </span>
+                              </div>
+                            )}
                             <div className="flex items-center gap-2">
                               {!isPassed && event.price > 0 && (
                                 <span className="text-accent-mint font-bold text-sm">{event.price}€</span>

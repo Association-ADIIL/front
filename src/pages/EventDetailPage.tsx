@@ -64,10 +64,10 @@ const EventDetailPage: React.FC = () => {
   const eventDate = new Date(event.date);
   const isPassed = eventDate < new Date();
   const isUnlimited = event.totalPlaces === 0;
-  const isFull = !isUnlimited && event.registeredPeople >= event.totalPlaces;
+  const isFull = !isUnlimited && event.registeredPeople !== null && event.registeredPeople >= event.totalPlaces;
   const deadlineDate = new Date(event.registrationDeadline);
   const isDeadlinePassed = deadlineDate < new Date();
-  const spotsLeft = isUnlimited ? Infinity : event.totalPlaces - event.registeredPeople;
+  const spotsLeft = isUnlimited ? Infinity : (event.registeredPeople !== null ? event.totalPlaces - event.registeredPeople : null);
 
   return (
     <div className="min-h-screen bg-dark-bg">
@@ -209,11 +209,15 @@ const EventDetailPage: React.FC = () => {
                   </div>
                   <div>
                     <p className="text-gray-500 text-xs uppercase tracking-wider">Participants</p>
-                    <p className="text-white font-medium">
-                      <span className={isFull ? 'text-red-400' : 'text-accent-mint'}>{event.registeredPeople}</span>
-                      {!isUnlimited && <span className="text-gray-500"> / {event.totalPlaces}</span>}
-                      {isUnlimited && <span className="text-gray-500"> inscrits</span>}
-                    </p>
+                    {event.registeredPeople === null ? (
+                      <p className="text-white font-medium">Non communiqué</p>
+                    ) : (
+                      <p className="text-white font-medium">
+                        <span className={isFull ? 'text-red-400' : 'text-accent-mint'}>{event.registeredPeople}</span>
+                        {!isUnlimited && <span className="text-gray-500"> / {event.totalPlaces}</span>}
+                        {isUnlimited && <span className="text-gray-500"> inscrits</span>}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -245,7 +249,7 @@ const EventDetailPage: React.FC = () => {
               </div>
 
               {/* Progress bar - only show if limited places */}
-              {!isPassed && !isUnlimited && (
+              {!isPassed && !isUnlimited && event.registeredPeople !== null && (
                 <div className="mb-6">
                   <div className="flex justify-between text-sm mb-2">
                     <span className="text-gray-400">Places restantes</span>
@@ -314,7 +318,7 @@ const EventDetailPage: React.FC = () => {
               )}
 
               {/* Quick info - only show if limited places */}
-              {!isPassed && !isFull && !isUnlimited && spotsLeft <= 5 && spotsLeft > 0 && (
+              {!isPassed && !isFull && !isUnlimited && spotsLeft !== null && spotsLeft <= 5 && spotsLeft > 0 && (
                 <div className="mt-4 p-3 bg-orange-500/10 border border-orange-500/30 rounded-xl">
                   <p className="text-orange-400 text-sm text-center font-medium">
                     Plus que {spotsLeft} place{spotsLeft > 1 ? 's' : ''} !

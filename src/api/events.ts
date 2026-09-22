@@ -22,7 +22,7 @@ export interface Event {
   price: number;
   totalPlaces: number;
   maxPlacesPerPerson: number;
-  registeredPeople: number;
+  registeredPeople: number | null; // null si masqué au public (hideParticipantCount)
   registrationDeadline: string; // ISO string
   coverImage?: string;
   status: 'OPEN' | 'FULL' | 'CLOSED' | 'FINISHED';
@@ -32,12 +32,14 @@ export interface Event {
   createdAt?: string;
   updatedAt?: string;
   restrictOnSitePaymentToInfo?: boolean;
+  hideParticipantCount?: boolean;
 }
 
 export type EventFormData = Omit<Event, 'id' | 'registeredPeople' | 'fields'> & {
   status?: 'OPEN' | 'FULL' | 'CLOSED' | 'FINISHED';
   visibility?: 'PUBLIC' | 'PRIVATE' | 'DRAFT';
   restrictOnSitePaymentToInfo?: boolean;
+  hideParticipantCount?: boolean;
   fields?: EventField[];
 };
 

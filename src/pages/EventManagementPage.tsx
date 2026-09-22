@@ -38,22 +38,23 @@ const EventManagementPage: React.FC = () => {
   const [inscriptionToUnregister, setInscriptionToUnregister] = useState<Inscription | null>(null);
   const [unregisterLoading, setUnregisterLoading] = useState(false);
 
-  const [formData, setFormData] = useState<EventFormData>({
-    title: '',
-    description: '',
-    date: '',
-    location: '',
-    price: 0,
-    totalPlaces: 0,
-    maxPlacesPerPerson: 1,
-    registrationDeadline: '',
-    coverImage: '',
-    status: 'OPEN',
-    visibility: 'PUBLIC',
-    publishAt: '',
-    restrictOnSitePaymentToInfo: false,
-    fields: []
-  });
+    const [formData, setFormData] = useState<EventFormData>({
+      title: '',
+      description: '',
+      date: '',
+      location: '',
+      price: 0,
+      totalPlaces: 0,
+      maxPlacesPerPerson: 1,
+      registrationDeadline: '',
+      coverImage: '',
+      status: 'OPEN',
+      visibility: 'PUBLIC',
+      publishAt: '',
+      restrictOnSitePaymentToInfo: false,
+      hideParticipantCount: false,
+      fields: []
+    });
 
   const [newField, setNewField] = useState<Omit<EventField, 'id'>>({
     label: '',
@@ -109,6 +110,7 @@ const EventManagementPage: React.FC = () => {
       visibility: 'PUBLIC',
       publishAt: '',
       restrictOnSitePaymentToInfo: false,
+      hideParticipantCount: false,
       fields: []
     });
     resetNewField();
@@ -133,6 +135,7 @@ const EventManagementPage: React.FC = () => {
       visibility: event.visibility,
       publishAt: event.publishAt ? toLocalDatetimeInputValue(new Date(event.publishAt)) : '',
       restrictOnSitePaymentToInfo: event.restrictOnSitePaymentToInfo ?? false,
+      hideParticipantCount: event.hideParticipantCount ?? false,
       fields: event.fields || []
     });
     resetNewField();
@@ -395,32 +398,50 @@ const EventManagementPage: React.FC = () => {
   };
 
   const handleAddChoice = () => {
-    if (newField.type === 'SELECT' || newField.type === 'CHECKBOX') {
-      const choice = prompt('Entrez un choix :');
-      if (choice) {
-        setNewField(prev => ({
-          ...prev,
-          choices: [...(prev.choices || []), choice]
-        }));
+      if (newField.type === 'SELECT' || newField.type === 'CHECKBOX') {
+        const choice = prompt('Entrez un choix :');
+        if (choice) {
+          const newChoices = [...(newField.choices || []), choice];
+          setNewField(prev => ({ ...prev, choices: newChoices }));
+          if (editingFieldId !== null) {
+            setFormData(prev => ({
+              ...prev,
+              fields: (prev.fields || []).map(f =>
+                f.id === editingFieldId ? { ...f, choices: newChoices } : f
+              )
+            }));
+          }
+        }
       }
-    }
-  };
+    };
 
   const handleRemoveChoice = (index: number) => {
-  setNewField(prev => ({
-    ...prev,
-    choices: (prev.choices || []).filter((_, i) => i !== index)
-  }));
-};
+    const newChoices = (newField.choices || []).filter((_, i) => i !== index);
+    setNewField(prev => ({ ...prev, choices: newChoices }));
+    if (editingFieldId !== null) {
+      setFormData(prev => ({
+        ...prev,
+        fields: (prev.fields || []).map(f =>
+          f.id === editingFieldId ? { ...f, choices: newChoices } : f
+        )
+      }));
+    }
+  };
 
 const handleEditChoice = (index: number) => {
   const current = newField.choices?.[index] || '';
   const updated = prompt('Modifier ce choix :', current);
   if (updated !== null && updated.trim()) {
-    setNewField(prev => ({
-      ...prev,
-      choices: (prev.choices || []).map((c, i) => (i === index ? updated.trim() : c))
-    }));
+    const newChoices = (newField.choices || []).map((c, i) => (i === index ? updated.trim() : c));
+    setNewField(prev => ({ ...prev, choices: newChoices }));
+    if (editingFieldId !== null) {
+      setFormData(prev => ({
+        ...prev,
+        fields: (prev.fields || []).map(f =>
+          f.id === editingFieldId ? { ...f, choices: newChoices } : f
+        )
+      }));
+    }
   }
 };
 
@@ -483,7 +504,7 @@ const handleEditChoice = (index: number) => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredEvents.map((event) => {
           const isUnlimited = event.totalPlaces === 0;
-          const isFull = !isUnlimited && event.registeredPeople >= event.totalPlaces;
+          const isFull = !isUnlimited && event.registeredPeople !== null && event.registeredPeople >= event.totalPlaces;
           return (
           <div key={event.id} className="bg-darker-bg border border-gray-800 rounded-2xl p-6 flex flex-col relative group hover:border-gray-700 transition-colors">
              <div className="flex items-start justify-between mb-4">
@@ -550,7 +571,7 @@ const handleEditChoice = (index: number) => {
             <div className="mt-auto pt-4 border-t border-gray-800 space-y-2">
               <div className="flex justify-between text-sm items-center">
                 <span className="text-gray-400">
-                  Inscrits: {event.registeredPeople}{isUnlimited ? '' : ` / ${event.totalPlaces}`}
+                  Inscrits: {event.registeredPeople ?? 'N/A'}{isUnlimited ? '' : ` / ${event.totalPlaces}`}
                   {isUnlimited && <span className="text-purple-400 ml-1">(illimite)</span>}
                 </span>
                 <span className={`text-xs font-bold px-2 py-1 rounded ${!isFull ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
@@ -689,6 +710,17 @@ const handleEditChoice = (index: number) => {
                   className="mr-2 h-4 w-4 accent-purple-400"
                 />
                 <span className="text-sm text-white">Réserver le paiement sur place à la filière Info</span>
+              </label>
+            </div>
+            <div className="md:col-span-2 flex items-center">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.hideParticipantCount || false}
+                  onChange={(e) => setFormData(prev => ({ ...prev, hideParticipantCount: e.target.checked }))}
+                  className="mr-2 h-4 w-4 accent-purple-400"
+                />
+                <span className="text-sm text-white">Masquer le nombre d'inscrits au public</span>
               </label>
             </div>
             <div className="md:col-span-2">
