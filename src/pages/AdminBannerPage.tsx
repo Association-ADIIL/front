@@ -1,12 +1,18 @@
 import React, { useState } from 'react';
-import { Megaphone, Save, Eye, EyeOff } from 'lucide-react';
+import { Megaphone, Save, Eye, EyeOff, Clock } from 'lucide-react';
 import { useBanner } from '../context/BannerContext';
 import { useNotification } from '../context/NotificationContext';
 
-const toLocalDatetimeInputValue = (date: Date): string => {
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-};
+const pad = (n: number) => String(n).padStart(2, '0');
+const toDateInput = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const toTimeInput = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+const PRESETS = [
+    { label: '+30 min', minutes: 30 },
+    { label: '+1 h', minutes: 60 },
+    { label: '+2 h', minutes: 120 },
+    { label: '+4 h', minutes: 240 },
+];
 
 const AdminBannerPage: React.FC = () => {
     const { isOpen, message, closeAt, loading, update } = useBanner();
@@ -14,27 +20,47 @@ const AdminBannerPage: React.FC = () => {
 
     const [localOpen, setLocalOpen] = useState<boolean | null>(null);
     const [localMessage, setLocalMessage] = useState<string | null>(null);
-    const [localCloseAt, setLocalCloseAt] = useState<string | null>(null);
+    const [localDate, setLocalDate] = useState<string | null>(null);
+    const [localTime, setLocalTime] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
 
-    // Valeurs affichées : priorité à l'état local (non sauvegardé) sinon état du contexte
+    const todayStr = toDateInput(new Date());
+    const savedCloseAt = closeAt ? new Date(closeAt) : null;
+
+    // Valeurs affichées : état local (non sauvegardé) sinon contexte
     const displayOpen = localOpen !== null ? localOpen : isOpen;
     const displayMessage = localMessage !== null ? localMessage : message;
-    const displayCloseAt =
-        localCloseAt !== null
-            ? localCloseAt
-            : closeAt ? toLocalDatetimeInputValue(new Date(closeAt)) : '';
-    const isDirty = localOpen !== null || localMessage !== null || localCloseAt !== null;
+    const displayDate = localDate ?? (savedCloseAt ? toDateInput(savedCloseAt) : todayStr);
+    const displayTime = localTime ?? (savedCloseAt ? toTimeInput(savedCloseAt) : '');
+
+    // Programmé uniquement si une heure est renseignée
+    const scheduledDate = displayTime ? new Date(`${displayDate || todayStr}T${displayTime}`) : null;
+
+    const isDirty =
+        localOpen !== null ||
+        localMessage !== null ||
+        localTime !== null ||
+        (localDate !== null && displayTime !== '');
+
+    const applyPreset = (minutes: number) => {
+        const d = new Date(Date.now() + minutes * 60000);
+        setLocalDate(toDateInput(d));
+        setLocalTime(toTimeInput(d));
+    };
+
+    const clearSchedule = () => {
+        setLocalTime('');
+        setLocalDate(todayStr);
+    };
 
     const handleSave = async () => {
         let closeAtIso: string | null = null;
-        if (displayOpen && displayCloseAt) {
-            const d = new Date(displayCloseAt);
-            if (isNaN(d.getTime()) || d <= new Date()) {
+        if (displayOpen && scheduledDate) {
+            if (isNaN(scheduledDate.getTime()) || scheduledDate <= new Date()) {
                 addNotification('error', "L'heure de fermeture doit être dans le futur.");
                 return;
             }
-            closeAtIso = d.toISOString();
+            closeAtIso = scheduledDate.toISOString();
         }
 
         setSaving(true);
@@ -42,7 +68,8 @@ const AdminBannerPage: React.FC = () => {
             await update({ isOpen: displayOpen, message: displayMessage, closeAt: closeAtIso });
             setLocalOpen(null);
             setLocalMessage(null);
-            setLocalCloseAt(null);
+            setLocalDate(null);
+            setLocalTime(null);
             addNotification('success', 'Bandeau mis à jour avec succès.');
         } catch {
             addNotification('error', 'Impossible de sauvegarder le bandeau.');
@@ -84,9 +111,9 @@ const AdminBannerPage: React.FC = () => {
                         {!displayOpen ? 'Bandeau masqué' : 'Aucun message saisi'}
                     </div>
                 )}
-                {displayOpen && displayCloseAt && (
+                {displayOpen && scheduledDate && (
                     <p className="text-xs text-yellow-400 text-center">
-                        Se masquera le {new Date(displayCloseAt).toLocaleString('fr-FR', {
+                        Se masquera le {scheduledDate.toLocaleString('fr-FR', {
                             day: '2-digit', month: '2-digit', year: 'numeric',
                             hour: '2-digit', minute: '2-digit',
                         })}
@@ -147,37 +174,71 @@ const AdminBannerPage: React.FC = () => {
                     <p className="text-xs text-gray-500 text-right">{displayMessage.length}/300 caractères</p>
                 </div>
 
-                {/* Fermeture automatique */}
-                {displayOpen && (
-                    <div className="space-y-2">
-                        <label htmlFor="banner-close-at" className="text-sm font-medium text-white">
-                            Fermer automatiquement le (optionnel)
-                        </label>
-                        <div className="flex gap-2">
-                            <input
-                                id="banner-close-at"
-                                type="datetime-local"
-                                value={displayCloseAt}
-                                onChange={(e) => setLocalCloseAt(e.target.value)}
-                                min={toLocalDatetimeInputValue(new Date())}
-                                max="9999-12-31T23:59"
-                                className="w-full bg-darker-bg border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-yellow-400"
-                            />
-                            {displayCloseAt && (
-                                <button
-                                    type="button"
-                                    onClick={() => setLocalCloseAt('')}
-                                    className="px-3 text-sm text-gray-300 hover:text-white bg-gray-700 rounded-lg"
-                                >
-                                    Effacer
-                                </button>
-                            )}
-                        </div>
-                        <p className="text-xs text-gray-500">
-                            Vide = reste affiché jusqu'à ce que tu le désactives.
-                        </p>
+                {/* Fermeture automatique : toujours visible, grisée si le bandeau est éteint */}
+                <div className={`space-y-3 transition-opacity ${displayOpen ? '' : 'opacity-40 pointer-events-none select-none'}`}>
+                    <div className="flex items-center gap-2">
+                        <Clock size={16} className="text-yellow-400" />
+                        <p className="text-sm font-medium text-white">Fermeture automatique (optionnel)</p>
                     </div>
-                )}
+
+                    <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                            <label htmlFor="banner-close-date" className="text-xs text-gray-400">Date</label>
+                            <input
+                                id="banner-close-date"
+                                type="date"
+                                value={displayDate}
+                                min={todayStr}
+                                max="9999-12-31"
+                                disabled={!displayOpen}
+                                onChange={(e) => setLocalDate(e.target.value)}
+                                className="w-full bg-darker-bg border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-yellow-400"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label htmlFor="banner-close-time" className="text-xs text-gray-400">Heure</label>
+                            <input
+                                id="banner-close-time"
+                                type="time"
+                                value={displayTime}
+                                step={60}
+                                disabled={!displayOpen}
+                                onChange={(e) => setLocalTime(e.target.value)}
+                                className="w-full bg-darker-bg border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-yellow-400"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                        {PRESETS.map(p => (
+                            <button
+                                key={p.label}
+                                type="button"
+                                disabled={!displayOpen}
+                                onClick={() => applyPreset(p.minutes)}
+                                className="px-3 py-1.5 text-xs font-medium text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-lg hover:bg-yellow-500/20 transition-colors"
+                            >
+                                {p.label}
+                            </button>
+                        ))}
+                        {displayTime && (
+                            <button
+                                type="button"
+                                disabled={!displayOpen}
+                                onClick={clearSchedule}
+                                className="px-3 py-1.5 text-xs text-gray-300 hover:text-white bg-gray-700 rounded-lg"
+                            >
+                                Effacer
+                            </button>
+                        )}
+                    </div>
+
+                    <p className="text-xs text-gray-500">
+                        {displayOpen
+                            ? "Heure vide = le bandeau reste affiché jusqu'à ce que tu le désactives."
+                            : "Disponible quand le bandeau est visible."}
+                    </p>
+                </div>
             </div>
 
             {/* Bouton sauvegarder */}
