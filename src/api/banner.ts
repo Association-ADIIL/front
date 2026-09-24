@@ -3,6 +3,7 @@ import { fetchJson } from './client';
 export interface BannerSettings {
     isOpen: boolean;
     message: string;
+    closeAt?: string | null; // ISO 8601, fermeture automatique
 }
 
 /** GET /settings/banner — public, no auth required */

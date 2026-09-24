@@ -3,25 +3,46 @@ import { Megaphone, Save, Eye, EyeOff } from 'lucide-react';
 import { useBanner } from '../context/BannerContext';
 import { useNotification } from '../context/NotificationContext';
 
+const toLocalDatetimeInputValue = (date: Date): string => {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
 const AdminBannerPage: React.FC = () => {
-    const { isOpen, message, loading, update } = useBanner();
+    const { isOpen, message, closeAt, loading, update } = useBanner();
     const { addNotification } = useNotification();
 
     const [localOpen, setLocalOpen] = useState<boolean | null>(null);
     const [localMessage, setLocalMessage] = useState<string | null>(null);
+    const [localCloseAt, setLocalCloseAt] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
 
     // Valeurs affichées : priorité à l'état local (non sauvegardé) sinon état du contexte
     const displayOpen = localOpen !== null ? localOpen : isOpen;
     const displayMessage = localMessage !== null ? localMessage : message;
-    const isDirty = localOpen !== null || localMessage !== null;
+    const displayCloseAt =
+        localCloseAt !== null
+            ? localCloseAt
+            : closeAt ? toLocalDatetimeInputValue(new Date(closeAt)) : '';
+    const isDirty = localOpen !== null || localMessage !== null || localCloseAt !== null;
 
     const handleSave = async () => {
+        let closeAtIso: string | null = null;
+        if (displayOpen && displayCloseAt) {
+            const d = new Date(displayCloseAt);
+            if (isNaN(d.getTime()) || d <= new Date()) {
+                addNotification('error', "L'heure de fermeture doit être dans le futur.");
+                return;
+            }
+            closeAtIso = d.toISOString();
+        }
+
         setSaving(true);
         try {
-            await update({ isOpen: displayOpen, message: displayMessage });
+            await update({ isOpen: displayOpen, message: displayMessage, closeAt: closeAtIso });
             setLocalOpen(null);
             setLocalMessage(null);
+            setLocalCloseAt(null);
             addNotification('success', 'Bandeau mis à jour avec succès.');
         } catch {
             addNotification('error', 'Impossible de sauvegarder le bandeau.');
@@ -63,6 +84,14 @@ const AdminBannerPage: React.FC = () => {
                         {!displayOpen ? 'Bandeau masqué' : 'Aucun message saisi'}
                     </div>
                 )}
+                {displayOpen && displayCloseAt && (
+                    <p className="text-xs text-yellow-400 text-center">
+                        Se masquera le {new Date(displayCloseAt).toLocaleString('fr-FR', {
+                            day: '2-digit', month: '2-digit', year: 'numeric',
+                            hour: '2-digit', minute: '2-digit',
+                        })}
+                    </p>
+                )}
             </div>
 
             {/* Contrôles */}
@@ -83,11 +112,11 @@ const AdminBannerPage: React.FC = () => {
                         role="switch"
                         aria-checked={displayOpen}
                     >
-            <span
-                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
-                    displayOpen ? 'translate-x-6' : 'translate-x-1'
-                }`}
-            />
+                        <span
+                            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                                displayOpen ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                        />
                     </button>
                 </div>
 
@@ -117,6 +146,38 @@ const AdminBannerPage: React.FC = () => {
                     />
                     <p className="text-xs text-gray-500 text-right">{displayMessage.length}/300 caractères</p>
                 </div>
+
+                {/* Fermeture automatique */}
+                {displayOpen && (
+                    <div className="space-y-2">
+                        <label htmlFor="banner-close-at" className="text-sm font-medium text-white">
+                            Fermer automatiquement le (optionnel)
+                        </label>
+                        <div className="flex gap-2">
+                            <input
+                                id="banner-close-at"
+                                type="datetime-local"
+                                value={displayCloseAt}
+                                onChange={(e) => setLocalCloseAt(e.target.value)}
+                                min={toLocalDatetimeInputValue(new Date())}
+                                max="9999-12-31T23:59"
+                                className="w-full bg-darker-bg border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-yellow-400"
+                            />
+                            {displayCloseAt && (
+                                <button
+                                    type="button"
+                                    onClick={() => setLocalCloseAt('')}
+                                    className="px-3 text-sm text-gray-300 hover:text-white bg-gray-700 rounded-lg"
+                                >
+                                    Effacer
+                                </button>
+                            )}
+                        </div>
+                        <p className="text-xs text-gray-500">
+                            Vide = reste affiché jusqu'à ce que tu le désactives.
+                        </p>
+                    </div>
+                )}
             </div>
 
             {/* Bouton sauvegarder */}
