@@ -1,19 +1,17 @@
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { type Product, type SelectedOption } from '../api/products';
+import { type Product } from '../api/products';
 import { logger } from '../utils/logger';
 
 interface CartItem {
   product: Product;
   quantity: number;
-  variantId?: number; // Legacy: single variant
-  selectedOptions?: SelectedOption[]; // New: multi-category options
 }
 
 interface CartContextType {
   items: CartItem[];
-  addToCart: (product: Product, quantity: number, variantId?: number, selectedOptions?: SelectedOption[]) => void;
-  removeFromCart: (productId: string, variantId?: number, selectedOptions?: SelectedOption[]) => void;
-  updateQuantity: (productId: string, quantity: number, variantId?: number, selectedOptions?: SelectedOption[]) => void;
+  addToCart: (product: Product, quantity: number) => void;
+  removeFromCart: (productId: string) => void;
+  updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
   getTotalPrice: () => number;
   getTotalItems: () => number;
@@ -47,89 +45,36 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [items, isLoaded]);
 
-  // Helper to check if two selectedOptions arrays are equal
-  const areSelectedOptionsEqual = (a?: SelectedOption[], b?: SelectedOption[]): boolean => {
-    if (!a && !b) return true;
-    if (!a || !b) return false;
-    if (a.length !== b.length) return false;
-    // Sort by categoryId to ensure consistent comparison
-    const sortedA = [...a].sort((x, y) => x.categoryId - y.categoryId);
-    const sortedB = [...b].sort((x, y) => x.categoryId - y.categoryId);
-    return sortedA.every((opt, i) =>
-      opt.categoryId === sortedB[i].categoryId && opt.optionId === sortedB[i].optionId
-    );
-  };
-
-  const addToCart = (product: Product, quantity: number, variantId?: number, selectedOptions?: SelectedOption[]) => {
+  const addToCart = (product: Product, quantity: number) => {
     setItems(prevItems => {
-      const existingItem = prevItems.find(item => {
-        if (item.product.id !== product.id) return false;
-        // For new format: compare selectedOptions
-        if (selectedOptions && selectedOptions.length > 0) {
-          return areSelectedOptionsEqual(item.selectedOptions, selectedOptions);
-        }
-        // For legacy format: compare variantId
-        return item.variantId === variantId && !item.selectedOptions?.length;
-      });
+      const existingItem = prevItems.find(item => item.product.id === product.id);
 
       if (existingItem) {
-        // Update quantity if product with same options already in cart
-        return prevItems.map(item => {
-          if (item.product.id !== product.id) return item;
-          // For new format
-          if (selectedOptions && selectedOptions.length > 0) {
-            if (areSelectedOptionsEqual(item.selectedOptions, selectedOptions)) {
-              return { ...item, quantity: item.quantity + quantity };
-            }
-          }
-          // For legacy format
-          else if (item.variantId === variantId && !item.selectedOptions?.length) {
-            return { ...item, quantity: item.quantity + quantity };
-          }
-          return item;
-        });
+        return prevItems.map(item =>
+          item.product.id === product.id
+            ? { ...item, quantity: item.quantity + quantity }
+            : item
+        );
       } else {
-        // Add new product to cart
-        return [...prevItems, { product, quantity, variantId, selectedOptions }];
+        return [...prevItems, { product, quantity }];
       }
     });
   };
 
-  const removeFromCart = (productId: string, variantId?: number, selectedOptions?: SelectedOption[]) => {
-    setItems(prevItems =>
-      prevItems.filter(item => {
-        if (item.product.id !== productId) return true;
-        // For new format: compare selectedOptions
-        if (selectedOptions && selectedOptions.length > 0) {
-          return !areSelectedOptionsEqual(item.selectedOptions, selectedOptions);
-        }
-        // For legacy format: compare variantId
-        return !(item.variantId === variantId && !item.selectedOptions?.length);
-      })
-    );
+  const removeFromCart = (productId: string) => {
+    setItems(prevItems => prevItems.filter(item => item.product.id !== productId));
   };
 
-  const updateQuantity = (productId: string, quantity: number, variantId?: number, selectedOptions?: SelectedOption[]) => {
+  const updateQuantity = (productId: string, quantity: number) => {
     if (quantity <= 0) {
-      removeFromCart(productId, variantId, selectedOptions);
+      removeFromCart(productId);
       return;
     }
 
     setItems(prevItems =>
-      prevItems.map(item => {
-        if (item.product.id !== productId) return item;
-        // For new format: compare selectedOptions
-        if (selectedOptions && selectedOptions.length > 0) {
-          if (areSelectedOptionsEqual(item.selectedOptions, selectedOptions)) {
-            return { ...item, quantity };
-          }
-        }
-        // For legacy format: compare variantId
-        else if (item.variantId === variantId && !item.selectedOptions?.length) {
-          return { ...item, quantity };
-        }
-        return item;
-      })
+      prevItems.map(item =>
+        item.product.id === productId ? { ...item, quantity } : item
+      )
     );
   };
 
@@ -138,22 +83,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const getTotalPrice = () => {
-    return items.reduce((total, item) => {
-      let price = item.product.price;
-      // New format: selectedOptions (sum all modifiers)
-      if (item.selectedOptions && item.selectedOptions.length > 0) {
-        const totalModifier = item.selectedOptions.reduce((sum, opt) => sum + (opt.priceModifier || 0), 0);
-        price += totalModifier;
-      }
-      // Legacy format: single variantId
-      else if (item.variantId && item.product.variants) {
-        const variant = item.product.variants.find(v => v.id === item.variantId);
-        if (variant) {
-          price += variant.priceModifier;
-        }
-      }
-      return total + price * item.quantity;
-    }, 0);
+    return items.reduce((total, item) => total + item.product.price * item.quantity, 0);
   };
 
   const getTotalItems = () => {

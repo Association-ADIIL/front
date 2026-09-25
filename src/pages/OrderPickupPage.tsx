@@ -319,12 +319,12 @@ const OrderPickupPage: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className={`rounded-xl p-4 ${(orderInfo.paymentMethod === 'CASH' || orderInfo.paymentMethod === 'CB' ) ? 'bg-orange-500/10 border border-orange-500/30' : 'bg-dark-bg'}`}>
+              <div className={`rounded-xl p-4 ${(orderInfo.paymentMethod === 'CASH' || orderInfo.paymentMethod === 'CB') ? 'bg-orange-500/10 border border-orange-500/30' : 'bg-dark-bg'}`}>
                 <div className="flex items-center gap-2 text-gray-400 text-sm mb-1">
                   <CreditCard size={14} />
                   Mode de paiement
                 </div>
-                <p className={`font-bold ${(orderInfo.paymentMethod === 'CASH' || orderInfo.paymentMethod === 'CB' ) ? 'text-orange-400' : 'text-white'}`}>
+                <p className={`font-bold ${(orderInfo.paymentMethod === 'CASH' || orderInfo.paymentMethod === 'CB') ? 'text-orange-400' : 'text-white'}`}>
                   {getPaymentMethodLabel(orderInfo.paymentMethod)}
                 </p>
               </div>
@@ -370,9 +370,6 @@ const OrderPickupPage: React.FC = () => {
                   <div key={index} className="bg-dark-bg rounded-xl p-4 flex justify-between items-center">
                     <div>
                       <p className="text-white font-medium">{item.productName}</p>
-                      {item.variantName && (
-                        <p className="text-gray-500 text-sm">{item.variantName}</p>
-                      )}
                       <p className="text-gray-400 text-sm">
                         Quantite: {item.quantity}
                         {item.refundedQuantity > 0 && (
@@ -645,9 +642,6 @@ const OrderPickupPage: React.FC = () => {
                       <div className="flex justify-between items-start mb-3">
                         <div>
                           <p className="text-white font-medium">{item.productName}</p>
-                          {item.variantName && (
-                            <p className="text-gray-500 text-sm">{item.variantName}</p>
-                          )}
                           <p className="text-gray-400 text-xs mt-1">
                             {hasProductDiscount && (
                               <span className="line-through mr-1">{item.originalPrice!.toFixed(2)}€</span>
