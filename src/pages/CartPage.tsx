@@ -50,49 +50,37 @@ const CartPage: React.FC = () => {
     }
   };
 
-    const pendingOrders = orders.filter(
-      (o) => o.orderStatus === 'PENDING' || o.orderStatus === 'PAID'
-    );
+  const pendingOrders = orders.filter(
+    (o) => o.orderStatus === 'PENDING' || o.orderStatus === 'PAID'
+  );
 
-    const handleToggleOrders = async () => {
-      if (!user) {
-        navigate('/login');
-        return;
+  const handleToggleOrders = async () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    if (showOrders) {
+      setShowOrders(false);
+      return;
+    }
+    setShowOrders(true);
+    if (orders.length === 0) {
+      setLoadingOrders(true);
+      try {
+        const data = await getMyOrders();
+        setOrders(data);
+      } catch (error) {
+        logger.error('Error fetching orders', error);
+        addNotification('error', 'Impossible de charger vos commandes.');
+      } finally {
+        setLoadingOrders(false);
       }
-      if (showOrders) {
-        setShowOrders(false);
-        return;
-      }
-      setShowOrders(true);
-      if (orders.length === 0) {
-        setLoadingOrders(true);
-        try {
-          const data = await getMyOrders();
-          setOrders(data);
-        } catch (error) {
-          logger.error('Error fetching orders', error);
-          addNotification('error', 'Impossible de charger vos commandes.');
-        } finally {
-          setLoadingOrders(false);
-        }
-      }
-    };
+    }
+  };
 
   // Calculate total with product promotions
   const totalWithProductPromotions = items.reduce((sum, item) => {
-    let basePrice = item.product.price;
-    // New format: selectedOptions
-    if (item.selectedOptions && item.selectedOptions.length > 0) {
-      const totalModifier = item.selectedOptions.reduce((acc, opt) => acc + (opt.priceModifier || 0), 0);
-      basePrice += totalModifier;
-    }
-    // Legacy format: variantId
-    else if (item.variantId && item.product.variants) {
-      const variant = item.product.variants.find(v => v.id === item.variantId);
-      if (variant) {
-        basePrice += variant.priceModifier || 0;
-      }
-    }
+    const basePrice = item.product.price;
     const promotion = productPromotions[parseInt(item.product.id)];
     const discountedPrice = promotion
       ? Math.round(basePrice * (1 - promotion.discountPercent / 100) * 100) / 100
@@ -164,14 +152,12 @@ const CartPage: React.FC = () => {
       const checkDiscount = async () => {
         try {
           const discount = await checkCartDiscount(
-                      totalWithProductPromotions,
-                     items.map(item => ({
-                        productId: parseInt(item.product.id),
-                        quantity: item.quantity,
-                       variantId: item.variantId,
-                        selectedOptions: item.selectedOptions,
-                      }))
-                    );
+            totalWithProductPromotions,
+            items.map(item => ({
+              productId: parseInt(item.product.id),
+              quantity: item.quantity,
+            }))
+          );
           setDiscountInfo(discount);
         } catch (error) {
           logger.error('Error checking discount', error);
@@ -206,8 +192,6 @@ const CartPage: React.FC = () => {
             items: items.map(item => ({
               productId: parseInt(item.product.id),
               quantity: item.quantity,
-              variantId: item.variantId,
-              selectedOptions: item.selectedOptions,
             })),
             promotionId: discountInfo?.eligible ? discountInfo.promotionId : undefined,
           });
@@ -229,8 +213,6 @@ const CartPage: React.FC = () => {
         const orderItems: ApiOrderItem[] = items.map(item => ({
           productId: item.product.id,
           quantity: item.quantity,
-          variantId: item.variantId,
-          selectedOptions: item.selectedOptions,
         }));
 
         const returnUrl = `${window.location.origin}/payment/callback`;
@@ -275,8 +257,6 @@ const CartPage: React.FC = () => {
           items: items.map(item => ({
             productId: parseInt(item.product.id),
             quantity: item.quantity,
-            variantId: item.variantId,
-            selectedOptions: item.selectedOptions,
           })),
           promotionId: discountInfo?.eligible ? discountInfo.promotionId : undefined,
         });
@@ -297,8 +277,6 @@ const CartPage: React.FC = () => {
       const orderItems: ApiOrderItem[] = items.map(item => ({
         productId: item.product.id,
         quantity: item.quantity,
-        variantId: item.variantId,
-        selectedOptions: item.selectedOptions,
       }));
 
       const returnUrl = `${window.location.origin}/payment/callback`;
@@ -312,7 +290,7 @@ const CartPage: React.FC = () => {
         promotionId: discountInfo?.eligible ? discountInfo.promotionId : undefined,
       });
 
-       if (orderData.payment?.redirectUrl) {
+      if (orderData.payment?.redirectUrl) {
         sessionStorage.setItem('helloasso_order_id', orderData.order.id.toString());
         window.location.href = orderData.payment.redirectUrl;
       } else {
@@ -369,32 +347,31 @@ const CartPage: React.FC = () => {
       {/* Content */}
       <section className="py-8">
         <div className="container mx-auto px-4">
-                    {items.length === 0 ? (
-                      <div className="text-center py-16 bg-darker-bg rounded-2xl border border-gray-800 max-w-lg mx-4 sm:mx-auto">
-                        <div className="w-16 h-16 bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                          <ShoppingBag size={28} className="text-gray-600" />
-                        </div>
-                        <p className="text-gray-400 text-lg mb-6">Votre panier est vide</p>
-                        <div className="flex flex-col items-center gap-3">
-                          <Link
-                            to="/shop"
-                            className="inline-flex items-center gap-2 px-6 py-3 bg-accent-mint text-darker-bg font-bold rounded-xl hover:bg-white transition-colors shadow-lg shadow-accent-mint/20"
-                          >
-                            Découvrir la boutique
-                            <ChevronRight size={18} />
-                          </Link>
-                          <button
-                            onClick={handleToggleOrders}
-                            className="inline-flex items-center gap-2 px-6 py-3 bg-transparent border border-gray-700 text-gray-300 font-semibold rounded-xl hover:border-accent-mint/50 hover:text-accent-mint transition-colors"
-                          >
+          {items.length === 0 ? (
+            <div className="text-center py-16 bg-darker-bg rounded-2xl border border-gray-800 max-w-lg mx-4 sm:mx-auto">
+              <div className="w-16 h-16 bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <ShoppingBag size={28} className="text-gray-600" />
+              </div>
+              <p className="text-gray-400 text-lg mb-6">Votre panier est vide</p>
+              <div className="flex flex-col items-center gap-3">
+                <Link
+                  to="/shop"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-accent-mint text-darker-bg font-bold rounded-xl hover:bg-white transition-colors shadow-lg shadow-accent-mint/20"
+                >
+                  Découvrir la boutique
+                  <ChevronRight size={18} />
+                </Link>
+                <button
+                  onClick={handleToggleOrders}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-transparent border border-gray-700 text-gray-300 font-semibold rounded-xl hover:border-accent-mint/50 hover:text-accent-mint transition-colors"
+                >
+                  {showOrders ? 'Masquer mes commandes' : 'Afficher mes commandes en cours'}
+                  <ChevronRight size={18} />
+                </button>
+              </div>
 
-                            {showOrders ? 'Masquer mes commandes'  : 'Afficher mes commandes en cours'}
-                            <ChevronRight size={18}/>
-                          </button>
-                        </div>
-
-                        {showOrders && (
-                          <div className="mt-8 text-left">
+              {showOrders && (
+                <div className="mt-8 text-left">
                   {loadingOrders ? (
                     <div className="flex justify-center py-8">
                       <div className="w-8 h-8 border-2 border-accent-mint border-t-transparent rounded-full animate-spin" />
@@ -406,16 +383,16 @@ const CartPage: React.FC = () => {
                       {pendingOrders.map((order) => {
                         const isPaid = order.orderStatus === 'PAID';
                         return (
-                                                    <button
-                                                      key={order.id}
-                                                      onClick={() => setQrOrder(order)}
-                                                      className="w-full group flex items-center gap-4 p-5 bg-dark-bg rounded-2xl border border-gray-800 hover:border-accent-mint/40 transition-all text-left"
-                                                    >
-                                                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
-                                                        isPaid ? 'bg-accent-mint/10' : 'bg-amber-500/10'
-                                                      }`}>
-                                                        <Package size={18} className={isPaid ? 'text-accent-mint' : 'text-amber-400'} />
-                                                      </div>
+                          <button
+                            key={order.id}
+                            onClick={() => setQrOrder(order)}
+                            className="w-full group flex items-center gap-4 p-5 bg-dark-bg rounded-2xl border border-gray-800 hover:border-accent-mint/40 transition-all text-left"
+                          >
+                            <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
+                              isPaid ? 'bg-accent-mint/10' : 'bg-amber-500/10'
+                            }`}>
+                              <Package size={18} className={isPaid ? 'text-accent-mint' : 'text-amber-400'} />
+                            </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
                                 <p className="text-white font-bold text-sm">Commande #{order.id}</p>
@@ -451,55 +428,26 @@ const CartPage: React.FC = () => {
                       })}
                     </div>
                   )}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
+                </div>
+              )}
+            </div>
+          ) : (
             <div className="max-w-5xl mx-auto">
               <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
                 {/* Cart items */}
                 <div className="lg:col-span-3 space-y-3">
                   {items.map((cartItem) => {
-                    // Calculate price based on variant type
-                    let basePrice = cartItem.product.price;
-                    let variantDisplay: string | null = null;
-
-                    // New format: selectedOptions
-                    if (cartItem.selectedOptions && cartItem.selectedOptions.length > 0) {
-                      const totalModifier = cartItem.selectedOptions.reduce((acc, opt) => acc + (opt.priceModifier || 0), 0);
-                      basePrice += totalModifier;
-                      // Build display: "Taille: M, Couleur: Rouge"
-                      variantDisplay = cartItem.selectedOptions.map(o => `${o.categoryName}: ${o.optionName}`).join(', ');
-                    }
-                    // Legacy format: variantId
-                    else if (cartItem.variantId && cartItem.product.variants) {
-                      const variant = cartItem.product.variants.find(v => v.id === cartItem.variantId);
-                      if (variant) {
-                        basePrice += variant.priceModifier || 0;
-                        variantDisplay = variant.name;
-                      }
-                    }
-
+                    const basePrice = cartItem.product.price;
                     const promotion = productPromotions[parseInt(cartItem.product.id)];
                     const discountedPrice = promotion
                       ? Math.round(basePrice * (1 - promotion.discountPercent / 100) * 100) / 100
                       : basePrice;
                     const hasPromotion = !!promotion;
 
-                    // Generate unique key that accounts for selectedOptions
-                    let cartItemKey = cartItem.product.id;
-                    if (cartItem.selectedOptions && cartItem.selectedOptions.length > 0) {
-                      cartItemKey += '-' + cartItem.selectedOptions.map(o => `${o.categoryId}:${o.optionId}`).join('-');
-                    } else if (cartItem.variantId) {
-                      cartItemKey += '-' + cartItem.variantId;
-                    } else {
-                      cartItemKey += '-no-variant';
-                    }
-
                     return (
                       <div
-                        key={cartItemKey}
+                        key={cartItem.product.id}
                         className={`bg-darker-bg rounded-2xl border p-4 ${
                           hasPromotion ? 'border-red-500/30' : 'border-gray-800'
                         }`}
@@ -523,9 +471,6 @@ const CartPage: React.FC = () => {
                           {/* Info */}
                           <div className="flex-1 min-w-0">
                             <h3 className="font-bold text-white text-sm truncate">{cartItem.product.name}</h3>
-                            {variantDisplay && (
-                              <span className="text-accent-mint text-xs">{variantDisplay}</span>
-                            )}
                             {hasPromotion ? (
                               <div className="flex items-center gap-2 mt-1">
                                 <span className="text-gray-500 line-through text-xs">{basePrice.toFixed(2)}€</span>
@@ -539,7 +484,7 @@ const CartPage: React.FC = () => {
                           {/* Quantity */}
                           <div className="flex items-center bg-dark-bg rounded-xl border border-gray-800">
                             <button
-                              onClick={() => updateQuantity(cartItem.product.id, cartItem.quantity - 1, cartItem.variantId, cartItem.selectedOptions)}
+                              onClick={() => updateQuantity(cartItem.product.id, cartItem.quantity - 1)}
                               disabled={cartItem.quantity <= 1}
                               className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-accent-mint disabled:text-gray-700 transition-colors"
                             >
@@ -547,7 +492,7 @@ const CartPage: React.FC = () => {
                             </button>
                             <span className="w-8 text-center text-white font-bold text-sm">{cartItem.quantity}</span>
                             <button
-                              onClick={() => updateQuantity(cartItem.product.id, cartItem.quantity + 1, cartItem.variantId, cartItem.selectedOptions)}
+                              onClick={() => updateQuantity(cartItem.product.id, cartItem.quantity + 1)}
                               className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-accent-mint transition-colors"
                             >
                               <Plus size={14} />
@@ -565,7 +510,7 @@ const CartPage: React.FC = () => {
                               <p className="font-bold text-white">{(basePrice * cartItem.quantity).toFixed(2)}€</p>
                             )}
                             <button
-                              onClick={() => removeFromCart(cartItem.product.id, cartItem.variantId, cartItem.selectedOptions)}
+                              onClick={() => removeFromCart(cartItem.product.id)}
                               className="text-gray-500 hover:text-red-400 transition-colors p-1"
                             >
                               <Trash2 size={16} />
@@ -594,34 +539,15 @@ const CartPage: React.FC = () => {
                       {/* Items summary */}
                       <div className="space-y-2 mb-5">
                         {items.map((item) => {
-                          // Calculate base price
-                          let basePrice = item.product.price;
-                          if (item.selectedOptions && item.selectedOptions.length > 0) {
-                            const totalModifier = item.selectedOptions.reduce((acc, opt) => acc + (opt.priceModifier || 0), 0);
-                            basePrice += totalModifier;
-                          } else if (item.variantId && item.product.variants) {
-                            const variant = item.product.variants.find(v => v.id === item.variantId);
-                            if (variant) {
-                              basePrice += variant.priceModifier || 0;
-                            }
-                          }
-
+                          const basePrice = item.product.price;
                           const promotion = productPromotions[parseInt(item.product.id)];
                           const discountedPrice = promotion
                             ? Math.round(basePrice * (1 - promotion.discountPercent / 100) * 100) / 100
                             : basePrice;
                           const hasPromotion = !!promotion;
 
-                          // Generate unique key
-                          let itemKey = item.product.id;
-                          if (item.selectedOptions && item.selectedOptions.length > 0) {
-                            itemKey += '-' + item.selectedOptions.map(o => `${o.categoryId}:${o.optionId}`).join('-');
-                          } else if (item.variantId) {
-                            itemKey += '-' + item.variantId;
-                          }
-
                           return (
-                            <div key={itemKey} className="flex justify-between text-sm">
+                            <div key={item.product.id} className="flex justify-between text-sm">
                               <span className="text-gray-400 truncate max-w-[55%]">
                                 {item.quantity}x {item.product.name}
                               </span>
@@ -844,7 +770,7 @@ const CartPage: React.FC = () => {
             </div>
           )}
         </div>
-    </section>
+      </section>
 
       {/* QR Code Modal — récupération commande */}
       {qrOrder && (

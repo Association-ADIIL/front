@@ -1,18 +1,8 @@
 import { fetchJson } from './client';
 
-export interface SelectedOption {
-  categoryId: number;
-  categoryName: string;
-  optionId: number;
-  optionName: string;
-  priceModifier: number;
-}
-
 export interface OrderItem {
   productId: string;
   quantity: number;
-  variantId?: number; // Legacy: single variant
-  selectedOptions?: SelectedOption[]; // New: multi-category options
 }
 
 export interface Order {
@@ -47,25 +37,18 @@ export interface Order {
     originalPrice?: number | null; // Price before product discount
     price: number; // Final price after product discount
     refundedQuantity: number;
-    variantId?: number; // Legacy: single variant
-    variantSelection?: SelectedOption[]; // New: multi-category options
     product: {
       id: number;
       name: string;
       description: string;
       price: number;
       imageUrl?: string;
-      variants?: Array<{
-        id: number;
-        name: string;
-        priceModifier: number;
-      }>;
     };
   }>;
   user?: {
-      firstName: string;
-      lastName: string;
-      email: string;
+    firstName: string;
+    lastName: string;
+    email: string;
   };
   refundedAmount: number;
 }
@@ -78,11 +61,10 @@ export interface CreateOrderPayload {
   promotionId?: number; // Optional: specify which promotion to apply
 }
 
-
 export interface CreateOrderResponse {
   order: Order;
   payment?: {
-    method:  'HELLOASSO';
+    method: 'HELLOASSO';
     orderId?: string; // For PayPal
     approvalUrl?: string; // For PayPal
     checkoutId?: string; // For HelloAsso
@@ -170,8 +152,6 @@ export interface OrderPickupInfo {
   items: Array<{
     id: number;
     productName: string;
-    variantName: string | null;
-    variantSelection?: SelectedOption[]; // New: detailed selection data
     quantity: number;
     refundedQuantity: number;
     originalPrice?: number | null; // Price before product discount (null if no product discount)

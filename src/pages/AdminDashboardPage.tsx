@@ -289,18 +289,18 @@ const AdminDashboardPage: React.FC = () => {
           </div>
           <h3 className="text-3xl font-koulen text-green-400 mb-1">{stats.totalRevenue.toFixed(2)} €</h3>
           <p className="text-xs text-gray-500">Chiffre d'affaires total</p>
-                  </div>
+        </div>
 
-                  {/* Panier moyen */}
-                  <div className="bg-darker-bg rounded-2xl p-5 border border-gray-800 hover:border-yellow-500/30 transition-all group">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-12 h-12 bg-yellow-500/10 rounded-xl flex items-center justify-center group-hover:bg-yellow-500/20 transition-colors">
-                        <ShoppingBag className="text-yellow-400" size={22} />
-                      </div>
-                    </div>
-                    <h3 className="text-3xl font-koulen text-yellow-400 mb-1">{stats.avgOrderValue.toFixed(2)} €</h3>
-                    <p className="text-xs text-gray-500">Panier moyen</p>
-                  </div>
+        {/* Panier moyen */}
+        <div className="bg-darker-bg rounded-2xl p-5 border border-gray-800 hover:border-yellow-500/30 transition-all group">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 bg-yellow-500/10 rounded-xl flex items-center justify-center group-hover:bg-yellow-500/20 transition-colors">
+              <ShoppingBag className="text-yellow-400" size={22} />
+            </div>
+          </div>
+          <h3 className="text-3xl font-koulen text-yellow-400 mb-1">{stats.avgOrderValue.toFixed(2)} €</h3>
+          <p className="text-xs text-gray-500">Panier moyen</p>
+        </div>
       </div>
 
       {/* Balance Stats */}
@@ -481,7 +481,7 @@ const AdminDashboardPage: React.FC = () => {
                       <div className="flex flex-wrap items-center gap-2 mb-1">
                         <span className="font-mono text-xs bg-darker-bg px-2 py-0.5 rounded text-gray-400">#{order.id.toString().padStart(6, '0')}</span>
                         <span className="text-white font-medium">{order.user ? `${order.user.firstName} ${order.user.lastName}` : 'Client Inconnu'}</span>
-                        {order.paymentMethod === 'CASH' || order.paymentMethod === 'CB' && (
+                        {(order.paymentMethod === 'CASH' || order.paymentMethod === 'CB') && (
                           <span className="px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 text-[10px] font-bold">
                             Paiement sur place
                           </span>
@@ -513,11 +513,6 @@ const AdminDashboardPage: React.FC = () => {
                         <li key={item.id} className="flex justify-between text-xs">
                           <span className="text-gray-400">
                             <span className="text-white">{item.quantity}x</span> {item.product.name}
-                            {item.variantId && item.product.variants && (
-                              <span className="text-gray-500 ml-1">
-                                ({(item.product.variants as any[]).find((v: any) => String(v.id) === String(item.variantId))?.name})
-                              </span>
-                            )}
                           </span>
                           <span className="text-right">
                             {hasProductDiscount ? (

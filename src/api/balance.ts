@@ -56,7 +56,7 @@ export const getMyRecharges = async (): Promise<BalanceRecharge[]> => {
 };
 
 export const purchaseWithBalance = async (data: {
-  items: Array<{ productId: number; quantity: number; variantId?: number; selectedOptions?: Array<{ categoryId: number; categoryName: string; optionId: number; optionName: string; priceModifier: number }> }>;
+  items: Array<{ productId: number; quantity: number }>;
   promotionId?: number;
 }): Promise<any> => {
   return fetchJson('/balance/purchase', {

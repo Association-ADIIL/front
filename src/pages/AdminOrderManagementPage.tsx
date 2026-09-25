@@ -85,8 +85,9 @@ const OrderManagementPage: React.FC = () => {
     itemsToRefund: [],
     refundAmount: 0,
   });
-    const isRefundSelectionDirty = isModalOpen && !!currentOrder && Object.keys(refundSelection).length > 0;
-      useConfirmNavigation(isRefundSelectionDirty);
+
+  const isRefundSelectionDirty = isModalOpen && !!currentOrder && Object.keys(refundSelection).length > 0;
+  useConfirmNavigation(isRefundSelectionDirty);
 
   const fetchOrders = async () => {
     try {
@@ -137,7 +138,7 @@ const OrderManagementPage: React.FC = () => {
     if (viewMode === 'inscriptions') {
       fetchInscriptions();
     }
-  }, []); // Removed deps
+  }, []);
 
   // Filtered Orders Logic
   const filteredOrders = useMemo(() => {
@@ -463,7 +464,6 @@ const OrderManagementPage: React.FC = () => {
       'Client Nom',
       'Email',
       'Produit',
-      'Options/Variantes',
       'Quantité',
       'Prix unitaire original',
       'Prix unitaire final',
@@ -481,19 +481,6 @@ const OrderManagementPage: React.FC = () => {
 
     dataToExport.forEach(order => {
       order.items.forEach(item => {
-        // Format variant/options
-        let variantText = '';
-        if (item.variantSelection && (item.variantSelection as any[]).length > 0) {
-          variantText = (item.variantSelection as any[])
-            .map((opt: any) => `${opt.categoryName}: ${opt.optionName}`)
-            .join(' | ');
-        } else if (item.variantId && item.product.variants) {
-          const variant = item.product.variants.find(v => v.id === item.variantId);
-          if (variant) {
-            variantText = variant.name;
-          }
-        }
-
         // Calculate effective price with cart discount
         const totalAfterProductDiscount = order.items.reduce((sum, i) => sum + i.price * i.quantity, 0);
         const hasCartDiscount = (order.cartDiscountAmount || 0) > 0 && totalAfterProductDiscount > 0;
@@ -507,7 +494,6 @@ const OrderManagementPage: React.FC = () => {
           order.user?.lastName || '',
           order.user?.email || '',
           item.product.name,
-          variantText,
           item.quantity.toString(),
           item.originalPrice ? item.originalPrice.toFixed(2) : item.price.toFixed(2),
           effectivePrice.toFixed(2),
@@ -1012,16 +998,6 @@ const OrderManagementPage: React.FC = () => {
                                         <div className="text-white font-medium">
                                             {item.product.name}
                                         </div>
-                                        {/* Variant display: new format (variantSelection) or legacy (variantId) */}
-                                        {item.variantSelection && (item.variantSelection as any[]).length > 0 ? (
-                                            <div className="text-green-400 text-sm mt-1">
-                                                {(item.variantSelection as any[]).map((opt: any) => `${opt.categoryName}: ${opt.optionName}`).join(', ')}
-                                            </div>
-                                        ) : item.variantId && item.product.variants && (
-                                            <div className="text-green-400 text-sm mt-1">
-                                                {(item.product.variants as any[]).find((v: any) => String(v.id) === String(item.variantId))?.name}
-                                            </div>
-                                        )}
                                         <div className="text-gray-400 text-sm mt-1">
                                             Quantité: {item.quantity}
                                             {item.refundedQuantity > 0 && (
@@ -1132,26 +1108,10 @@ const OrderManagementPage: React.FC = () => {
                                     const availableRefund = item.quantity - (item.refundedQuantity || 0);
                                     if (availableRefund <= 0) return null;
 
-                                    // Find variant info: new format (variantSelection) or legacy (variantId)
-                                    let variantDisplayText: string | null = null;
-                                    if (item.variantSelection && (item.variantSelection as any[]).length > 0) {
-                                        variantDisplayText = (item.variantSelection as any[]).map((opt: any) => `${opt.categoryName}: ${opt.optionName}`).join(', ');
-                                    } else if (item.variantId && item.product.variants) {
-                                        const variantInfo = (item.product.variants as any[]).find((v: any) => String(v.id) === String(item.variantId));
-                                        if (variantInfo) {
-                                            variantDisplayText = variantInfo.name;
-                                        }
-                                    }
-
                                     return (
                                         <tr key={item.id} className="border-b border-gray-700 last:border-0">
                                             <td className="py-2">
                                                 {item.product.name}
-                                                {variantDisplayText && (
-                                                    <span className="ml-2 text-xs text-green-400">
-                                                        ({variantDisplayText})
-                                                    </span>
-                                                )}
                                             </td>
                                             <td className="py-2">
                                                 {(() => {
@@ -1260,65 +1220,65 @@ const OrderManagementPage: React.FC = () => {
                 </div>
             </div>
 
-                        {/* Display field values (paid fields + answers) */}
-                        {currentInscription.fieldValues && currentInscription.fieldValues.length > 0 && (
-                          <div className="border-t border-gray-700 pt-4 mt-4">
-                            <h3 className="text-lg font-bold mb-3 text-gray-300">Détails de l'inscription</h3>
+            {/* Display field values (paid fields + answers) */}
+            {currentInscription.fieldValues && currentInscription.fieldValues.length > 0 && (
+              <div className="border-t border-gray-700 pt-4 mt-4">
+                <h3 className="text-lg font-bold mb-3 text-gray-300">Détails de l'inscription</h3>
 
-                            {/* Paid fields (ex-options) */}
-                            {currentInscription.fieldValues.filter(fv => fv.field?.isPaid).length > 0 && (
-                              <div className="mb-4">
-                                <h4 className="text-sm font-bold text-gray-400 mb-2">Options sélectionnées:</h4>
-                                <div className="space-y-2">
-                                  {currentInscription.fieldValues
-                                    .filter(fv => fv.field?.isPaid)
-                                    .map((fv) => (
-                                      <div
-                                        key={fv.id}
-                                        className="bg-darker-bg border border-gray-700 rounded p-3"
-                                      >
-                                        <div className="flex items-center justify-between">
-                                          <span className="text-white font-medium">
-                                            {fv.field?.label || `Champ #${fv.fieldId}`}
-                                            {fv.quantity > 1 && <span className="text-gray-400 ml-1">x{fv.quantity}</span>}
-                                          </span>
-                                          <span className="text-green-400 font-bold">
-                                            {(fv.field?.price ?? 0) > 0 ? `+${((fv.field?.price ?? 0) * fv.quantity).toFixed(2)} €` : 'Gratuit'}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Answer fields */}
-                            {currentInscription.fieldValues.filter(fv => !fv.field?.isPaid).length > 0 && (
-                              <div>
-                                <h4 className="text-sm font-bold text-gray-400 mb-2">Réponses au formulaire:</h4>
-                                <div className="space-y-2">
-                                  {currentInscription.fieldValues
-                                    .filter(fv => !fv.field?.isPaid)
-                                    .map((fv) => (
-                                      <div
-                                        key={fv.id}
-                                        className="bg-darker-bg border border-gray-700 rounded p-3"
-                                      >
-                                        <div className="text-xs text-gray-400 mb-1">
-                                          {fv.field?.label || `Question #${fv.fieldId}`}
-                                        </div>
-                                        <div className="text-white">
-                                          {fv.value === 'true' ? 'Oui' :
-                                           fv.value === 'false' ? 'Non' :
-                                           fv.value || 'N/A'}
-                                        </div>
-                                      </div>
-                                    ))}
-                                </div>
-                              </div>
-                            )}
+                {/* Paid fields (ex-options) */}
+                {currentInscription.fieldValues.filter(fv => fv.field?.isPaid).length > 0 && (
+                  <div className="mb-4">
+                    <h4 className="text-sm font-bold text-gray-400 mb-2">Options sélectionnées:</h4>
+                    <div className="space-y-2">
+                      {currentInscription.fieldValues
+                        .filter(fv => fv.field?.isPaid)
+                        .map((fv) => (
+                          <div
+                            key={fv.id}
+                            className="bg-darker-bg border border-gray-700 rounded p-3"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-white font-medium">
+                                {fv.field?.label || `Champ #${fv.fieldId}`}
+                                {fv.quantity > 1 && <span className="text-gray-400 ml-1">x{fv.quantity}</span>}
+                              </span>
+                              <span className="text-green-400 font-bold">
+                                {(fv.field?.price ?? 0) > 0 ? `+${((fv.field?.price ?? 0) * fv.quantity).toFixed(2)} €` : 'Gratuit'}
+                              </span>
+                            </div>
                           </div>
-                        )}
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Answer fields */}
+                {currentInscription.fieldValues.filter(fv => !fv.field?.isPaid).length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-400 mb-2">Réponses au formulaire:</h4>
+                    <div className="space-y-2">
+                      {currentInscription.fieldValues
+                        .filter(fv => !fv.field?.isPaid)
+                        .map((fv) => (
+                          <div
+                            key={fv.id}
+                            className="bg-darker-bg border border-gray-700 rounded p-3"
+                          >
+                            <div className="text-xs text-gray-400 mb-1">
+                              {fv.field?.label || `Question #${fv.fieldId}`}
+                            </div>
+                            <div className="text-white">
+                              {fv.value === 'true' ? 'Oui' :
+                               fv.value === 'false' ? 'Non' :
+                               fv.value || 'N/A'}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Refund Button - Only for PAID inscriptions with PAYPAL or HELLOASSO */}
             {currentInscription.paymentStatus === 'PAID' &&
