@@ -24,6 +24,7 @@ interface KPIs {
   totalRemboursements: number;
   totalReductions: number;
   totalRecharges: number;
+  totalInscriptions: number;
   nbCommandes: number;
 }
 
@@ -1030,24 +1031,28 @@ function DashboardTab({ dashboard, achatCategories }: { dashboard: DashboardData
         />
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="bg-dark-bg/40 border border-gray-800/60 rounded-xl p-4">
-          <p className="text-xs text-gray-500 mb-1">Panier moyen</p>
-          <p className="text-lg font-semibold text-white">{eur(kpis.panierMoyen)}</p>
-        </div>
-        <div className="bg-dark-bg/40 border border-gray-800/60 rounded-xl p-4">
-          <p className="text-xs text-gray-500 mb-1">Remboursements</p>
-          <p className="text-lg font-semibold text-red-400">{eur(kpis.totalRemboursements)}</p>
-        </div>
-        <div className="bg-dark-bg/40 border border-gray-800/60 rounded-xl p-4">
-          <p className="text-xs text-gray-500 mb-1">Réductions accordées</p>
-          <p className="text-lg font-semibold text-amber-400">{eur(kpis.totalReductions)}</p>
-        </div>
-        <div className="bg-dark-bg/40 border border-gray-800/60 rounded-xl p-4">
-          <p className="text-xs text-gray-500 mb-1">Rechargements balance</p>
-          <p className="text-lg font-semibold text-purple-400">{eur(kpis.totalRecharges)}</p>
-        </div>
-      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+             <div className="bg-dark-bg/40 border border-gray-800/60 rounded-xl p-4">
+               <p className="text-xs text-gray-500 mb-1">Panier moyen</p>
+               <p className="text-lg font-semibold text-white">{eur(kpis.panierMoyen)}</p>
+             </div>
+             <div className="bg-dark-bg/40 border border-gray-800/60 rounded-xl p-4">
+               <p className="text-xs text-gray-500 mb-1">Remboursements</p>
+               <p className="text-lg font-semibold text-red-400">{eur(kpis.totalRemboursements)}</p>
+             </div>
+             <div className="bg-dark-bg/40 border border-gray-800/60 rounded-xl p-4">
+               <p className="text-xs text-gray-500 mb-1">Réductions accordées</p>
+               <p className="text-lg font-semibold text-amber-400">{eur(kpis.totalReductions)}</p>
+             </div>
+             <div className="bg-dark-bg/40 border border-gray-800/60 rounded-xl p-4">
+               <p className="text-xs text-gray-500 mb-1">Rechargements balance</p>
+               <p className="text-lg font-semibold text-purple-400">{eur(kpis.totalRecharges)}</p>
+             </div>
+             <div className="bg-dark-bg/40 border border-gray-800/60 rounded-xl p-4">
+               <p className="text-xs text-gray-500 mb-1">Recettes inscriptions</p>
+               <p className="text-lg font-semibold text-cyan-400">{eur(kpis.totalInscriptions)}</p>
+             </div>
+           </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-dark-bg/60 border border-gray-800 rounded-xl p-5">
