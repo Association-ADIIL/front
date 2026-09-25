@@ -2,12 +2,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   TrendingUp, TrendingDown, ShoppingCart, Euro,
   Plus, Trash2, Pencil, X, Check, ChevronLeft, ChevronRight,
-  BarChart3, Package, RefreshCw, AlertCircle,CheckCircle, Loader2,} from 'lucide-react';
+  BarChart3, Package, RefreshCw, AlertCircle,CheckCircle, Loader2,
+  Paperclip, Upload, Receipt,
+} from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip,
   ResponsiveContainer, Cell,
 } from 'recharts';
-import { fetchJson } from '../api/client';
+import { fetchJson, fetchFormData } from '../api/client';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -47,11 +49,18 @@ interface AchatFournisseur {
   montant: number;
   categorie: string;
   createdAt: string;
+  // Ticket de caisse associé (un seul par achat), le cas échéant. Le bucket
+  // R2 étant privé, il n'y a pas d'URL directement exploitable : il faut
+  // demander une URL signée à la demande via GET /upload/private/:fileId
+  // (cf. openSignedReceipt ci-dessous).
+  receiptFile?: { id: number; fileName: string } | null;
   items: {
     id: number;
     quantite: number;
     prixUnitaire: number;
-    product: { id: number; name: string };
+    // Article hors-catalogue (ex: BBQ) : product est null, description prend le relais.
+    description?: string | null;
+    product: { id: number; name: string } | null;
   }[];
 }
 
@@ -144,6 +153,17 @@ function shortDate(iso: string) {
   return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
 }
 
+// Le bucket R2 privé n'expose pas d'URL statique : on demande une URL signée
+// (valable 1h côté back) juste avant d'ouvrir le fichier.
+async function openSignedReceipt(fileId: number) {
+  try {
+    const { url } = await fetchJson<{ url: string }>(`/upload/private/${fileId}`);
+    window.open(url, '_blank', 'noopener,noreferrer');
+  } catch {
+    window.alert("Impossible d'ouvrir le ticket de caisse.");
+  }
+}
+
 const METHODE_LABELS: Record<string, string> = {
   CASH: 'Espèces',
   CB: 'CB',
@@ -203,17 +223,28 @@ interface AchatModalProps {
     fournisseur: string;
     categorie: string;
     fournisseurCategorie: string | null;
-    items: { productId: number; quantite: number; prixUnitaire: number }[];
-  }) => Promise<void>;
+    items: (
+      | { productId: number; quantite: number; prixUnitaire: number }
+      | { description: string; quantite: number; prixUnitaire: number }
+    )[];
+  }) => Promise<AchatFournisseur>;
+  onUploadReceipt: (achatId: number, file: File) => Promise<AchatFournisseur>;
+  onDeleteReceipt: (achatId: number) => Promise<AchatFournisseur>;
 }
 
 interface FormItem {
   uid: string;
+  // 'produit' : article du catalogue (recherche + paquets). 'personnalise' :
+  // achat hors-catalogue décrit en texte libre (ex: BBQ).
+  mode: 'produit' | 'personnalise';
   productId: number | null;
   productName: string;
   nbPaquets: string;     // ← Remplace "quantite"
   nbParPaquet: string;
   prixPaquet: string;
+  description: string;
+  quantitePerso: string;
+  prixUnitairePerso: string;
   showSuggestions: boolean;
 }
 
@@ -221,7 +252,7 @@ function makeUid() {
   return Math.random().toString(36).slice(2);
 }
 
-function AchatModal({ initial, defaultDate, products, achatCategories, fournisseurCategories, onClose, onSave }: AchatModalProps) {
+function AchatModal({ initial, defaultDate, products, achatCategories, fournisseurCategories, onClose, onSave, onUploadReceipt, onDeleteReceipt }: AchatModalProps) {
   const isEdit = !!initial;
 
   const [date, setDate] = useState(initial ? initial.date.split('T')[0] : defaultDate);
@@ -231,19 +262,38 @@ function AchatModal({ initial, defaultDate, products, achatCategories, fournisse
       if (initial && initial.items.length > 0) {
         return initial.items.map((i) => ({
           uid: makeUid(),
-          productId: i.product.id,
-          productName: i.product.name,
+          mode: i.product ? 'produit' : 'personnalise',
+          productId: i.product?.id ?? null,
+          productName: i.product?.name ?? '',
           // Historique : réaffiché comme 1 paquet de N articles en lecture seule
           nbPaquets: String(i.quantite),
           nbParPaquet: '1',
           prixPaquet: String(i.prixUnitaire),
+          description: i.description ?? '',
+          quantitePerso: String(i.quantite),
+          prixUnitairePerso: String(i.prixUnitaire),
           showSuggestions: false,
         }));
       }
-      return [{ uid: makeUid(), productId: null, productName: '', nbPaquets: '', nbParPaquet: '', prixPaquet: '', showSuggestions: false }];
+      return [{
+        uid: makeUid(), mode: 'produit', productId: null, productName: '',
+        nbPaquets: '', nbParPaquet: '', prixPaquet: '',
+        description: '', quantitePerso: '', prixUnitairePerso: '',
+        showSuggestions: false,
+      }];
     });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  // ─ Ticket de caisse ─
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [existingReceipt, setExistingReceipt] = useState(initial?.receiptFile ?? null);
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [deletingReceipt, setDeletingReceipt] = useState(false);
+  const [receiptError, setReceiptError] = useState('');
+  // Une fois l'achat créé (mode création), on mémorise le résultat pour ne
+  // pas le recréer si on retente juste l'upload du ticket après une erreur.
+  const [createdAchat, setCreatedAchat] = useState<AchatFournisseur | null>(null);
 
   const inputCls =
     'w-full bg-dark-bg border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
@@ -255,7 +305,12 @@ function AchatModal({ initial, defaultDate, products, achatCategories, fournisse
 
   function addItem() {
       if (isEdit) return;
-      setItems((arr) => [...arr, { uid: makeUid(), productId: null, productName: '', nbPaquets: '', nbParPaquet: '', prixPaquet: '', showSuggestions: false }]);
+      setItems((arr) => [...arr, {
+        uid: makeUid(), mode: 'produit', productId: null, productName: '',
+        nbPaquets: '', nbParPaquet: '', prixPaquet: '',
+        description: '', quantitePerso: '', prixUnitairePerso: '',
+        showSuggestions: false,
+      }]);
     }
 
   function removeItem(uid: string) {
@@ -269,6 +324,11 @@ function AchatModal({ initial, defaultDate, products, achatCategories, fournisse
   }
 
   const total = itemsState.reduce((s, it) => {
+      if (it.mode === 'personnalise') {
+        const q = parseFloat(it.quantitePerso) || 0;
+        const pu = parseFloat(it.prixUnitairePerso) || 0;
+        return s + q * pu;
+      }
       const nb = parseFloat(it.nbPaquets) || 0;
       const pp = parseFloat(it.prixPaquet) || 0;
       return s + nb * pp;
@@ -277,9 +337,17 @@ function AchatModal({ initial, defaultDate, products, achatCategories, fournisse
   async function handleSubmit() {
       if (!date) { setError('Date obligatoire.'); return; }
       setSaving(true);
+      setError('');
+      setReceiptError('');
       try {
-        if (isEdit) {
-          await onSave({
+        let achat: AchatFournisseur;
+
+        if (createdAchat) {
+          // Achat déjà enregistré lors d'une tentative précédente : on ne
+          // fait que retenter l'upload du ticket ci-dessous.
+          achat = createdAchat;
+        } else if (isEdit) {
+          achat = await onSave({
             date,
             fournisseur: '',
             categorie,
@@ -288,24 +356,38 @@ function AchatModal({ initial, defaultDate, products, achatCategories, fournisse
           });
         } else {
           for (const it of itemsState) {
-            if (!it.productId) { setError('Sélectionne un produit pour chaque ligne.'); setSaving(false); return; }
-            const nb = parseFloat(it.nbPaquets);
-            const n = parseFloat(it.nbParPaquet);
-            const pp = parseFloat(it.prixPaquet);
-            if (isNaN(nb) || nb <= 0) { setError('Nombre de paquets invalide sur une ligne.'); setSaving(false); return; }
-            if (isNaN(n) || n <= 0) { setError('Quantité par paquet invalide sur une ligne.'); setSaving(false); return; }
-            if (isNaN(pp) || pp < 0) { setError('Prix du paquet invalide sur une ligne.'); setSaving(false); return; }
+            if (it.mode === 'produit') {
+              if (!it.productId) { setError('Sélectionne un produit pour chaque ligne, ou passe-la en "Achat personnalisé".'); setSaving(false); return; }
+              const nb = parseFloat(it.nbPaquets);
+              const n = parseFloat(it.nbParPaquet);
+              const pp = parseFloat(it.prixPaquet);
+              if (isNaN(nb) || nb <= 0) { setError('Nombre de paquets invalide sur une ligne.'); setSaving(false); return; }
+              if (isNaN(n) || n <= 0) { setError('Quantité par paquet invalide sur une ligne.'); setSaving(false); return; }
+              if (isNaN(pp) || pp < 0) { setError('Prix du paquet invalide sur une ligne.'); setSaving(false); return; }
+            } else {
+              if (!it.description.trim()) { setError("Décris l'article pour chaque ligne « Achat personnalisé » (ex: BBQ)."); setSaving(false); return; }
+              const q = parseFloat(it.quantitePerso);
+              const pu = parseFloat(it.prixUnitairePerso);
+              if (isNaN(q) || q <= 0) { setError('Quantité invalide sur une ligne personnalisée.'); setSaving(false); return; }
+              if (isNaN(pu) || pu < 0) { setError('Prix invalide sur une ligne personnalisée.'); setSaving(false); return; }
+            }
           }
-          await onSave({
+          achat = await onSave({
             date,
             fournisseur: '',
             categorie,
             fournisseurCategorie: fournisseurCategorie || null,
             items: itemsState.map((it) => {
+              if (it.mode === 'personnalise') {
+                return {
+                  description: it.description.trim(),
+                  quantite: parseFloat(it.quantitePerso),
+                  prixUnitaire: parseFloat(it.prixUnitairePerso),
+                };
+              }
               const nb = parseFloat(it.nbPaquets);
               const n = parseFloat(it.nbParPaquet);
               const pp = parseFloat(it.prixPaquet);
-
               return {
                 productId: it.productId as number,
                 quantite: nb * n,       // nb paquets × qté/paquet = nb articles total
@@ -313,7 +395,21 @@ function AchatModal({ initial, defaultDate, products, achatCategories, fournisse
               };
             }),
           });
+          setCreatedAchat(achat);
         }
+
+        if (receiptFile) {
+          setUploadingReceipt(true);
+          try {
+            achat = await onUploadReceipt(achat.id, receiptFile);
+          } catch (e: any) {
+            setReceiptError(e.message ?? "L'achat est enregistré, mais l'envoi du ticket a échoué. Réessaie.");
+            return;
+          } finally {
+            setUploadingReceipt(false);
+          }
+        }
+
         onClose();
       } catch (e: any) {
         setError(e.message ?? 'Erreur lors de la sauvegarde.');
@@ -374,72 +470,132 @@ function AchatModal({ initial, defaultDate, products, achatCategories, fournisse
             )}
 
             {itemsState.map((it) => {
-              const suggestions = !isEdit && it.productName.trim().length > 0
+              const suggestions = !isEdit && it.mode === 'produit' && it.productName.trim().length > 0
                 ? products.filter((p) =>
                     p.name.toLowerCase().includes(it.productName.toLowerCase())
                   ).slice(0, 6)
                 : [];
               return (
-                <div key={it.uid} className="flex flex-col sm:flex-row gap-2 sm:items-start bg-dark-bg/30 sm:bg-transparent rounded-lg p-2 sm:p-0 border border-gray-800/60 sm:border-0">
-                  <div className="relative flex-1 min-w-0 sm:min-w-[140px]">
-                    <input
-                      type="text"
-                      placeholder="Rechercher un produit…"
-                      value={it.productName}
-                      disabled={isEdit}
-                      onChange={(e) => updateItem(it.uid, { productName: e.target.value, productId: null, showSuggestions: true })}
-                      onFocus={() => updateItem(it.uid, { showSuggestions: true })}
-                      onBlur={() => setTimeout(() => updateItem(it.uid, { showSuggestions: false }), 150)}
-                      className={inputCls}
-                    />
-                    {it.showSuggestions && suggestions.length > 0 && (
-                      <div className="absolute z-10 mt-1 w-full bg-dark-bg border border-gray-700 rounded-lg shadow-lg overflow-hidden max-h-48 overflow-y-auto">
-                        {suggestions.map((p) => (
-                          <button
-                            key={p.id}
-                            type="button"
-                            onClick={() => selectProduct(it.uid, p)}
-                            className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-emerald-500/10 hover:text-emerald-400 transition-colors"
-                          >
-                            {p.name}
-                          </button>
-                        ))}
-                      </div>
+                <div key={it.uid} className="flex flex-col gap-2 bg-dark-bg/30 sm:bg-transparent rounded-lg p-2 sm:p-0 border border-gray-800/60 sm:border-0">
+                  {!isEdit && (
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => updateItem(it.uid, { mode: 'produit' })}
+                        className={`px-2 py-1 rounded-md text-xs font-medium transition-colors ${
+                          it.mode === 'produit'
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                            : 'text-gray-500 border border-transparent hover:text-gray-300'
+                        }`}
+                      >
+                        Produit du site
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => updateItem(it.uid, { mode: 'personnalise', productId: null, productName: '' })}
+                        className={`px-2 py-1 rounded-md text-xs font-medium transition-colors ${
+                          it.mode === 'personnalise'
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                            : 'text-gray-500 border border-transparent hover:text-gray-300'
+                        }`}
+                      >
+                        Achat personnalisé
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col sm:flex-row gap-2 sm:items-start">
+                    {it.mode === 'produit' ? (
+                      <>
+                        <div className="relative flex-1 min-w-0 sm:min-w-[140px]">
+                          <input
+                            type="text"
+                            placeholder="Rechercher un produit…"
+                            value={it.productName}
+                            disabled={isEdit}
+                            onChange={(e) => updateItem(it.uid, { productName: e.target.value, productId: null, showSuggestions: true })}
+                            onFocus={() => updateItem(it.uid, { showSuggestions: true })}
+                            onBlur={() => setTimeout(() => updateItem(it.uid, { showSuggestions: false }), 150)}
+                            className={inputCls}
+                          />
+                          {it.showSuggestions && suggestions.length > 0 && (
+                            <div className="absolute z-10 mt-1 w-full bg-dark-bg border border-gray-700 rounded-lg shadow-lg overflow-hidden max-h-48 overflow-y-auto">
+                              {suggestions.map((p) => (
+                                <button
+                                  key={p.id}
+                                  type="button"
+                                  onClick={() => selectProduct(it.uid, p)}
+                                  className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-emerald-500/10 hover:text-emerald-400 transition-colors"
+                                >
+                                  {p.name}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 sm:contents">
+                          <input
+                              type="number" min="1" step="1" placeholder="Nb paquets"
+                              value={it.nbPaquets}
+                              disabled={isEdit}
+                              onChange={(e) => updateItem(it.uid, { nbPaquets: e.target.value })}
+                              className={`${inputCls} sm:w-24`}
+                          />
+                          <input
+                              type="number" min="1" step="1" placeholder="Qté/paquet"
+                              value={it.nbParPaquet}
+                              disabled={isEdit}
+                              onChange={(e) => updateItem(it.uid, { nbParPaquet: e.target.value })}
+                              className={`${inputCls} sm:w-24`}
+                          />
+                          <input
+                              type="number" min="0" step="0.01" placeholder="Prix paquet"
+                              value={it.prixPaquet}
+                              disabled={isEdit}
+                              onChange={(e) => updateItem(it.uid, { prixPaquet: e.target.value })}
+                              className={`${inputCls} sm:w-28`}
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <input
+                          type="text"
+                          placeholder="Décrire l'achat (ex: BBQ)…"
+                          value={it.description}
+                          disabled={isEdit}
+                          onChange={(e) => updateItem(it.uid, { description: e.target.value })}
+                          className={`${inputCls} flex-1 min-w-0 sm:min-w-[140px]`}
+                        />
+                        <div className="grid grid-cols-2 gap-2 sm:contents">
+                          <input
+                              type="number" min="1" step="1" placeholder="Quantité"
+                              value={it.quantitePerso}
+                              disabled={isEdit}
+                              onChange={(e) => updateItem(it.uid, { quantitePerso: e.target.value })}
+                              className={`${inputCls} sm:w-24`}
+                          />
+                          <input
+                              type="number" min="0" step="0.01" placeholder="Prix unitaire"
+                              value={it.prixUnitairePerso}
+                              disabled={isEdit}
+                              onChange={(e) => updateItem(it.uid, { prixUnitairePerso: e.target.value })}
+                              className={`${inputCls} sm:w-28`}
+                          />
+                        </div>
+                      </>
+                    )}
+                    {!isEdit && (
+                      <button
+                        type="button"
+                        onClick={() => removeItem(it.uid)}
+                        disabled={itemsState.length === 1}
+                        className="self-end sm:self-start p-2 text-gray-600 hover:text-red-400 transition-colors rounded-lg hover:bg-red-500/10 disabled:opacity-30"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     )}
                   </div>
-                  <div className="grid grid-cols-3 gap-2 sm:contents">
-                    <input
-                        type="number" min="1" step="1" placeholder="Nb paquets"
-                        value={it.nbPaquets}
-                        disabled={isEdit}
-                        onChange={(e) => updateItem(it.uid, { nbPaquets: e.target.value })}
-                        className={`${inputCls} sm:w-24`}
-                    />
-                    <input
-                        type="number" min="1" step="1" placeholder="Qté/paquet"
-                        value={it.nbParPaquet}
-                        disabled={isEdit}
-                        onChange={(e) => updateItem(it.uid, { nbParPaquet: e.target.value })}
-                        className={`${inputCls} sm:w-24`}
-                    />
-                    <input
-                        type="number" min="0" step="0.01" placeholder="Prix paquet"
-                        value={it.prixPaquet}
-                        disabled={isEdit}
-                        onChange={(e) => updateItem(it.uid, { prixPaquet: e.target.value })}
-                        className={`${inputCls} sm:w-28`}
-                    />
-                  </div>
-                  {!isEdit && (
-                    <button
-                      type="button"
-                      onClick={() => removeItem(it.uid)}
-                      disabled={itemsState.length === 1}
-                      className="self-end sm:self-start p-2 text-gray-600 hover:text-red-400 transition-colors rounded-lg hover:bg-red-500/10 disabled:opacity-30"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
                 </div>
               );
             })}
@@ -451,6 +607,87 @@ function AchatModal({ initial, defaultDate, products, achatCategories, fournisse
               >
                 <Plus size={12} /> Ajouter un article
               </button>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs text-gray-500 block">Ticket de caisse</label>
+
+            {existingReceipt && !receiptFile ? (
+              <div className="flex items-center justify-between bg-dark-bg/30 border border-gray-800/60 rounded-lg px-3 py-2">
+                <button
+                  type="button"
+                  onClick={() => openSignedReceipt(existingReceipt.id)}
+                  className="flex items-center gap-2 text-sm text-emerald-400 hover:underline truncate min-w-0"
+                >
+                  <Receipt size={14} className="shrink-0" />
+                  <span className="truncate">{existingReceipt.fileName}</span>
+                </button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <label className="p-1.5 text-gray-500 hover:text-blue-400 transition-colors rounded-lg hover:bg-blue-500/10 cursor-pointer" title="Remplacer">
+                    <Pencil size={13} />
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      className="hidden"
+                      onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!initial) return;
+                      setDeletingReceipt(true);
+                      setReceiptError('');
+                      try {
+                        await onDeleteReceipt(initial.id);
+                        setExistingReceipt(null);
+                      } catch (e: any) {
+                        setReceiptError(e.message ?? 'Suppression du ticket impossible.');
+                      } finally {
+                        setDeletingReceipt(false);
+                      }
+                    }}
+                    disabled={deletingReceipt}
+                    title="Supprimer"
+                    className="p-1.5 text-gray-600 hover:text-red-400 transition-colors rounded-lg hover:bg-red-500/10 disabled:opacity-50"
+                  >
+                    {deletingReceipt ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                  </button>
+                </div>
+              </div>
+            ) : receiptFile ? (
+              <div className="flex items-center justify-between bg-dark-bg/30 border border-gray-800/60 rounded-lg px-3 py-2">
+                <span className="flex items-center gap-2 text-sm text-gray-300 truncate min-w-0">
+                  <Receipt size={14} className="shrink-0 text-emerald-400" />
+                  <span className="truncate">{receiptFile.name}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setReceiptFile(null)}
+                  disabled={uploadingReceipt}
+                  className="p-1.5 text-gray-600 hover:text-red-400 transition-colors rounded-lg hover:bg-red-500/10 shrink-0 disabled:opacity-50"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            ) : (
+              <label className="flex items-center justify-center gap-2 border border-dashed border-gray-700 rounded-lg py-3 text-sm text-gray-500 hover:text-gray-300 hover:border-gray-600 transition-colors cursor-pointer">
+                <Upload size={14} />
+                Joindre une photo ou un PDF du ticket
+                <input
+                  type="file"
+                  accept="image/*,.pdf"
+                  className="hidden"
+                  onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
+                />
+              </label>
+            )}
+
+            {receiptError && (
+              <p className="text-red-400 text-xs flex items-center gap-1">
+                <AlertCircle size={12} /> {receiptError}
+              </p>
             )}
           </div>
 
@@ -471,11 +708,11 @@ function AchatModal({ initial, defaultDate, products, achatCategories, fournisse
             Annuler
           </button>
           <button
-            onClick={handleSubmit} disabled={saving}
+            onClick={handleSubmit} disabled={saving || uploadingReceipt}
             className="flex-1 py-2 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-sm font-medium hover:bg-emerald-500/30 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-            {initial ? 'Enregistrer' : 'Ajouter'}
+            {(saving || uploadingReceipt) ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+            {createdAchat ? "Réessayer l'envoi du ticket" : initial ? 'Enregistrer' : 'Ajouter'}
           </button>
         </div>
       </div>
@@ -564,20 +801,51 @@ export default function ComptabilitePage() {
     fournisseur: string;
     categorie: string;
     fournisseurCategorie: string | null;
-    items: { productId: number; quantite: number; prixUnitaire: number }[];
-  }) {
+    items: (
+      | { productId: number; quantite: number; prixUnitaire: number }
+      | { description: string; quantite: number; prixUnitaire: number }
+    )[];
+  }): Promise<AchatFournisseur> {
+    let achat: AchatFournisseur;
     if (editTarget) {
-      await fetchJson(`/admin/comptabilite/achats/${editTarget.id}`, {
+      achat = await fetchJson<AchatFournisseur>(`/admin/comptabilite/achats/${editTarget.id}`, {
         method: 'PUT',
         body: JSON.stringify(data),
       });
     } else {
-      await fetchJson('/admin/comptabilite/achats', {
+      achat = await fetchJson<AchatFournisseur>('/admin/comptabilite/achats', {
         method: 'POST',
         body: JSON.stringify(data),
       });
     }
     await load();
+    return achat;
+  }
+
+  async function handleUploadReceipt(achatId: number, file: File): Promise<AchatFournisseur> {
+    // 1) Upload générique vers le bucket R2 privé (infra existante) : crée le
+    //    fichier sur R2 + la ligne File, et renvoie son id.
+    const formData = new FormData();
+    formData.append('file', file);
+    const uploaded = await fetchFormData<{ fileKey: string; fileId: number; fileName: string }>(
+      '/upload/private/tickets-caisse',
+      { method: 'POST', body: formData }
+    );
+    // 2) On lie ce fileId à l'achat (remplace l'éventuel ticket précédent).
+    const achat = await fetchJson<AchatFournisseur>(`/admin/comptabilite/achats/${achatId}/receipt`, {
+      method: 'PUT',
+      body: JSON.stringify({ fileId: uploaded.fileId }),
+    });
+    await load();
+    return achat;
+  }
+
+  async function handleDeleteReceipt(achatId: number): Promise<AchatFournisseur> {
+    const achat = await fetchJson<AchatFournisseur>(`/admin/comptabilite/achats/${achatId}/receipt`, {
+      method: 'DELETE',
+    });
+    await load();
+    return achat;
   }
 
   async function handleDelete(id: number) {
@@ -672,6 +940,7 @@ export default function ComptabilitePage() {
           deletingId={deletingId}
           defaultDate={periode.fin}
           achatCategories={achatCategories}
+          fournisseurCategories={fournisseurCategories}
           onAdd={() => { setEditTarget(null); setModalOpen(true); }}
           onEdit={(a) => { setEditTarget(a); setModalOpen(true); }}
           onDelete={handleDelete}
@@ -706,6 +975,8 @@ export default function ComptabilitePage() {
           fournisseurCategories={fournisseurCategories}
           onClose={() => { setModalOpen(false); setEditTarget(null); }}
           onSave={handleSaveAchat}
+          onUploadReceipt={handleUploadReceipt}
+          onDeleteReceipt={handleDeleteReceipt}
         />
       )}
     </div>
@@ -921,12 +1192,13 @@ interface AchatsTabProps {
   deletingId: number | null;
   defaultDate: string;
   achatCategories: CategorieOption[];
+  fournisseurCategories: CategorieOption[];
   onAdd: () => void;
   onEdit: (a: AchatFournisseur) => void;
   onDelete: (id: number) => Promise<void>;
 }
 
-function AchatsTab({ achats, deletingId, achatCategories, onAdd, onEdit, onDelete }: AchatsTabProps) {
+function AchatsTab({ achats, deletingId, achatCategories, fournisseurCategories, onAdd, onEdit, onDelete }: AchatsTabProps) {
   const total = achats.reduce((s, a) => s + a.montant, 0);
 
   return (
@@ -961,6 +1233,7 @@ function AchatsTab({ achats, deletingId, achatCategories, onAdd, onEdit, onDelet
             <thead>
               <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
                 <th className="text-left px-4 py-3 font-medium">Date</th>
+                <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">Magasin</th>
                 <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">Catégorie</th>
                 <th className="text-left px-4 py-3 font-medium hidden md:table-cell">Articles</th>
                 <th className="text-right px-4 py-3 font-medium hidden lg:table-cell">Prix unitaire</th>
@@ -973,6 +1246,9 @@ function AchatsTab({ achats, deletingId, achatCategories, onAdd, onEdit, onDelet
               {achats.map((a, i) => {
                 const color = getCategorieColor(a.categorie);
                 const label = achatCategories.find((c) => c.value === a.categorie)?.label ?? a.categorie;
+                const magasinLabel = a.fournisseurCategorie
+                  ? fournisseurCategories.find((c) => c.value === a.fournisseurCategorie)?.label ?? a.fournisseurCategorie
+                  : null;
                 return (
                   <tr
                     key={a.id}
@@ -980,7 +1256,24 @@ function AchatsTab({ achats, deletingId, achatCategories, onAdd, onEdit, onDelet
                       i === achats.length - 1 ? 'border-b-0' : ''
                     }`}
                   >
-                    <td className="px-4 py-3 text-gray-400 whitespace-nowrap">{shortDate(a.date)}</td>
+                    <td className="px-4 py-3 text-gray-400 whitespace-nowrap">
+                      <div className="flex items-center gap-1.5">
+                        {shortDate(a.date)}
+                        {a.receiptFile && (
+                          <button
+                            type="button"
+                            title="Voir le ticket de caisse"
+                            onClick={(e) => { e.stopPropagation(); openSignedReceipt(a.receiptFile!.id); }}
+                            className="text-gray-600 hover:text-emerald-400 transition-colors"
+                          >
+                            <Paperclip size={12} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-gray-400 hidden sm:table-cell">
+                      {magasinLabel ?? '—'}
+                    </td>
                     <td className="px-4 py-3 hidden sm:table-cell">
                       <span
                         className="text-xs px-2 py-0.5 rounded-full font-medium"
@@ -991,7 +1284,7 @@ function AchatsTab({ achats, deletingId, achatCategories, onAdd, onEdit, onDelet
                     </td>
                     <td className="px-4 py-3 text-gray-400 hidden md:table-cell">
                       {a.items.map((it) => (
-                        <div key={it.id}>{it.product.name}</div>
+                        <div key={it.id}>{it.product?.name ?? it.description ?? '—'}</div>
                       ))}
                     </td>
                     <td className="px-4 py-3 text-right hidden lg:table-cell">
@@ -1033,7 +1326,7 @@ function AchatsTab({ achats, deletingId, achatCategories, onAdd, onEdit, onDelet
             </tbody>
             <tfoot>
               <tr className="border-t border-gray-800 bg-dark-bg/40">
-                <td colSpan={7} className="px-4 py-3 text-xs text-gray-500 uppercase tracking-wider">
+                <td colSpan={8} className="px-4 py-3 text-xs text-gray-500 uppercase tracking-wider">
                   Total période
                 </td>
                 <td className="px-4 py-3 text-right text-white font-bold">{eur(total)}</td>
