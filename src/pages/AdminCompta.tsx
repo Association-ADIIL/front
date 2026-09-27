@@ -1728,7 +1728,11 @@ function TresoreriePanel({ mois, annee }: { mois: number; annee: number }) {
   const [caisseSaving, setCaisseSaving] = useState(false);
   const [caisseError, setCaisseError] = useState('');
   const [caisseSuccess, setCaisseSuccess] = useState(false);
-  const [reportMoisPrec, setReportMoisPrec] = useState<number | null>(null);
+   const [reportMoisPrec, setReportMoisPrec] = useState<number | null>(null);
+    const [soldeCaisseUpdatedAt, setSoldeCaisseUpdatedAt] = useState<string | null>(null);
+    const [soldeCaisseUpdatedByName, setSoldeCaisseUpdatedByName] = useState<string | null>(null);
+
+
 
   // --- Dépôts banque ---
   const [depots, setDepots] = useState<{ id: number; montant: number; date: string }[]>([]);
@@ -1747,25 +1751,29 @@ function TresoreriePanel({ mois, annee }: { mois: number; annee: number }) {
     'bg-dark-bg border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500/60 transition-colors';
 
   async function fetchData() {
-    setLoading(true);
-    try {
-      const d = await fetchJson<{
-        soldeCaisse: number | null;
-        soldeInitial: number;
-        mouvements: { id: number; type: string; montant: number; date: string }[];
-      }>(`/admin/tresorerie/solde?mois=${mois}&annee=${annee}`);
+      setLoading(true);
+      try {
+        const d = await fetchJson<{
+          soldeCaisse: number | null;
+          soldeInitial: number;
+          soldeCaisseUpdatedAt: string | null;
+          soldeCaisseUpdatedByName: string | null;
+          mouvements: { id: number; type: string; montant: number; date: string }[];
+        }>(`/admin/tresorerie/solde?mois=${mois}&annee=${annee}`);
 
-      setSoldeCaisse(d.soldeCaisse ?? null);
-      setSoldeCaisseInput(d.soldeCaisse != null ? String(d.soldeCaisse) : '');
-      setCaisseMode(d.soldeCaisse != null ? 'view' : 'edit');
-      setReportMoisPrec(d.soldeInitial);
-      setDepots(d.mouvements.filter((m) => m.type === 'DEPOT_BANQUE').map(({ id, montant, date }) => ({ id, montant, date })));
-    } catch (e: any) {
-      setCaisseError(e.message ?? 'Erreur lors du chargement.');
-    } finally {
-      setLoading(false);
+        setSoldeCaisse(d.soldeCaisse ?? null);
+        setSoldeCaisseInput(d.soldeCaisse != null ? String(d.soldeCaisse) : '');
+        setCaisseMode(d.soldeCaisse != null ? 'view' : 'edit');
+        setReportMoisPrec(d.soldeInitial);
+        setSoldeCaisseUpdatedAt(d.soldeCaisseUpdatedAt);
+        setSoldeCaisseUpdatedByName(d.soldeCaisseUpdatedByName);
+        setDepots(d.mouvements.filter((m) => m.type === 'DEPOT_BANQUE').map(({ id, montant, date }) => ({ id, montant, date })));
+      } catch (e: any) {
+        setCaisseError(e.message ?? 'Erreur lors du chargement.');
+      } finally {
+        setLoading(false);
+      }
     }
-  }
 
   useEffect(() => {
     fetchJson('/admin/tresorerie/cloturer', {
@@ -1903,11 +1911,20 @@ function TresoreriePanel({ mois, annee }: { mois: number; annee: number }) {
           </div>
 
           {/* Valeur enregistrée */}
-          {caisseMode === 'view' && soldeCaisse != null && (
+{caisseMode === 'view' && soldeCaisse != null && (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-dark-bg border border-gray-800 rounded-xl px-4 py-3">
               <div className="space-y-0.5">
                 <p className="text-xs text-gray-500">Solde saisi ce mois</p>
                 <p className="text-2xl font-bold text-emerald-400">{eur(soldeCaisse)}</p>
+                {soldeCaisseUpdatedAt && (
+                  <p className="text-[11px] text-gray-600">
+                    Dernière mise à jour le{' '}
+                    {new Date(soldeCaisseUpdatedAt).toLocaleDateString('fr-FR', {
+                      day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+                    })}
+                    {soldeCaisseUpdatedByName ? ` par ${soldeCaisseUpdatedByName}` : ''}
+                  </p>
+                )}
               </div>
               <button
                 onClick={() => setCaisseMode('edit')}
