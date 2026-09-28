@@ -1719,6 +1719,12 @@ function stockBadge(stock: number) {
       );
     }
 // ─── Trésorerie panel ─────────────────────────────────────────────────────────
+interface HistoriqueCaisseEntry {
+  id: number;
+  solde: number;
+  userName: string | null;
+  createdAt: string;
+}
 
 function TresoreriePanel({ mois, annee }: { mois: number; annee: number }) {
   // --- Caisse ---
@@ -1728,11 +1734,10 @@ function TresoreriePanel({ mois, annee }: { mois: number; annee: number }) {
   const [caisseSaving, setCaisseSaving] = useState(false);
   const [caisseError, setCaisseError] = useState('');
   const [caisseSuccess, setCaisseSuccess] = useState(false);
-   const [reportMoisPrec, setReportMoisPrec] = useState<number | null>(null);
-    const [soldeCaisseUpdatedAt, setSoldeCaisseUpdatedAt] = useState<string | null>(null);
-    const [soldeCaisseUpdatedByName, setSoldeCaisseUpdatedByName] = useState<string | null>(null);
-
-
+  const [reportMoisPrec, setReportMoisPrec] = useState<number | null>(null);
+  const [soldeCaisseUpdatedAt, setSoldeCaisseUpdatedAt] = useState<string | null>(null);
+  const [soldeCaisseUpdatedByName, setSoldeCaisseUpdatedByName] = useState<string | null>(null);
+  const [historiqueCaisse, setHistoriqueCaisse] = useState<HistoriqueCaisseEntry[]>([]);
 
   // --- Dépôts banque ---
   const [depots, setDepots] = useState<{ id: number; montant: number; date: string }[]>([]);
@@ -1751,29 +1756,31 @@ function TresoreriePanel({ mois, annee }: { mois: number; annee: number }) {
     'bg-dark-bg border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500/60 transition-colors';
 
   async function fetchData() {
-      setLoading(true);
-      try {
-        const d = await fetchJson<{
-          soldeCaisse: number | null;
-          soldeInitial: number;
-          soldeCaisseUpdatedAt: string | null;
-          soldeCaisseUpdatedByName: string | null;
-          mouvements: { id: number; type: string; montant: number; date: string }[];
-        }>(`/admin/tresorerie/solde?mois=${mois}&annee=${annee}`);
+    setLoading(true);
+    try {
+      const d = await fetchJson<{
+        soldeCaisse: number | null;
+        soldeInitial: number;
+        soldeCaisseUpdatedAt: string | null;
+        soldeCaisseUpdatedByName: string | null;
+        historiqueCaisse: HistoriqueCaisseEntry[];
+        mouvements: { id: number; type: string; montant: number; date: string }[];
+      }>(`/admin/tresorerie/solde?mois=${mois}&annee=${annee}`);
 
-        setSoldeCaisse(d.soldeCaisse ?? null);
-        setSoldeCaisseInput(d.soldeCaisse != null ? String(d.soldeCaisse) : '');
-        setCaisseMode(d.soldeCaisse != null ? 'view' : 'edit');
-        setReportMoisPrec(d.soldeInitial);
-        setSoldeCaisseUpdatedAt(d.soldeCaisseUpdatedAt);
-        setSoldeCaisseUpdatedByName(d.soldeCaisseUpdatedByName);
-        setDepots(d.mouvements.filter((m) => m.type === 'DEPOT_BANQUE').map(({ id, montant, date }) => ({ id, montant, date })));
-      } catch (e: any) {
-        setCaisseError(e.message ?? 'Erreur lors du chargement.');
-      } finally {
-        setLoading(false);
-      }
+      setSoldeCaisse(d.soldeCaisse ?? null);
+      setSoldeCaisseInput(d.soldeCaisse != null ? String(d.soldeCaisse) : '');
+      setCaisseMode(d.soldeCaisse != null ? 'view' : 'edit');
+      setReportMoisPrec(d.soldeInitial);
+      setSoldeCaisseUpdatedAt(d.soldeCaisseUpdatedAt);
+      setSoldeCaisseUpdatedByName(d.soldeCaisseUpdatedByName);
+      setHistoriqueCaisse(d.historiqueCaisse ?? []);
+      setDepots(d.mouvements.filter((m) => m.type === 'DEPOT_BANQUE').map(({ id, montant, date }) => ({ id, montant, date })));
+    } catch (e: any) {
+      setCaisseError(e.message ?? 'Erreur lors du chargement.');
+    } finally {
+      setLoading(false);
     }
+  }
 
   useEffect(() => {
     fetchJson('/admin/tresorerie/cloturer', {
@@ -1795,8 +1802,8 @@ function TresoreriePanel({ mois, annee }: { mois: number; annee: number }) {
         method: 'POST',
         body: JSON.stringify({ mois, annee, solde: val }),
       });
-      setSoldeCaisse(val);
-      setCaisseMode('view');
+      // Recharge solde, "mis à jour par" et historique depuis le back
+      await fetchData();
       setCaisseSuccess(true);
       setTimeout(() => setCaisseSuccess(false), 3000);
     } catch (e: any) {
@@ -1911,7 +1918,7 @@ function TresoreriePanel({ mois, annee }: { mois: number; annee: number }) {
           </div>
 
           {/* Valeur enregistrée */}
-{caisseMode === 'view' && soldeCaisse != null && (
+          {caisseMode === 'view' && soldeCaisse != null && (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-dark-bg border border-gray-800 rounded-xl px-4 py-3">
               <div className="space-y-0.5">
                 <p className="text-xs text-gray-500">Solde saisi ce mois</p>
@@ -1985,6 +1992,31 @@ function TresoreriePanel({ mois, annee }: { mois: number; annee: number }) {
               )}
             </div>
           )}
+
+          {/* Historique des relevés de caisse */}
+          {historiqueCaisse.length > 0 && (
+            <div className="border border-gray-800 rounded-xl overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-gray-800">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Historique des relevés de caisse
+                </p>
+              </div>
+              <ul className="divide-y divide-gray-800/50">
+                {historiqueCaisse.map((h) => (
+                  <li key={h.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                    <span className="text-gray-400 min-w-0 truncate">
+                      {new Date(h.createdAt).toLocaleDateString('fr-FR', {
+                        day: '2-digit', month: 'short', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit',
+                      })}
+                      {h.userName ? ` · ${h.userName}` : ''}
+                    </span>
+                    <span className="font-medium text-emerald-400 shrink-0">{eur(h.solde)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
 
@@ -2053,85 +2085,85 @@ function TresoreriePanel({ mois, annee }: { mois: number; annee: number }) {
               <p className="text-gray-600 text-sm px-4 py-5">Aucun dépôt ce mois-ci.</p>
             ) : (
               <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-[380px]">
-                <thead>
-                  <tr className="border-b border-gray-800">
-                    <th className="text-left px-4 py-2 text-xs text-gray-500 font-medium">Date</th>
-                    <th className="text-right px-4 py-2 text-xs text-gray-500 font-medium">Montant</th>
-                    <th className="px-4 py-2 w-16" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {depots.map((d) => (
-                    <tr key={d.id} className="border-b border-gray-800/50 hover:bg-white/[0.02] transition-colors group">
-                      <td className="px-4 py-3 text-gray-400">{shortDate(d.date)}</td>
-
-                      {/* Montant éditable inline */}
-                      <td className="px-4 py-3 text-right font-medium">
-                        {editId === d.id ? (
-                          <div className="flex items-center justify-end gap-2">
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={editMontant}
-                              onChange={(e) => setEditMontant(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleEditSave(d.id);
-                                if (e.key === 'Escape') cancelEdit();
-                              }}
-                              autoFocus
-                              className="w-24 bg-dark-bg border border-blue-500/40 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-blue-500"
-                            />
-                            <button
-                              onClick={() => handleEditSave(d.id)}
-                              disabled={editSaving}
-                              className="text-blue-400 hover:text-blue-300 transition-colors disabled:opacity-50"
-                              title="Valider"
-                            >
-                              {editSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                            </button>
-                            <button
-                              onClick={cancelEdit}
-                              className="text-gray-500 hover:text-gray-300 transition-colors"
-                              title="Annuler"
-                            >
-                              <X size={14} />
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-blue-400">-{eur(d.montant)}</span>
-                        )}
-                      </td>
-
-                      {/* Actions */}
-                      <td className="px-4 py-3">
-                        {editId !== d.id && (
-                          <div className="flex items-center justify-end gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => startEdit(d)}
-                              className="text-gray-500 hover:text-white transition-colors"
-                              title="Modifier"
-                            >
-                              <Pencil size={13} />
-                            </button>
-                            <button
-                              onClick={() => handleDepotDelete(d.id)}
-                              disabled={deleteId === d.id}
-                              className="text-gray-500 hover:text-red-400 transition-colors disabled:opacity-50"
-                              title="Supprimer"
-                            >
-                              {deleteId === d.id
-                                ? <Loader2 size={13} className="animate-spin" />
-                                : <Trash2 size={13} />}
-                            </button>
-                          </div>
-                        )}
-                      </td>
+                <table className="w-full text-sm min-w-[380px]">
+                  <thead>
+                    <tr className="border-b border-gray-800">
+                      <th className="text-left px-4 py-2 text-xs text-gray-500 font-medium">Date</th>
+                      <th className="text-right px-4 py-2 text-xs text-gray-500 font-medium">Montant</th>
+                      <th className="px-4 py-2 w-16" />
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {depots.map((d) => (
+                      <tr key={d.id} className="border-b border-gray-800/50 hover:bg-white/[0.02] transition-colors group">
+                        <td className="px-4 py-3 text-gray-400">{shortDate(d.date)}</td>
+
+                        {/* Montant éditable inline */}
+                        <td className="px-4 py-3 text-right font-medium">
+                          {editId === d.id ? (
+                            <div className="flex items-center justify-end gap-2">
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={editMontant}
+                                onChange={(e) => setEditMontant(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleEditSave(d.id);
+                                  if (e.key === 'Escape') cancelEdit();
+                                }}
+                                autoFocus
+                                className="w-24 bg-dark-bg border border-blue-500/40 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-blue-500"
+                              />
+                              <button
+                                onClick={() => handleEditSave(d.id)}
+                                disabled={editSaving}
+                                className="text-blue-400 hover:text-blue-300 transition-colors disabled:opacity-50"
+                                title="Valider"
+                              >
+                                {editSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                              </button>
+                              <button
+                                onClick={cancelEdit}
+                                className="text-gray-500 hover:text-gray-300 transition-colors"
+                                title="Annuler"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-blue-400">-{eur(d.montant)}</span>
+                          )}
+                        </td>
+
+                        {/* Actions */}
+                        <td className="px-4 py-3">
+                          {editId !== d.id && (
+                            <div className="flex items-center justify-end gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => startEdit(d)}
+                                className="text-gray-500 hover:text-white transition-colors"
+                                title="Modifier"
+                              >
+                                <Pencil size={13} />
+                              </button>
+                              <button
+                                onClick={() => handleDepotDelete(d.id)}
+                                disabled={deleteId === d.id}
+                                className="text-gray-500 hover:text-red-400 transition-colors disabled:opacity-50"
+                                title="Supprimer"
+                              >
+                                {deleteId === d.id
+                                  ? <Loader2 size={13} className="animate-spin" />
+                                  : <Trash2 size={13} />}
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
