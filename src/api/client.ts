@@ -53,7 +53,7 @@ const parseErrorResponse = async (response: Response): Promise<{ message: string
  */
 const handleErrorResponse = (response: Response, errorMessage: string, errorCode?: string, skipUnauthorizedCallback?: boolean): never => {
   // Handle unauthorized (but not for login/register attempts)
-  if ((response.status === 401 || response.status === 403) && !skipUnauthorizedCallback) {
+  if (response.status === 401 && !skipUnauthorizedCallback) {
     if (onUnauthorized) {
       onUnauthorized();
     }

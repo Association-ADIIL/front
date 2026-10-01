@@ -415,13 +415,15 @@ const CartPage: React.FC = () => {
                               <div className="w-8 h-8 rounded-lg bg-gray-800 group-hover:bg-accent-mint/10 flex items-center justify-center transition-colors">
                                 <QrCode size={14} className="text-gray-500 group-hover:text-accent-mint transition-colors" />
                               </div>
-                              <div
-                                role="button"
-                                onClick={(e) => { e.stopPropagation(); setOrderToDelete(order); }}
-                                className="w-8 h-8 rounded-lg bg-gray-800 hover:bg-red-500/10 flex items-center justify-center transition-colors"
-                              >
-                                <Trash2 size={14} className="text-gray-500 hover:text-red-400 transition-colors" />
-                              </div>
+                              {!isPaid && (
+                                <div
+                                  role="button"
+                                  onClick={(e) => { e.stopPropagation(); setOrderToDelete(order); }}
+                                  className="w-8 h-8 rounded-lg bg-gray-800 hover:bg-red-500/10 flex items-center justify-center transition-colors"
+                                >
+                                  <Trash2 size={14} className="text-gray-500 hover:text-red-400 transition-colors" />
+                                </div>
+                              )}
                             </div>
                           </button>
                         );
