@@ -101,6 +101,9 @@ interface StockKPIs {
 interface StockData {
   items: StockItem[];
   kpis: StockKPIs;
+  // Jour d'inventaire utilisé pour le calcul (YYYY-MM-DD) : celui demandé, sinon
+  // celui déjà enregistré ce mois-ci, sinon le 1er du mois.
+  dateInventaire: string;
 }
 
 // ─── Couleurs ─────────────────────────────────────────────────────────────────
@@ -733,6 +736,11 @@ export default function ComptabilitePage() {
   const [achatCategories, setAchatCategories] = useState<CategorieOption[]>([]);
   const [fournisseurCategories, setFournisseurCategories] = useState<CategorieOption[]>([]);
   const [stockData, setStockData] = useState<StockData | null>(null);
+  // Jour d'inventaire choisi dans l'onglet Stock. Rattaché au mois pour lequel il
+  // a été choisi : en changeant de mois, il est ignoré (le back reprend alors le
+  // jour déjà enregistré pour ce mois, sinon le 1er).
+  const [stockDateSel, setStockDateSel] = useState<{ debut: string; date: string } | null>(null);
+  const stockDate = stockDateSel && stockDateSel.debut === periode.debut ? stockDateSel.date : null;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tab, setTab] = useState<'dashboard' | 'achats' | 'stock' | 'tresorerie' | 'parametres'>('dashboard');
@@ -781,12 +789,13 @@ export default function ComptabilitePage() {
       parseInt(periode.debut.split('-')[1]),
     ];
     try {
-      const data = await fetchJson<StockData>(`/admin/stock?mois=${m}&annee=${y}`);
+      const dateParam = stockDate ? `&date=${encodeURIComponent(stockDate)}` : '';
+      const data = await fetchJson<StockData>(`/admin/stock?mois=${m}&annee=${y}${dateParam}`);
       setStockData(data);
     } catch {
       setStockData(null);
     }
-  }, [periode.debut]);
+  }, [periode.debut, stockDate]);
 
   useEffect(() => { loadStock(); }, [loadStock]);
   useEffect(() => { load(); }, [load]);
@@ -951,6 +960,7 @@ export default function ComptabilitePage() {
           data={stockData}
           mois={parseInt(periode.debut.split('-')[1])}
           annee={parseInt(periode.debut.split('-')[0])}
+          onChangeDate={(date) => setStockDateSel({ debut: periode.debut, date })}
           onReload={loadStock}
         />
       ) : tab === 'tresorerie' ? (
@@ -1347,9 +1357,10 @@ function AchatsTab({ achats, deletingId, achatCategories, fournisseurCategories,
 
 // ─── Helpers stock ────────────────────────────────────────────────────────────
 
+// Mêmes seuils que le back (stockService.stockBadge) : ≤ 0 rupture, < 10 faible.
 function stockBadge(stock: number) {
-  if (stock === 0) return { label: 'Rupture', color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/30' };
-  if (stock <= 3) return { label: 'Faible', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/30' };
+  if (stock <= 0) return { label: 'Rupture', color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/30' };
+  if (stock < 10) return { label: 'Faible', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/30' };
   return { label: 'OK', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/30' };
 }
 
@@ -1359,10 +1370,11 @@ function stockBadge(stock: number) {
       data: StockData | null;
       mois: number;
       annee: number;
+      onChangeDate: (date: string) => void;
       onReload: () => Promise<void>;
     }
 
-    function StockTab({ data, mois, annee, onReload }: StockTabProps) {
+    function StockTab({ data, mois, annee, onChangeDate, onReload }: StockTabProps) {
       const [search, setSearch] = useState('');
       const [savingId, setSavingId] = useState<number | null>(null);
       const [editingInventaireId, setEditingInventaireId] = useState<number | null>(null);
@@ -1380,16 +1392,46 @@ function stockBadge(stock: number) {
       const [regularizing, setRegularizing] = useState(false);
       const [regularizeError, setRegularizeError] = useState('');
 
-      // Le mois est-il passé (terminé) ?
-      const stockDebutLabel = 'Stock présumé début de mois';
+      // ─ Date et heure de l'inventaire ─
+      // Le back renvoie l'instant utilisé (ISO, UTC). Le sélecteur travaille en
+      // heure locale (datetime-local) ; on reconvertit en ISO UTC à l'envoi.
+      const pad2 = (n: number) => String(n).padStart(2, '0');
+      const versInputLocal = (d: Date) =>
+        `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 
-      // Sauvegarde directe de l'inventaire, sans régularisation (les valeurs collent déjà)
+      // Bornes : le mois est découpé en UTC côté back, donc on borne en UTC
+      // (converti en heure locale pour l'affichage), jusqu'à maintenant au plus.
+      const minJour = versInputLocal(new Date(Date.UTC(annee, mois - 1, 1)));
+      const finMoisLocal = versInputLocal(new Date(Date.UTC(annee, mois, 1) - 60_000));
+      const maintenant = versInputLocal(new Date());
+      const maxJour = finMoisLocal < maintenant ? finMoisLocal : maintenant;
+
+      const jour = data?.dateInventaire ?? new Date(Date.UTC(annee, mois - 1, 1)).toISOString();
+      const jourInput = versInputLocal(new Date(jour));
+      const jourLabel = new Date(jour).toLocaleString('fr-FR', {
+        day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
+      });
+      const stockDebutLabel = `Stock présumé au ${jourLabel}`;
+
+      // Saisie en cours : on ne recharge le stock qu'à la validation (Entrée ou
+      // sortie du champ), pas à chaque chiffre tapé.
+      const [jourDraft, setJourDraft] = useState<string | null>(null);
+      useEffect(() => { setJourDraft(null); }, [data?.dateInventaire]);
+      function validerJour() {
+        if (!jourDraft) return;
+        const d = new Date(jourDraft); // interprété en heure locale
+        if (isNaN(d.getTime()) || d.toISOString() === jour) { setJourDraft(null); return; }
+        onChangeDate(d.toISOString());
+      }
+
+      // Tout comptage passe par la régularisation côté back : l'inventaire devient
+      // la nouvelle référence du stock. Sans écart, aucune commande n'est créée.
       async function saveInventaire(productId: number, quantite: number) {
         setSavingId(productId);
         try {
-          await fetchJson(`/admin/stock/${productId}/inventaire`, {
-            method: 'PUT',
-            body: JSON.stringify({ mois, annee, quantite }),
+          await fetchJson(`/admin/stock/${productId}/regulariser`, {
+            method: 'POST',
+            body: JSON.stringify({ mois, annee, inventaire: quantite, date: jour }),
           });
           await onReload();
         } finally {
@@ -1420,18 +1462,11 @@ function stockBadge(stock: number) {
         await saveInventaire(productId, quantite);
       }
 
-      // L'admin confirme que l'inventaire saisi est correct malgré l'écart :
-      // on enregistre l'inventaire tel quel (sans toucher au stock présumé).
-      async function confirmEcartSansRegularisation() {
-        if (!pendingEcart) return;
-        await saveInventaire(pendingEcart.productId, pendingEcart.inventaireSaisi);
-        setPendingEcart(null);
-      }
-
-      // L'admin demande la régularisation : une commande d'achat (qty = écart,
-      // peut être négative) est passée par le user système dédié pour que le
-      // stock présumé revienne s'aligner sur l'inventaire réel.
-      async function regulariser() {
+      // L'admin confirme le comptage : le back aligne le stock sur l'inventaire.
+      // Avec creerCommande = true et un écart négatif (ventes oubliées), il crée
+      // en plus une vraie commande datée juste avant le comptage pour que le CA
+      // les compte. Sinon, aucune vente ni achat n'est créé.
+      async function regulariser(creerCommande: boolean) {
         if (!pendingEcart) return;
         setRegularizing(true);
         setRegularizeError('');
@@ -1442,6 +1477,8 @@ function stockBadge(stock: number) {
               mois,
               annee,
               inventaire: pendingEcart.inventaireSaisi,
+              date: jour,
+              creerCommande,
             }),
           });
           await onReload();
@@ -1490,6 +1527,23 @@ function stockBadge(stock: number) {
             </div>
           )}
 
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <label className="text-xs text-gray-500 shrink-0">Date et heure de l'inventaire</label>
+            <input
+              type="datetime-local"
+              value={jourDraft ?? jourInput}
+              min={minJour}
+              max={maxJour}
+              onChange={(e) => setJourDraft(e.target.value || null)}
+              onBlur={validerJour}
+              onKeyDown={(e) => { if (e.key === 'Enter') validerJour(); }}
+              className="bg-dark-bg/60 border border-gray-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/60 transition-colors"
+            />
+            <span className="text-xs text-gray-600">
+              Les ventes et achats saisis à partir de cette heure sont comptés après le comptage.
+            </span>
+          </div>
+
           <input
             type="text"
             placeholder="Rechercher un produit ou une catégorie…"
@@ -1514,7 +1568,7 @@ function stockBadge(stock: number) {
                     <th className="text-center px-4 py-3 font-medium">{stockDebutLabel}</th>
                     <th className="text-center px-4 py-3 font-medium">
                     Inventaire
-                    <span className="block text-[10px] normal-case font-normal text-gray-600">compté le 1er du mois</span>
+                    <span className="block text-[10px] normal-case font-normal text-gray-600">compté le {jourLabel}</span>
                     </th>
                     <th className="text-right px-4 py-3 font-medium hidden lg:table-cell">Prix achat</th>
                     <th className="text-right px-4 py-3 font-medium">Valeur</th>
@@ -1632,9 +1686,9 @@ function stockBadge(stock: number) {
           {pendingEcart && (
             <EcartInventaireModal
               ecart={pendingEcart}
+              jourLabel={jourLabel}
               loading={regularizing}
               error={regularizeError}
-              onConfirmSansRegularisation={confirmEcartSansRegularisation}
               onRegulariser={regulariser}
               onCancel={cancelEcart}
             />
@@ -1645,21 +1699,23 @@ function stockBadge(stock: number) {
 
     function EcartInventaireModal({
       ecart,
+      jourLabel,
       loading,
       error,
-      onConfirmSansRegularisation,
       onRegulariser,
       onCancel,
     }: {
       ecart: { productName: string; stockPresume: number; inventaireSaisi: number };
+      jourLabel: string;
       loading: boolean;
       error: string;
-      onConfirmSansRegularisation: () => void;
-      onRegulariser: () => void;
+      onRegulariser: (creerCommande: boolean) => void;
       onCancel: () => void;
     }) {
       const diff = ecart.inventaireSaisi - ecart.stockPresume;
       const diffLabel = diff > 0 ? `+${diff}` : `${diff}`;
+      // Bouton cliqué, pour n'afficher le spinner que sur celui-ci
+      const [choix, setChoix] = useState<boolean | null>(null);
 
       return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
@@ -1679,9 +1735,9 @@ function stockBadge(stock: number) {
             </div>
 
             <p className="text-xs text-gray-500">
-              Vérifiez d'abord que le compte d'inventaire est correct. Si vous êtes certain du chiffre saisi,
-              vous pouvez régulariser le stock présumé : une commande d'ajustement sera passée automatiquement
-              pour faire correspondre les deux valeurs.
+              {diff < 0
+                ? `Vérifiez votre comptage : le stock sera aligné sur ${ecart.inventaireSaisi}, sans achat ni vente créé. Si les ${-diff} manquant(s) sont des ventes oubliées, vous pouvez aussi créer une vraie commande datée juste avant le ${jourLabel} (sauf pour le tout premier inventaire de ce produit) pour que le CA les compte.`
+                : `Vérifiez votre comptage : le stock sera simplement augmenté de ${diff}, sans commande créée.`}
             </p>
 
             {error && (
@@ -1699,20 +1755,23 @@ function stockBadge(stock: number) {
                 Annuler
               </button>
               <button
-                onClick={onConfirmSansRegularisation}
-                disabled={loading}
-                className="flex-1 px-4 py-2 border border-gray-700 text-gray-300 rounded-lg text-sm font-medium hover:bg-white/[0.03] transition-colors disabled:opacity-50"
-              >
-                Enregistrer quand même
-              </button>
-              <button
-                onClick={onRegulariser}
+                onClick={() => { setChoix(false); onRegulariser(false); }}
                 disabled={loading}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-lg text-sm font-medium hover:bg-emerald-500/30 transition-colors disabled:opacity-50"
               >
-                {loading ? <Loader2 size={14} className="animate-spin" /> : null}
+                {loading && choix === false ? <Loader2 size={14} className="animate-spin" /> : null}
                 Régulariser
               </button>
+              {diff < 0 && (
+                <button
+                  onClick={() => { setChoix(true); onRegulariser(true); }}
+                  disabled={loading}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-500/20 border border-blue-500/30 text-blue-400 rounded-lg text-sm font-medium hover:bg-blue-500/30 transition-colors disabled:opacity-50"
+                >
+                  {loading && choix === true ? <Loader2 size={14} className="animate-spin" /> : null}
+                  Régulariser + commande
+                </button>
+              )}
             </div>
           </div>
         </div>
