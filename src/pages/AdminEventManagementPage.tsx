@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { logger } from '../utils/logger';
-import { getAllEvents, deleteEvent, createEvent, updateEvent, type Event, type EventFormData, type EventField, type EventFieldType } from '../api/events';
-import { Edit2, Trash2, Plus, Calendar, MapPin, Download, X, Search, Users, ChevronDown, ChevronUp, UserMinus } from 'lucide-react';
+import { getAllEvents, deleteEvent, createEvent, updateEvent, duplicateEventCover, type Event, type EventFormData, type EventField, type EventFieldType } from '../api/events';
+import { Edit2, Trash2, Plus, Calendar, MapPin, Download, X, Search, Users, ChevronDown, ChevronUp, UserMinus, Copy } from 'lucide-react';
 import Modal from '../components/Modal';
 import { exportEventInscriptionsToExcel, getAllInscriptions, adminUnregisterInscription, type Inscription } from '../api/inscriptions';
 import ImageUpload from '../components/ImageUpload';
@@ -24,6 +24,7 @@ const EventManagementPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentEvent, setCurrentEvent] = useState<Event | null>(null);
+  const [isDuplicating, setIsDuplicating] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
   const uploadedImagesRef = useRef<string[]>([]);
@@ -94,6 +95,7 @@ const EventManagementPage: React.FC = () => {
 
   const handleOpenCreate = () => {
     setCurrentEvent(null);
+    setIsDuplicating(false);
     uploadedImagesRef.current = [];
     setDeadlineManuallyEdited(false);
     setFormData({
@@ -120,6 +122,7 @@ const EventManagementPage: React.FC = () => {
 
   const handleOpenEdit = (event: Event) => {
     setCurrentEvent(event);
+    setIsDuplicating(false);
     setDeadlineManuallyEdited(true);
     setFormData({
       title: event.title,
@@ -137,6 +140,51 @@ const EventManagementPage: React.FC = () => {
       restrictOnSitePaymentToInfo: event.restrictOnSitePaymentToInfo ?? false,
       hideParticipantCount: event.hideParticipantCount ?? false,
       fields: event.fields || []
+    });
+    resetNewField();
+    setEditingFieldId(null);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenDuplicate = async (event: Event) => {
+    uploadedImagesRef.current = [];
+    let coverImage = '';
+
+    if (event.coverImage) {
+      try {
+        const copiedUrl = await duplicateEventCover(event.id);
+        coverImage = copiedUrl || '';
+        // Si l'utilisateur annule, handleCloseModal supprimera cette copie de R2.
+        // Si c'est une URL externe partagée, on ne la met pas dans la liste de nettoyage.
+        if (copiedUrl && copiedUrl !== event.coverImage) {
+          uploadedImagesRef.current.push(copiedUrl);
+        }
+      } catch (error) {
+        logger.error('Failed to duplicate cover image', error);
+        addNotification('error', "Impossible de copier l'image de couverture, la copie n'en aura pas.");
+      }
+    }
+
+    setCurrentEvent(null); // mode création => createEvent sera appelé
+    setIsDuplicating(true);
+    setDeadlineManuallyEdited(false); // la date limite suivra la nouvelle date
+    setFormData({
+      title: `${event.title} (copie)`,
+      description: event.description,
+      date: '', // à re-saisir : une copie garde rarement la même date
+      location: event.location,
+      price: event.price,
+      totalPlaces: event.totalPlaces,
+      maxPlacesPerPerson: event.maxPlacesPerPerson,
+      registrationDeadline: '',
+      coverImage,
+      status: 'OPEN',
+      visibility: 'DRAFT', // évite de publier la copie par accident
+      publishAt: '',
+      restrictOnSitePaymentToInfo: event.restrictOnSitePaymentToInfo ?? false,
+      hideParticipantCount: event.hideParticipantCount ?? false,
+      // nouveaux ids temporaires : on ne réutilise pas les ids réels de la base
+      fields: (event.fields || []).map((f, i) => ({ ...f, id: Date.now() + i }))
     });
     resetNewField();
     setEditingFieldId(null);
@@ -263,7 +311,7 @@ const EventManagementPage: React.FC = () => {
         addNotification('success', 'Événement modifié avec succès !');
       } else {
         await createEvent(payload);
-        addNotification('success', 'Événement créé avec succès !');
+        addNotification('success', isDuplicating ? 'Événement dupliqué avec succès !' : 'Événement créé avec succès !');
       }
 
       uploadedImagesRef.current = [];
@@ -530,6 +578,13 @@ const handleEditChoice = (index: number) => {
                     >
                       <Download size={18} />
                     </button>
+                    <button
+                      onClick={() => handleOpenDuplicate(event)}
+                      className="p-2 text-purple-400 hover:bg-purple-900/20 rounded"
+                      title="Dupliquer l'événement"
+                    >
+                      <Copy size={18} />
+                    </button>
                     <button onClick={() => handleOpenEdit(event)} className="p-2 text-blue-400 hover:bg-blue-900/20 rounded"><Edit2 size={18} /></button>
                     <button onClick={() => handleOpenDelete(event)} className="p-2 text-red-400 hover:bg-red-900/20 rounded"><Trash2 size={18} /></button>
                  </div>
@@ -592,7 +647,7 @@ const handleEditChoice = (index: number) => {
       <Modal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
-        title={currentEvent ? "Modifier l'evenement" : "Creer un evenement"}
+        title={currentEvent ? "Modifier l'evenement" : isDuplicating ? "Dupliquer l'evenement" : "Creer un evenement"}
         isDirty={isEventFormDirty}
         footer={
           <div className="flex justify-end gap-3">
