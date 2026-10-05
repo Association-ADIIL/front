@@ -74,8 +74,8 @@ export const deleteEvent = async (id: number): Promise<void> => {
 // Copie l'image de couverture d'un événement (utilisé pour la duplication).
 // Renvoie la nouvelle URL, ou null si l'événement n'a pas de couverture.
 export const duplicateEventCover = async (eventId: number): Promise<string | null> => {
-  const data = await fetchJson(`/events/${eventId}/duplicate-cover`, {
+  const data = (await fetchJson(`/events/${eventId}/duplicate-cover`, {
     method: 'POST',
-  });
+  })) as { imageUrl: string | null };
   return data.imageUrl ?? null;
 };
