@@ -3,7 +3,7 @@ import {
   TrendingUp, TrendingDown, ShoppingCart, Euro,
   Plus, Trash2, Pencil, X, Check, ChevronLeft, ChevronRight,
   BarChart3, Package, RefreshCw, AlertCircle,CheckCircle, Loader2,
-  Paperclip, Upload, Receipt,
+  Paperclip, Upload, Receipt, Download,
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip,
@@ -1496,6 +1496,42 @@ function stockBadge(stock: number) {
         setEditingInventaireId(null);
       }
 
+      // Export CSV (séparateur ;, BOM UTF-8) : ouvert tel quel par Excel en FR.
+      // Colonnes : stock présumé à la date d'inventaire, comptage saisi (vide si
+      // pas encore compté) et écart, pour imprimer ou remplir à la main.
+      function exporterInventaire() {
+        const items = data?.items ?? [];
+        if (items.length === 0) return;
+
+        const texte = (v: string | null) => `"${(v ?? '').replace(/"/g, '""')}"`;
+        const nombre = (n: number) => String(n).replace('.', ',');
+
+        const lignes = [
+          ['Produit', 'Catégorie', `Stock présumé au ${jourLabel}`, 'Inventaire compté', 'Écart', "Prix d'achat (€)"],
+          ...items.map((i) => [
+            texte(i.name),
+            texte(i.categorie),
+            String(i.stockDebut),
+            i.inventaire !== null ? String(i.inventaire) : '',
+            i.inventaire !== null ? String(i.inventaire - i.stockDebut) : '',
+            i.costPrice > 0 ? nombre(i.costPrice) : '',
+          ]),
+        ];
+
+        // Les en-têtes sont aussi échappés (le libellé de la date contient une virgule).
+        const csv = '\uFEFF' + lignes
+          .map((l, idx) => (idx === 0 ? l.map((c) => texte(c)) : l).join(';'))
+          .join('\r\n');
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `inventaire-stock-${jour.slice(0, 10)}.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      }
+
       const filtered = (data?.items ?? []).filter((i) =>
         i.name.toLowerCase().includes(search.toLowerCase()) ||
         (i.categorie ?? '').toLowerCase().includes(search.toLowerCase())
@@ -1542,6 +1578,14 @@ function stockBadge(stock: number) {
             <span className="text-xs text-gray-600">
               Les ventes et achats saisis à partir de cette heure sont comptés après le comptage.
             </span>
+            <button
+              type="button"
+              onClick={exporterInventaire}
+              disabled={!data || data.items.length === 0}
+              className="sm:ml-auto flex items-center justify-center gap-2 px-3 py-2 bg-dark-bg/60 border border-gray-800 rounded-xl text-sm text-gray-300 hover:text-emerald-400 hover:border-emerald-500/30 transition-colors disabled:opacity-50"
+            >
+              <Download size={14} /> Exporter
+            </button>
           </div>
 
           <input
