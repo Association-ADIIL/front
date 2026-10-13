@@ -1,6 +1,6 @@
 import { fetchJson } from './client';
 
-export type RewardType = 'BALANCE' | 'PRODUCT' | 'CUSTOM';
+export type RewardType = 'BALANCE' | 'PRODUCT' | 'CUSTOM' | 'DISCOUNT';
 /** Boost d'XP du tier Premium (doit correspondre au back) */
 export const PREMIUM_XP_BOOST = 1.1;
 export const XP_PER_EURO = 5;
@@ -96,6 +96,14 @@ export const getBattlePassById = (id: number) =>
   fetchJson<BattlePass>(`/battle-pass/${id}`);
 
 // ─── Utilisateur authentifié ─────────────────────────────────────────────────
+
+/** Réduction boutique (%) débloquée via le Battle PAFF (0 si aucune) */
+export const getMyShopDiscount = () =>
+  fetchJson<{ percent: number }>('/battle-pass/me/discount');
+
+/** Applique une réduction en %, arrondi au centime (même calcul que le back) */
+export const applyPercentDiscount = (price: number, percent: number) =>
+  percent > 0 ? Math.round(price * (1 - percent / 100) * 100) / 100 : price;
 
 export const getMyBattlePass = (id: number) =>
   fetchJson<UserBattlePass>(`/battle-pass/${id}/me`);

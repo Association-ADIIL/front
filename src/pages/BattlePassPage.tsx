@@ -21,6 +21,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import {
   Lock, Check, CheckCircle, Crown, Trophy, Clock, Euro,
   Coffee, Package, Zap, Star, Gift, QrCode, X, AlertTriangle, Info, Medal,
+  Percent,
 } from 'lucide-react';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -42,6 +43,7 @@ const getDaysLeft = (endDate: string) =>
 
 const RewardIcon: React.FC<{ type: string | null; size?: number }> = ({ type, size = 22 }) => {
   if (type === 'BALANCE') return <Euro size={size} />;
+  if (type === 'DISCOUNT') return <Percent size={size} />;
   if (type === 'PRODUCT') return <Coffee size={size} />;
   return <Package size={size} />;
 };
@@ -164,6 +166,11 @@ const RewardCell: React.FC<RewardCellProps> = ({
                   +{fmt(rewardValue)}€
                 </div>
               )}
+              {rewardType === 'DISCOUNT' && rewardValue != null && (
+                <div className={`text-sm font-black mt-0.5 ${isPremium ? 'text-amber-400' : 'text-emerald-400'}`}>
+                  -{rewardValue}%
+                </div>
+              )}
             </div>
             {rewardDetails && !claimed && (
               <p className="text-[10px] text-slate-500 text-center leading-tight px-1 line-clamp-2">{rewardDetails}</p>
@@ -176,12 +183,12 @@ const RewardCell: React.FC<RewardCellProps> = ({
         {claimed ? (
           <div className={`text-center text-[10px] font-bold py-1 ${textClaimed}`}>✓ Réclamé</div>
         ) : canClaim ? (
-          rewardType === 'BALANCE' ? (
+          rewardType === 'BALANCE' || rewardType === 'DISCOUNT' ? (
             <button
               onClick={() => onClaimBalance(lvl.level, tier)}
               className={`w-full py-1.5 rounded-xl text-[11px] font-bold border transition-all hover:scale-[1.02] flex items-center justify-center gap-1 ${btnBg}`}
             >
-              <Euro size={12} />Réclamer
+              {rewardType === 'DISCOUNT' ? <Percent size={12} /> : <Euro size={12} />}Réclamer
             </button>
           ) : (
             <button
@@ -567,7 +574,9 @@ const BattlePassPage: React.FC = () => {
       const result = await claimReward(selectedPass.id, level, tier);
       const updated = await getMyBattlePass(selectedPass.id);
       setUserPass(updated);
-      addNotification('success', `+${result.balanceAdded.toFixed(2).replace('.', ',')}€ crédités sur ton solde !`);
+      addNotification('success', result.rewardType === 'DISCOUNT'
+        ? `${result.rewardLabel ?? 'Réduction'} activée ! Elle s'applique automatiquement à tes achats.`
+        : `+${result.balanceAdded.toFixed(2).replace('.', ',')}€ crédités sur ton solde !`);
     } catch (e: any) {
       addNotification('error', e.message ?? 'Erreur lors de la réclamation');
     } finally {

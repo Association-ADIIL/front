@@ -11,7 +11,7 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { checkBalanceRechargeBonus, checkCartDiscount, getActiveProductPromotions, type CartDiscountCheck, type ProductPromotionsMap } from '../api/promotions';
 import LegalAcceptance from '../components/LegalAcceptance';
 import { logger } from '../utils/logger';
-import { getPublicBattlePasses, getMyBattlePass, PREMIUM_XP_BOOST, XP_PER_EURO } from '../api/battlePass';
+import { getPublicBattlePasses, getMyBattlePass, getMyShopDiscount, applyPercentDiscount, PREMIUM_XP_BOOST, XP_PER_EURO } from '../api/battlePass';
 import { getErrorMessage } from '../types/errors';
 
 const CartPage: React.FC = () => {
@@ -29,6 +29,7 @@ const CartPage: React.FC = () => {
   const [productPromotions, setProductPromotions] = useState<ProductPromotionsMap>({});
   const [legalAccepted, setLegalAccepted] = useState(false);
   const [battlePaff, setBattlePaff] = useState<{ hasPremium: boolean } | null>(null);
+  const [paffDiscountPercent, setPaffDiscountPercent] = useState(0);
 
   const [showOrders, setShowOrders] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -80,8 +81,8 @@ const CartPage: React.FC = () => {
     }
   };
 
-  // Calculate total with product promotions
-  const totalWithProductPromotions = items.reduce((sum, item) => {
+  // Prix après promos produit (sans la réduction Battle PAFF)
+  const totalAfterProductPromotionsOnly = items.reduce((sum, item) => {
     const basePrice = item.product.price;
     const promotion = productPromotions[parseInt(item.product.id)];
     const discountedPrice = promotion
@@ -90,8 +91,19 @@ const CartPage: React.FC = () => {
     return sum + discountedPrice * item.quantity;
   }, 0);
 
+  // Calculate total with product promotions + réduction Battle PAFF (même calcul que le back)
+  const totalWithProductPromotions = items.reduce((sum, item) => {
+    const basePrice = item.product.price;
+    const promotion = productPromotions[parseInt(item.product.id)];
+    const discountedPrice = promotion
+      ? Math.round(basePrice * (1 - promotion.discountPercent / 100) * 100) / 100
+      : basePrice;
+    return sum + applyPercentDiscount(discountedPrice, paffDiscountPercent) * item.quantity;
+  }, 0);
+
   // Total savings from product promotions
-  const productPromotionsSavings = totalPrice - totalWithProductPromotions;
+  const productPromotionsSavings = totalPrice - totalAfterProductPromotionsOnly;
+  const paffSavings = totalAfterProductPromotionsOnly - totalWithProductPromotions;
 
   // Calculate final price with discount (cart discount applies on top of product promotions)
   const finalPrice = discountInfo?.eligible ? discountInfo.finalAmount : totalWithProductPromotions;
@@ -108,7 +120,8 @@ const CartPage: React.FC = () => {
 
   // Battle PAFF : l'utilisateur est-il inscrit à un pass actif, et premium ?
   useEffect(() => {
-    if (!user) { setBattlePaff(null); return; }
+    if (!user) { setBattlePaff(null); setPaffDiscountPercent(0); return; }
+    getMyShopDiscount().then((d) => setPaffDiscountPercent(d.percent || 0)).catch(() => setPaffDiscountPercent(0));
     const fetchPass = async () => {
       try {
         const now = new Date();
@@ -463,10 +476,11 @@ const CartPage: React.FC = () => {
                   {items.map((cartItem) => {
                     const basePrice = cartItem.product.price;
                     const promotion = productPromotions[parseInt(cartItem.product.id)];
-                    const discountedPrice = promotion
-                      ? Math.round(basePrice * (1 - promotion.discountPercent / 100) * 100) / 100
-                      : basePrice;
-                    const hasPromotion = !!promotion;
+                    const discountedPrice = applyPercentDiscount(
+                      promotion ? Math.round(basePrice * (1 - promotion.discountPercent / 100) * 100) / 100 : basePrice,
+                      paffDiscountPercent
+                    );
+                    const hasPromotion = !!promotion || paffDiscountPercent > 0;
 
                     return (
                       <div
@@ -483,7 +497,7 @@ const CartPage: React.FC = () => {
                               alt={cartItem.product.name}
                               className="w-full h-full object-cover"
                             />
-                            {hasPromotion && (
+                            {promotion && (
                               <div className="absolute top-1 left-1 bg-red-500 text-white px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-0.5">
                                 <Tag size={8} />
                                 -{promotion.discountPercent}%
@@ -564,10 +578,11 @@ const CartPage: React.FC = () => {
                         {items.map((item) => {
                           const basePrice = item.product.price;
                           const promotion = productPromotions[parseInt(item.product.id)];
-                          const discountedPrice = promotion
-                            ? Math.round(basePrice * (1 - promotion.discountPercent / 100) * 100) / 100
-                            : basePrice;
-                          const hasPromotion = !!promotion;
+                          const discountedPrice = applyPercentDiscount(
+                            promotion ? Math.round(basePrice * (1 - promotion.discountPercent / 100) * 100) / 100 : basePrice,
+                            paffDiscountPercent
+                          );
+                          const hasPromotion = !!promotion || paffDiscountPercent > 0;
 
                           return (
                             <div key={item.product.id} className="flex justify-between text-sm">
@@ -585,7 +600,7 @@ const CartPage: React.FC = () => {
                       </div>
 
                       {/* Discounts */}
-                      {(productPromotionsSavings > 0 || discountInfo?.eligible) && (
+                      {(productPromotionsSavings > 0 || paffSavings > 0.001 || discountInfo?.eligible) && (
                         <div className="space-y-2 mb-5 pt-4 border-t border-gray-800">
                           {productPromotionsSavings > 0 && (
                             <div className="flex items-center justify-between p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
@@ -594,6 +609,15 @@ const CartPage: React.FC = () => {
                                 <span className="text-sm text-red-400">Promos produits</span>
                               </div>
                               <span className="text-red-400 font-bold">-{productPromotionsSavings.toFixed(2)}€</span>
+                            </div>
+                          )}
+                          {paffSavings > 0.001 && (
+                            <div className="flex items-center justify-between p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                              <div className="flex items-center gap-2">
+                                <Zap size={14} className="text-amber-400" />
+                                <span className="text-sm text-amber-400">Battle PAFF -{paffDiscountPercent}%</span>
+                              </div>
+                              <span className="text-amber-400 font-bold">-{paffSavings.toFixed(2)}€</span>
                             </div>
                           )}
                           {discountInfo?.eligible && (

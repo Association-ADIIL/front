@@ -35,6 +35,7 @@ const REWARD_TYPES: { value: RewardType; label: string }[] = [
   { value: 'BALANCE', label: 'Solde Adiil (crédité auto)' },
   { value: 'PRODUCT', label: 'Produit physique' },
   { value: 'CUSTOM', label: 'Récompense personnalisée' },
+  { value: 'DISCOUNT', label: 'Réduction boutique auto (%)' },
 ];
 
 // ─── Pass Form ────────────────────────────────────────────────────────────────
@@ -140,6 +141,7 @@ const LevelFormRow: React.FC<{
                   {select('freeRewardType', 'Type de récompense')}
                   {field('freeRewardLabel', 'Libellé affiché', 'text', 'Café offert')}
                   {form.freeRewardType === 'BALANCE' && field('freeRewardValue', 'Montant (€)', 'number', '2')}
+                  {form.freeRewardType === 'DISCOUNT' && field('freeRewardValue', 'Réduction (%)', 'number', '5')}
                   {field('freeRewardDetails', 'Description complémentaire')}
                   <ImageUpload
                                       value={form.freeRewardImageUrl}
@@ -160,6 +162,7 @@ const LevelFormRow: React.FC<{
                   {select('premiumRewardType', 'Type de récompense')}
                   {field('premiumRewardLabel', 'Libellé affiché', 'text', 'Bière offerte')}
                   {form.premiumRewardType === 'BALANCE' && field('premiumRewardValue', 'Montant (€)', 'number', '5')}
+                  {form.premiumRewardType === 'DISCOUNT' && field('premiumRewardValue', 'Réduction (%)', 'number', '5')}
                   {field('premiumRewardDetails', 'Description complémentaire')}
                   <ImageUpload
                                       value={form.premiumRewardImageUrl}
