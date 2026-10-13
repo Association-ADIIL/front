@@ -166,13 +166,8 @@ const RewardCell: React.FC<RewardCellProps> = ({
                   +{fmt(rewardValue)}€
                 </div>
               )}
-              {rewardType === 'DISCOUNT' && rewardValue != null && (
-                <div className={`text-sm font-black mt-0.5 ${isPremium ? 'text-amber-400' : 'text-emerald-400'}`}>
-                  -{rewardValue}%
-                </div>
-              )}
             </div>
-            {rewardDetails && !claimed && (
+            {rewardDetails && !claimed && rewardType !== 'DISCOUNT' && (
               <p className="text-[10px] text-slate-500 text-center leading-tight px-1 line-clamp-2">{rewardDetails}</p>
             )}
           </>
