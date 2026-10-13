@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useNotification } from '../context/NotificationContext';
-import { Minus, Plus, Trash2, ShoppingBag, CreditCard, Heart, ArrowLeft, ChevronRight, Gift, Tag, Wallet, CheckCircle2, Banknote, Package, Clock, QrCode, X } from 'lucide-react';
+import { Minus, Plus, Trash2, ShoppingBag, CreditCard, Heart, ArrowLeft, ChevronRight, Gift, Tag, Wallet, CheckCircle2, Banknote, Package, Clock, QrCode, X, Zap } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../context/AuthContext';
 import { createOrder, getMyOrders, deleteOrder, type OrderItem as ApiOrderItem, type Order } from '../api/orders';
@@ -11,6 +11,7 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { checkBalanceRechargeBonus, checkCartDiscount, getActiveProductPromotions, type CartDiscountCheck, type ProductPromotionsMap } from '../api/promotions';
 import LegalAcceptance from '../components/LegalAcceptance';
 import { logger } from '../utils/logger';
+import { getPublicBattlePasses, getMyBattlePass, PREMIUM_XP_BOOST, XP_PER_EURO } from '../api/battlePass';
 import { getErrorMessage } from '../types/errors';
 
 const CartPage: React.FC = () => {
@@ -27,6 +28,7 @@ const CartPage: React.FC = () => {
   const [discountInfo, setDiscountInfo] = useState<CartDiscountCheck | null>(null);
   const [productPromotions, setProductPromotions] = useState<ProductPromotionsMap>({});
   const [legalAccepted, setLegalAccepted] = useState(false);
+  const [battlePaff, setBattlePaff] = useState<{ hasPremium: boolean } | null>(null);
 
   const [showOrders, setShowOrders] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -103,6 +105,25 @@ const CartPage: React.FC = () => {
       setSelectedPaymentMethod(null);
     }
   }, [finalPrice, selectedPaymentMethod]);
+
+  // Battle PAFF : l'utilisateur est-il inscrit à un pass actif, et premium ?
+  useEffect(() => {
+    if (!user) { setBattlePaff(null); return; }
+    const fetchPass = async () => {
+      try {
+        const now = new Date();
+        const active = (await getPublicBattlePasses()).find(
+          (bp) => bp.status === 'ACTIVE' && new Date(bp.startDate) <= now && new Date(bp.endDate) >= now
+        );
+        if (!active) return;
+        const mine = await getMyBattlePass(active.id);
+        if (mine) setBattlePaff({ hasPremium: mine.hasPremium });
+      } catch {
+        setBattlePaff(null);
+      }
+    };
+    fetchPass();
+  }, [user]);
 
   // Fetch product promotions
   useEffect(() => {
@@ -592,6 +613,21 @@ const CartPage: React.FC = () => {
                         <span className="text-gray-400 font-medium">Total</span>
                         <span className="text-2xl font-koulen text-accent-mint">{finalPrice.toFixed(2)}€</span>
                       </div>
+
+                      {/* Battle PAFF XP */}
+                      {battlePaff && finalPrice > 0 && (
+                        <div className="mb-4 flex items-center justify-between p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                          <div className="flex items-center gap-2">
+                            <Zap size={14} className="text-amber-400" />
+                            <span className="text-sm text-amber-400">
+                              Battle PAFF{battlePaff.hasPremium && ` · boost premium +${Math.round((PREMIUM_XP_BOOST - 1) * 100)}%`}
+                            </span>
+                          </div>
+                          <span className="text-amber-400 font-bold">
+                            +{Math.round(finalPrice * XP_PER_EURO * (battlePaff.hasPremium ? PREMIUM_XP_BOOST : 1))} XP
+                          </span>
+                        </div>
+                      )}
 
                       {/* Free order notice */}
                       {finalPrice === 0 && (

@@ -1,6 +1,10 @@
 import { fetchJson } from './client';
 
 export type RewardType = 'BALANCE' | 'PRODUCT' | 'CUSTOM';
+/** Boost d'XP du tier Premium (doit correspondre au back) */
+export const PREMIUM_XP_BOOST = 1.1;
+export const XP_PER_EURO = 5;
+
 export type BattlePassStatus = 'ACTIVE' | 'ENDED';
 
 export interface BattlePassLevel {

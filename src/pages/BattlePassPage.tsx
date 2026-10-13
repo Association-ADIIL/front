@@ -9,6 +9,7 @@ import {
   joinBattlePass,
   claimReward,
   getBattlePassLeaderboard,
+  PREMIUM_XP_BOOST,
   type BattlePass,
   type BattlePassLevel,
   type UserBattlePass,
@@ -714,6 +715,11 @@ const BattlePassPage: React.FC = () => {
                       <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-700/40 text-slate-400 border border-slate-600/30">
                         <Zap size={10} className="text-emerald-500" />1€ = {XP_RATIO} XP
                       </span>
+                      {userPass?.hasPremium && (
+                        <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/20">
+                          <Zap size={10} />Boost premium +{Math.round((PREMIUM_XP_BOOST - 1) * 100)}% XP
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-3 text-xs text-slate-500">
                       <span className="hidden sm:flex items-center gap-1.5">
